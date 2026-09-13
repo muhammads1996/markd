@@ -1,0 +1,31 @@
+# Dependencies and package-manager state
+node_modules/
+.pnpm-store/
+
+# Environment files (the example is intentionally committed)
+.env
+.env.*
+!.env.example
+apps/web/.env.local
+
+# Next.js and test output
+.next/
+out/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# Supabase local state
+supabase/.branches/
+supabase/.temp/
+
+# Editors and operating systems
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/settings.json
+
+# Logs
+*.log
