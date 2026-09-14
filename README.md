@@ -2,7 +2,7 @@
 
 MARKD is an operator-led work platform for a provenance-aware, bilateral construction Work Graph. This repository is the TypeScript monorepo foundation for the operator web application and its canonical Supabase/PostgreSQL data layer.
 
-FLO-104 adds the initial canonical Work Graph schema: provenance-aware Workmarks, additive verification claims, relationship views, and deny-by-default RLS. It intentionally does not add authentication policies, WhatsApp processing, AI parsing, matching, or onboarding flows.
+FLO-104 adds the initial canonical Work Graph schema: provenance-aware Workmarks, additive verification claims, relationship views, and deny-by-default RLS. FLO-105 adds auth-backed operator accounts, live `ops_admin`/`ops_user` authorization, private data/media boundaries, and an internal allowlisted Work Card projection. It intentionally does not add WhatsApp processing, AI parsing, matching, or worker/contractor login flows.
 
 ## Prerequisites
 
@@ -76,7 +76,7 @@ The integration suite uses `postgresql://postgres:postgres@127.0.0.1:54322/postg
 
 Read `AGENTS.md` before implementing an issue. Linear is the product and scope source of truth; repository code, migrations, and tests are implementation truth.
 
-The schema rationale and provenance/RLS boundaries are documented in [work-graph-schema.md](docs/architecture/work-graph-schema.md).
+The schema rationale and provenance/RLS boundaries are documented in [work-graph-schema.md](docs/architecture/work-graph-schema.md). The auth, private-data, and private-media boundary is documented in [operator-access-boundary.md](docs/architecture/operator-access-boundary.md).
 
 ## Canonical language
 

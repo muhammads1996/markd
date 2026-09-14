@@ -28,7 +28,8 @@
     "db:reset": "supabase db reset",
     "db:migration:new": "supabase migration new",
     "db:types": "node scripts/generate-db-types.ts",
-    "db:types:check": "node scripts/generate-db-types.ts --check"
+    "db:types:check": "node scripts/generate-db-types.ts --check",
+    "db:backup-restore-drill": "node scripts/disposable-backup-restore-drill.ts"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

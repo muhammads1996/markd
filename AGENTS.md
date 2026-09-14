@@ -213,6 +213,40 @@ If implementation reveals a required architectural change, stop and escalate to 
 
 ---
 
+## Delivery speed protocol
+
+Move quickly by reducing repeated work, never by weakening security, domain, or
+verification standards.
+
+- Treat a Linear issue as **small by default**. Escalate it to a multi-phase
+  plan only when it changes schema, RLS/auth, public contracts, provenance,
+  or more than one package boundary.
+- Timebox initial issue/repository discovery to the files and documents that
+  can change the decision. Do not perform broad repository archaeology once
+  the acceptance criteria and affected boundary are clear.
+- A Sol agent owns the smallest viable plan for architectural or security work;
+  delegate all bounded implementation immediately to a cheaper agent with that
+  plan. Do not make a cheaper agent rediscover the whole architecture.
+- Keep implementation and review agents on separate passes. The implementer
+  should report an exact blocker promptly rather than repeatedly exploring or
+  expanding scope.
+- During implementation iterations, run the narrowest affected checks first
+  (for example: a migration reset plus its integration test, or a single UI
+  test). Run the complete applicable lint/typecheck/test/build gate once after
+  the coherent diff is ready for review, then rerun only checks affected by
+  review fixes before final confirmation.
+- For small deterministic issues, use a brief plan, one implementation pass,
+  focused verification, and a targeted Sol diff review. Do not require extra
+  design documents, full E2E suites, remote deployments, or speculative
+  follow-up work unless the active issue explicitly requires them.
+- A review finding must be actionable and tied to an acceptance criterion,
+  architectural invariant, security/privacy boundary, or concrete regression.
+  Do not reopen an issue for optional polish.
+- Update Linear at three points only: start, materially blocked, and complete.
+  Keep comments concise and evidence-based.
+
+---
+
 # 6. Required development loop
 
 For non-trivial work, use this sequence:

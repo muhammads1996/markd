@@ -101,6 +101,13 @@ export type Database = {
             foreignKeyName: "assignments_worker_id_fkey"
             columns: ["worker_id"]
             isOneToOne: false
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
             referencedRelation: "worker_profiles"
             referencedColumns: ["person_id"]
           },
@@ -114,6 +121,7 @@ export type Database = {
           changes: Json
           id: string
           occurred_at: string
+          operator_account_id: string | null
           record_id: string
           source_channel_event_id: string | null
           source_proposed_action_id: string | null
@@ -127,6 +135,7 @@ export type Database = {
           changes: Json
           id?: string
           occurred_at?: string
+          operator_account_id?: string | null
           record_id: string
           source_channel_event_id?: string | null
           source_proposed_action_id?: string | null
@@ -140,6 +149,7 @@ export type Database = {
           changes?: Json
           id?: string
           occurred_at?: string
+          operator_account_id?: string | null
           record_id?: string
           source_channel_event_id?: string | null
           source_proposed_action_id?: string | null
@@ -153,6 +163,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "people"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_events_operator_account_id_fkey"
+            columns: ["operator_account_id"]
+            isOneToOne: false
+            referencedRelation: "operator_accounts"
+            referencedColumns: ["user_id"]
           },
           {
             foreignKeyName: "audit_events_source_channel_event_id_fkey"
@@ -212,6 +229,13 @@ export type Database = {
           worker_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "availability_signals_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
           {
             foreignKeyName: "availability_signals_worker_id_fkey"
             columns: ["worker_id"]
@@ -284,8 +308,22 @@ export type Database = {
             foreignKeyName: "crew_links_worker_a_id_fkey"
             columns: ["worker_a_id"]
             isOneToOne: false
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "crew_links_worker_a_id_fkey"
+            columns: ["worker_a_id"]
+            isOneToOne: false
             referencedRelation: "worker_profiles"
             referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "crew_links_worker_b_id_fkey"
+            columns: ["worker_b_id"]
+            isOneToOne: false
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
           },
           {
             foreignKeyName: "crew_links_worker_b_id_fkey"
@@ -534,6 +572,41 @@ export type Database = {
         }
         Relationships: []
       }
+      operator_accounts: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          person_id: string | null
+          role: Database["public"]["Enums"]["operator_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          person_id?: string | null
+          role: Database["public"]["Enums"]["operator_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          person_id?: string | null
+          role?: Database["public"]["Enums"]["operator_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operator_accounts_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organisation_contacts: {
         Row: {
           archived_at: string | null
@@ -617,7 +690,6 @@ export type Database = {
           family_name: string | null
           given_name: string | null
           id: string
-          notes: string | null
           preferred_communication_mode: string
           preferred_language_id: string | null
           updated_at: string
@@ -629,7 +701,6 @@ export type Database = {
           family_name?: string | null
           given_name?: string | null
           id?: string
-          notes?: string | null
           preferred_communication_mode?: string
           preferred_language_id?: string | null
           updated_at?: string
@@ -641,7 +712,6 @@ export type Database = {
           family_name?: string | null
           given_name?: string | null
           id?: string
-          notes?: string | null
           preferred_communication_mode?: string
           preferred_language_id?: string | null
           updated_at?: string
@@ -731,6 +801,38 @@ export type Database = {
             foreignKeyName: "person_phone_numbers_person_id_fkey"
             columns: ["person_id"]
             isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_private_details: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          notes: string | null
+          person_id: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          notes?: string | null
+          person_id: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          notes?: string | null
+          person_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_private_details_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
             referencedRelation: "people"
             referencedColumns: ["id"]
           },
@@ -938,6 +1040,13 @@ export type Database = {
             foreignKeyName: "verification_claims_worker_id_fkey"
             columns: ["worker_id"]
             isOneToOne: false
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "verification_claims_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
             referencedRelation: "worker_profiles"
             referencedColumns: ["person_id"]
           },
@@ -950,10 +1059,93 @@ export type Database = {
           },
         ]
       }
-      worker_profiles: {
+      worker_media_assets: {
+        Row: {
+          archived_at: string | null
+          bucket_id: string
+          created_at: string
+          id: string
+          media_kind: string
+          object_path: string
+          worker_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          bucket_id: string
+          created_at?: string
+          id?: string
+          media_kind: string
+          object_path: string
+          worker_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          bucket_id?: string
+          created_at?: string
+          id?: string
+          media_kind?: string
+          object_path?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_media_assets_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_media_assets_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["person_id"]
+          },
+        ]
+      }
+      worker_private_details: {
         Row: {
           archived_at: string | null
           birth_date: string | null
+          created_at: string
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          birth_date?: string | null
+          created_at?: string
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          birth_date?: string | null
+          created_at?: string
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_private_details_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_private_details_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["person_id"]
+          },
+        ]
+      }
+      worker_profiles: {
+        Row: {
+          archived_at: string | null
           created_at: string
           person_id: string
           preferred_name: string | null
@@ -961,7 +1153,6 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
-          birth_date?: string | null
           created_at?: string
           person_id: string
           preferred_name?: string | null
@@ -969,7 +1160,6 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
-          birth_date?: string | null
           created_at?: string
           person_id?: string
           preferred_name?: string | null
@@ -1043,6 +1233,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "proposed_actions"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_skill_evidence_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
           },
           {
             foreignKeyName: "worker_skill_evidence_worker_id_fkey"
@@ -1225,6 +1422,13 @@ export type Database = {
             foreignKeyName: "workmarks_worker_id_fkey"
             columns: ["worker_id"]
             isOneToOne: false
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
             referencedRelation: "worker_profiles"
             referencedColumns: ["person_id"]
           },
@@ -1232,6 +1436,25 @@ export type Database = {
       }
     }
     Views: {
+      operator_work_cards: {
+        Row: {
+          confirmed_workmark_count: number | null
+          display_name: string | null
+          last_confirmed_worked_on: string | null
+          portrait_object_path: string | null
+          preferred_name: string | null
+          worker_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_profiles_person_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       worker_crew_relationships: {
         Row: {
           created_at: string | null
@@ -1253,8 +1476,22 @@ export type Database = {
             foreignKeyName: "crew_links_worker_a_id_fkey"
             columns: ["worker_a_id"]
             isOneToOne: false
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "crew_links_worker_a_id_fkey"
+            columns: ["worker_a_id"]
+            isOneToOne: false
             referencedRelation: "worker_profiles"
             referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "crew_links_worker_b_id_fkey"
+            columns: ["worker_b_id"]
+            isOneToOne: false
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
           },
           {
             foreignKeyName: "crew_links_worker_b_id_fkey"
@@ -1293,6 +1530,13 @@ export type Database = {
             foreignKeyName: "workmarks_worker_id_fkey"
             columns: ["worker_id"]
             isOneToOne: false
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
             referencedRelation: "worker_profiles"
             referencedColumns: ["person_id"]
           },
@@ -1325,6 +1569,13 @@ export type Database = {
             foreignKeyName: "workmarks_worker_id_fkey"
             columns: ["worker_id"]
             isOneToOne: false
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
             referencedRelation: "worker_profiles"
             referencedColumns: ["person_id"]
           },
@@ -1332,7 +1583,19 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      authorize_worker_media_read: {
+        Args: { requested_asset_id: string; requested_expires_in: number }
+        Returns: {
+          bucket_id: string
+          object_path: string
+        }[]
+      }
+      current_operator_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["operator_role"]
+      }
+      is_active_operator: { Args: never; Returns: boolean }
+      is_ops_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       assignment_state:
@@ -1352,6 +1615,7 @@ export type Database = {
         | "withdrawn"
       completion_outcome: "unknown" | "completed" | "incomplete" | "disputed"
       exception_state: "open" | "investigating" | "resolved" | "dismissed"
+      operator_role: "ops_admin" | "ops_user"
       payment_state: "unknown" | "unpaid" | "paid" | "disputed"
       proposed_action_state:
         | "pending"
@@ -1511,6 +1775,7 @@ export const Constants = {
       ],
       completion_outcome: ["unknown", "completed", "incomplete", "disputed"],
       exception_state: ["open", "investigating", "resolved", "dismissed"],
+      operator_role: ["ops_admin", "ops_user"],
       payment_state: ["unknown", "unpaid", "paid", "disputed"],
       proposed_action_state: [
         "pending",

@@ -7,6 +7,43 @@ const localDatabaseUrl =
 
 const clients: Client[] = [];
 
+const authInstanceId = "00000000-0000-0000-0000-000000000000";
+const operatorAdminId = "90000000-0000-4000-8000-000000000001";
+const operatorUserId = "90000000-0000-4000-8000-000000000002";
+const unprovisionedUserId = "90000000-0000-4000-8000-000000000003";
+
+async function createOperator(
+  client: Client,
+  userId: string,
+  role: "ops_admin" | "ops_user",
+): Promise<void> {
+  await client.query(
+    `insert into auth.users(
+      id, instance_id, aud, role, email, encrypted_password,
+      email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+      created_at, updated_at
+    ) values (
+      $1, $2, 'authenticated', 'authenticated', $3, 'not-used-in-tests',
+      now(), '{}', '{}', now(), now()
+    )`,
+    [userId, authInstanceId, `${userId}-${role}@example.test`],
+  );
+  await client.query(
+    "insert into public.operator_accounts(user_id, role) values ($1, $2::public.operator_role)",
+    [userId, role],
+  );
+}
+
+async function becomeAuthenticatedOperator(
+  client: Client,
+  userId: string,
+): Promise<void> {
+  await client.query("select set_config('request.jwt.claim.sub', $1, true)", [
+    userId,
+  ]);
+  await client.query("set local role authenticated");
+}
+
 const domainTables = [
   "assignments",
   "audit_events",
@@ -17,15 +54,19 @@ const domainTables = [
   "labour_requests",
   "labour_requirements",
   "languages",
+  "operator_accounts",
   "organisation_contacts",
   "organisations",
   "people",
   "person_languages",
   "person_phone_numbers",
+  "person_private_details",
   "proposed_actions",
   "sites",
   "skills",
   "verification_claims",
+  "worker_media_assets",
+  "worker_private_details",
   "worker_profiles",
   "worker_skill_evidence",
   "workmark_skills",
@@ -494,12 +535,16 @@ describe("local Supabase database", () => {
     );
     expect(relationship.rows[0]?.confirmed_workmark_count).toBe(1);
     await client.query("set local role anon");
+    await client.query("savepoint workmarks_denied");
     await expect(
       client.query("select * from public.workmarks"),
-    ).resolves.toMatchObject({ rows: [] });
+    ).rejects.toThrow("permission denied");
+    await client.query("rollback to savepoint workmarks_denied");
+    await client.query("savepoint relationship_view_denied");
     await expect(
       client.query("select * from public.worker_organisation_relationships"),
-    ).resolves.toMatchObject({ rows: [] });
+    ).rejects.toThrow("permission denied");
+    await client.query("rollback to savepoint relationship_view_denied");
     await client.query("rollback");
   });
 
@@ -517,7 +562,18 @@ describe("local Supabase database", () => {
       [...domainTables].sort(),
     );
 
-    for (const role of ["anon", "authenticated"] as const) {
+    await client.query("begin");
+    await client.query("set local role anon");
+    for (const table of domainTables) {
+      await client.query(`savepoint anon_${table}`);
+      await expect(
+        client.query(`select count(*)::text as count from public.${table}`),
+      ).rejects.toThrow("permission denied");
+      await client.query(`rollback to savepoint anon_${table}`);
+    }
+    await client.query("rollback");
+
+    for (const role of ["authenticated"] as const) {
       await client.query("begin");
       await client.query(`set local role ${role}`);
       for (const table of domainTables) {
@@ -592,5 +648,209 @@ describe("local Supabase database", () => {
          and column_name ~* '(rating|rank|overall_score|trust_score)'`,
     );
     expect(scoreColumns.rows).toEqual([]);
+  });
+
+  it("requires a live auth-backed operator account for Work Graph access", async () => {
+    const client = new Client({ connectionString: localDatabaseUrl });
+    clients.push(client);
+    await client.connect();
+    await client.query("begin");
+    await createOperator(client, operatorAdminId, "ops_admin");
+    await createOperator(client, operatorUserId, "ops_user");
+    await createOperator(client, unprovisionedUserId, "ops_user");
+    await client.query("set local role postgres");
+    await client.query(
+      "delete from public.operator_accounts where user_id = $1",
+      [unprovisionedUserId],
+    );
+
+    await becomeAuthenticatedOperator(client, operatorUserId);
+    const visible = await client.query<{ count: string }>(
+      "select count(*)::text as count from public.people",
+    );
+    expect(Number(visible.rows[0]?.count)).toBeGreaterThan(0);
+    await expect(
+      client.query(
+        "insert into public.people(display_name) values ('Authorised operator sample')",
+      ),
+    ).resolves.toBeDefined();
+    await expect(
+      client.query("select * from public.audit_events"),
+    ).resolves.toMatchObject({ rows: [] });
+
+    await client.query("set local role postgres");
+    await becomeAuthenticatedOperator(client, unprovisionedUserId);
+    await expect(
+      client.query("select * from public.people"),
+    ).resolves.toMatchObject({ rows: [] });
+    await client.query("savepoint unprovisioned_write");
+    await expect(
+      client.query(
+        "insert into public.people(display_name) values ('Unprovisioned API write')",
+      ),
+    ).rejects.toThrow();
+    await client.query("rollback to savepoint unprovisioned_write");
+
+    await client.query("set local role postgres");
+    await client.query(
+      "update public.operator_accounts set archived_at = now() where user_id = $1",
+      [operatorUserId],
+    );
+    await becomeAuthenticatedOperator(client, operatorUserId);
+    await expect(
+      client.query("select * from public.people"),
+    ).resolves.toMatchObject({ rows: [] });
+    await expect(
+      client.query(
+        "insert into public.people(display_name) values ('Revoked operator sample')",
+      ),
+    ).rejects.toThrow();
+    await client.query("rollback");
+  });
+
+  it("keeps private fields and media inaccessible to anonymous requests", async () => {
+    const client = new Client({ connectionString: localDatabaseUrl });
+    clients.push(client);
+    await client.connect();
+    await client.query("begin");
+    await createOperator(client, operatorAdminId, "ops_admin");
+
+    const privateColumns = await client.query<{ column_name: string }>(
+      `select column_name from information_schema.columns
+       where table_schema = 'public' and table_name = 'operator_work_cards'
+       order by column_name`,
+    );
+    expect(privateColumns.rows.map(({ column_name }) => column_name)).toEqual([
+      "confirmed_workmark_count",
+      "display_name",
+      "last_confirmed_worked_on",
+      "portrait_object_path",
+      "preferred_name",
+      "worker_id",
+    ]);
+
+    await client.query("set local role anon");
+    await client.query("savepoint private_table_denied");
+    await expect(
+      client.query("select * from public.person_private_details"),
+    ).rejects.toThrow();
+    await client.query("rollback to savepoint private_table_denied");
+    await client.query("savepoint work_card_denied");
+    await expect(
+      client.query("select * from public.operator_work_cards"),
+    ).rejects.toThrow();
+    await client.query("rollback to savepoint work_card_denied");
+    await expect(
+      client.query(
+        "select * from storage.objects where bucket_id = 'worker-portraits'",
+      ),
+    ).resolves.toMatchObject({ rows: [] });
+
+    await client.query("set local role postgres");
+    await becomeAuthenticatedOperator(client, operatorAdminId);
+    await expect(
+      client.query("select * from public.operator_work_cards"),
+    ).resolves.toMatchObject({ rows: expect.any(Array) });
+    await expect(
+      client.query(
+        `insert into storage.objects(bucket_id, name)
+         values ('worker-portraits', 'workers/10000000-0000-4000-8000-000000000001/portrait.jpg')`,
+      ),
+    ).resolves.toBeDefined();
+    await expect(
+      client.query(
+        `insert into public.worker_media_assets(worker_id, bucket_id, object_path, media_kind)
+         values (
+           '10000000-0000-4000-8000-000000000001', 'worker-portraits',
+           'workers/10000000-0000-4000-8000-000000000001/portrait.jpg', 'portrait'
+         )`,
+      ),
+    ).resolves.toBeDefined();
+    await client.query("savepoint media_worker_mismatch");
+    await expect(
+      client.query(
+        `insert into public.worker_media_assets(worker_id, bucket_id, object_path, media_kind)
+         values (
+           '10000000-0000-4000-8000-000000000002', 'worker-portraits',
+           'workers/10000000-0000-4000-8000-000000000001/mismatch.jpg', 'portrait'
+         )`,
+      ),
+    ).rejects.toThrow();
+    await client.query("rollback to savepoint media_worker_mismatch");
+    await client.query("set local role anon");
+    const hiddenMedia = await client.query<{ count: string }>(
+      "select count(*)::text as count from storage.objects where bucket_id = 'worker-portraits'",
+    );
+    expect(hiddenMedia.rows[0]?.count).toBe("0");
+    await client.query("rollback");
+  });
+
+  it("audits private-boundary mutations and signed sensitive-media reads without private content", async () => {
+    const client = new Client({ connectionString: localDatabaseUrl });
+    clients.push(client);
+    await client.connect();
+    await client.query("begin");
+    await createOperator(client, operatorAdminId, "ops_admin");
+    await becomeAuthenticatedOperator(client, operatorAdminId);
+
+    const asset = await client.query<{ id: string }>(
+      `insert into public.worker_media_assets(worker_id, bucket_id, object_path, media_kind)
+       values (
+         '10000000-0000-4000-8000-000000000001', 'worker-verification-media',
+         'workers/10000000-0000-4000-8000-000000000001/id.pdf', 'verification'
+       ) returning id`,
+    );
+    await client.query(
+      "insert into public.person_private_details(person_id, notes) values ('10000000-0000-4000-8000-000000000001', 'Never audit this private note') on conflict (person_id) do update set notes = excluded.notes",
+    );
+    const authorised = await client.query<{
+      bucket_id: string;
+      object_path: string;
+    }>("select * from public.authorize_worker_media_read($1, 300)", [
+      asset.rows[0]?.id,
+    ]);
+    expect(authorised.rows[0]).toEqual({
+      bucket_id: "worker-verification-media",
+      object_path: "workers/10000000-0000-4000-8000-000000000001/id.pdf",
+    });
+    await client.query("savepoint signed_media_expiry");
+    await expect(
+      client.query(
+        "select * from public.authorize_worker_media_read($1, 301)",
+        [asset.rows[0]?.id],
+      ),
+    ).rejects.toThrow("signed media expiry");
+    await client.query("rollback to savepoint signed_media_expiry");
+    await client.query("set local role postgres");
+    const audit = await client.query<{
+      actor_kind: string;
+      operator_account_id: string | null;
+      changes: Record<string, unknown>;
+    }>(
+      `select actor_kind, operator_account_id, changes
+       from public.audit_events
+       where table_name = 'worker_media_assets' and record_id = $1
+       and action = 'UPDATE'
+       and changes ->> 'event' = 'signed_media_read'`,
+      [asset.rows[0]?.id],
+    );
+    expect(audit.rows[0]).toMatchObject({
+      actor_kind: "operator",
+      operator_account_id: operatorAdminId,
+    });
+    expect(JSON.stringify(audit.rows[0]?.changes)).not.toContain("Never audit");
+    await becomeAuthenticatedOperator(client, operatorAdminId);
+    await expect(
+      client.query(
+        `insert into public.workmarks(
+          worker_id, organisation_id, work_started_on, work_ended_on, origin, source
+        ) values (
+          '10000000-0000-4000-8000-000000000003',
+          '20000000-0000-4000-8000-000000000001', '2026-09-14', '2026-09-14',
+          'operator_recorded', 'browser direct write'
+        )`,
+      ),
+    ).rejects.toThrow("permission denied");
+    await client.query("rollback");
   });
 });
