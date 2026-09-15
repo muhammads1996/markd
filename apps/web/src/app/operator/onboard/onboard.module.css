@@ -1,0 +1,121 @@
+.shell {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+.eyebrow {
+  color: #456;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.form section,
+.kind {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+.form label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+}
+.form input,
+.form select {
+  border: 1px solid #94a3b8;
+  border-radius: 0.5rem;
+  font: inherit;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.65rem;
+}
+.form input[type="checkbox"],
+.form input[type="radio"] {
+  min-height: auto;
+}
+.kind {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.kind legend,
+.form fieldset legend {
+  font-weight: 700;
+}
+.kind label,
+.options label {
+  align-items: center;
+  display: flex;
+  font-weight: 500;
+  gap: 0.45rem;
+}
+.options {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+}
+.secondary {
+  border: 1px dashed #94a3b8;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+.secondary summary {
+  cursor: pointer;
+  font-weight: 700;
+  min-height: 2.75rem;
+  padding-top: 0.35rem;
+}
+.secondary[open] {
+  display: grid;
+  gap: 1rem;
+}
+.checkline {
+  align-items: center;
+  display: flex !important;
+  font-weight: 500 !important;
+  gap: 0.5rem !important;
+}
+.hint {
+  color: #475569;
+  margin-top: 0;
+}
+.error {
+  background: #fef2f2;
+  border-radius: 0.5rem;
+  color: #991b1b;
+  padding: 0.75rem;
+}
+.success {
+  background: #f0fdf4;
+  border-radius: 0.5rem;
+  color: #166534;
+  padding: 0.75rem;
+}
+.form button {
+  background: #0f766e;
+  border: 0;
+  border-radius: 0.5rem;
+  color: white;
+  font: inherit;
+  font-weight: 700;
+  min-height: 3rem;
+  padding: 0.75rem 1rem;
+}
+.form button:disabled {
+  opacity: 0.65;
+}
+.form .cancel {
+  background: #fff;
+  border: 1px solid #b91c1c;
+  color: #991b1b;
+}
+@media (min-width: 42rem) {
+  .shell {
+    padding: 2rem;
+  }
+}

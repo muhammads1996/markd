@@ -1,0 +1,100 @@
+.page {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1.25rem;
+  color: #17211b;
+}
+.back,
+.actions a {
+  color: #245b43;
+  font-weight: 700;
+}
+.actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.header {
+  margin: 1.25rem 0 2rem;
+}
+.header p {
+  margin: 0;
+  color: #2e6750;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+}
+.header h1 {
+  margin: 0.2rem 0;
+  font-size: clamp(2rem, 9vw, 3rem);
+}
+.header span {
+  color: #526158;
+}
+.page section {
+  margin-top: 2rem;
+}
+.page h2 {
+  font-size: 1.1rem;
+}
+.timeline,
+.list {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0;
+  list-style: none;
+}
+.timeline li,
+.list li {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.85rem;
+  border-left: 3px solid #7ca88b;
+  background: #f5f8f5;
+}
+.timeline span,
+.timeline small,
+.list span {
+  color: #526158;
+}
+.timeline em {
+  width: fit-content;
+  padding: 0.15rem 0.4rem;
+  border-radius: 1rem;
+  background: #e8efe9;
+  font-size: 0.8rem;
+  font-style: normal;
+}
+.timeline em[data-provenance="historical_claim"] {
+  background: #f8e9c9;
+}
+.timeline em[data-provenance="markd_arranged"] {
+  background: #dcefcf;
+  color: #245b43;
+}
+.timeline em[data-provenance="channel_event"] {
+  background: #dcebf4;
+  color: #24506b;
+}
+.list a {
+  color: #1a6042;
+  font-weight: 700;
+}
+.empty {
+  margin: 0;
+  padding: 0.85rem;
+  border-left: 3px solid #9dac9f;
+  background: #f5f8f5;
+  color: #526158;
+}
+.retry {
+  margin-top: 1rem;
+  padding: 0.8rem 1rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: #245b43;
+  color: white;
+  font: inherit;
+  font-weight: 700;
+}
