@@ -33,6 +33,11 @@ canonical store. Set the server-only variables in `.env` or `apps/api/.env`
 from `.env.example` before starting the API. The browser never receives the
 database URL, JWT secret, or service-role key.
 
+Production runs the same FastAPI image in two process roles: the default API
+role serves HTTP, and a separate `MARKD_PROCESS_ROLE=worker` instance runs the
+durable WhatsApp processing and delivery queues continuously. It uses the
+database lease/retry functions and records terminal failures for Ops.
+
 ### Environment files
 
 - Local development uses ignored `apps/web/.env.local`. Generate it with `pnpm env:local`; do not copy the database URL, secret key, JWT secret, service-role key, or S3 credentials from `supabase status` into browser-visible variables.

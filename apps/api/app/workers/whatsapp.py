@@ -104,7 +104,7 @@ async def _process_message_job(
 ) -> str:
     result = await connection.execute(
         """
-        select id, payload, event_type
+        select id, payload, event_type, provider_message_id
         from public.channel_events
         where id = %s::uuid
         """,
@@ -116,7 +116,10 @@ async def _process_message_job(
     payload = event["payload"]
     if not isinstance(payload, dict):
         return "skipped"
-    text = _extract_text(payload)
+    provider_message_id = event["provider_message_id"]
+    text = _extract_text(
+        payload, provider_message_id if isinstance(provider_message_id, str) else None
+    )
     detector = HeuristicLanguageDetector()
     transcript: str | None = None
     transcript_confidence: float | None = None
@@ -324,29 +327,40 @@ def _meta_provider(settings: Settings) -> MetaWhatsAppCloudProvider:
     )
 
 
-def _extract_text(payload: dict[str, Any]) -> str | None:
+def _extract_text(
+    payload: dict[str, Any], provider_message_id: str | None
+) -> str | None:
     entries = payload.get("entry")
-    if not isinstance(entries, list) or not entries or not isinstance(entries[0], dict):
+    if not isinstance(entries, list):
         return None
-    changes = entries[0].get("changes")
-    if not isinstance(changes, list) or not changes or not isinstance(changes[0], dict):
-        return None
-    value = changes[0].get("value")
-    messages = value.get("messages") if isinstance(value, dict) else None
-    message = messages[0] if isinstance(messages, list) and messages else None
-    text = message.get("text") if isinstance(message, dict) else None
-    body = text.get("body") if isinstance(text, dict) else None
-    if isinstance(body, str):
-        return body
-    interactive = message.get("interactive") if isinstance(message, dict) else None
-    if not isinstance(interactive, dict):
-        return None
-    for reply_type in ("button_reply", "list_reply"):
-        reply = interactive.get(reply_type)
-        if isinstance(reply, dict):
-            value = reply.get("id") or reply.get("title")
-            if isinstance(value, str) and value.strip():
-                return value
+    for entry in entries:
+        changes = entry.get("changes") if isinstance(entry, dict) else None
+        if not isinstance(changes, list):
+            continue
+        for change in changes:
+            value = change.get("value") if isinstance(change, dict) else None
+            messages = value.get("messages") if isinstance(value, dict) else None
+            if not isinstance(messages, list):
+                continue
+            for message in messages:
+                if not isinstance(message, dict) or (
+                    provider_message_id is not None
+                    and message.get("id") != provider_message_id
+                ):
+                    continue
+                text = message.get("text")
+                body = text.get("body") if isinstance(text, dict) else None
+                if isinstance(body, str):
+                    return body
+                interactive = message.get("interactive")
+                if not isinstance(interactive, dict):
+                    continue
+                for reply_type in ("button_reply", "list_reply"):
+                    reply = interactive.get(reply_type)
+                    if isinstance(reply, dict):
+                        reply_value = reply.get("id") or reply.get("title")
+                        if isinstance(reply_value, str) and reply_value.strip():
+                            return reply_value
     return None
 
 

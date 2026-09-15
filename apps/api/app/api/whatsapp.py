@@ -33,7 +33,22 @@ class QueueDeliveryInput(BaseModel):
     source_proposed_action_id: str | None = None
 
 
-@router.get("/webhooks/whatsapp", operation_id="verifyWhatsAppWebhook")
+class WebhookReceipt(BaseModel):
+    received: bool
+    inbound_messages: int
+    delivery_statuses: int
+
+
+class DeliveryQueueReceipt(BaseModel):
+    queued: bool
+
+
+@router.get(
+    "/webhooks/whatsapp",
+    operation_id="verifyWhatsAppWebhook",
+    response_class=PlainTextResponse,
+    responses={403: {"description": "Webhook verification was rejected."}},
+)
 async def verify_whatsapp_webhook(
     mode: str | None = Query(default=None, alias="hub.mode"),
     token: str | None = Query(default=None, alias="hub.verify_token"),
@@ -48,7 +63,16 @@ async def verify_whatsapp_webhook(
     return PlainTextResponse(verified_challenge)
 
 
-@router.post("/webhooks/whatsapp", operation_id="receiveWhatsAppWebhook")
+@router.post(
+    "/webhooks/whatsapp",
+    operation_id="receiveWhatsAppWebhook",
+    response_model=WebhookReceipt,
+    responses={
+        400: {"description": "Webhook payload was invalid."},
+        401: {"description": "Webhook signature was invalid."},
+        503: {"description": "Webhook evidence could not be persisted."},
+    },
+)
 async def receive_whatsapp_webhook(
     request: Request,
     signature: str | None = Header(default=None, alias="X-Hub-Signature-256"),
@@ -121,6 +145,11 @@ async def receive_whatsapp_webhook(
     "/internal/whatsapp/deliveries",
     operation_id="queueWhatsAppDelivery",
     status_code=status.HTTP_202_ACCEPTED,
+    response_model=DeliveryQueueReceipt,
+    responses={
+        401: {"description": "Internal service authentication was rejected."},
+        503: {"description": "Delivery queue persistence failed."},
+    },
 )
 async def queue_whatsapp_delivery(
     input: QueueDeliveryInput,

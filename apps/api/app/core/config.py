@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     openrouter_transcription_max_cost_usd: float = 0.03
     internal_service_token: str = ""
     internal_service_token_header: str = "X-Internal-Service-Token"
+    worker_poll_interval_seconds: float = Field(default=10, gt=0, le=300)
 
 
 @lru_cache(maxsize=1)

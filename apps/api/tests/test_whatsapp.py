@@ -204,6 +204,7 @@ class ProcessingConnection:
         self.event = {
             "id": "11111111-1111-4111-8111-111111111111",
             "event_type": "message",
+            "provider_message_id": "wamid-inbound-1",
             "payload": {
                 "entry": [
                     {
@@ -212,6 +213,7 @@ class ProcessingConnection:
                                 "value": {
                                     "messages": [
                                         {
+                                            "id": "wamid-inbound-1",
                                             "text": {
                                                 "body": "I am available tomorrow"
                                             }
@@ -266,6 +268,7 @@ async def test_interactive_reply_is_usable_as_message_evidence() -> None:
                         "value": {
                             "messages": [
                                 {
+                                    "id": "wamid-inbound-1",
                                     "interactive": {
                                         "button_reply": {"id": "available tomorrow"}
                                     }
@@ -285,6 +288,31 @@ async def test_interactive_reply_is_usable_as_message_evidence() -> None:
     )
 
     assert outcome == "created"
+
+
+async def test_batched_webhook_jobs_use_the_matching_provider_message() -> None:
+    connection = ProcessingConnection()
+    connection.event["provider_message_id"] = "wamid-inbound-2"
+    messages = connection.event["payload"]["entry"][0]["changes"][0]["value"][
+        "messages"
+    ]
+    messages.append(
+        {"id": "wamid-inbound-2", "text": {"body": "We need 4 workers"}}
+    )
+
+    outcome = await _process_message_job(
+        connection,
+        "11111111-1111-4111-8111-111111111111",
+        Settings(openrouter_api_key=""),
+    )
+
+    action_call = next(
+        (params for query, params in connection.calls if "proposed_actions" in query),
+        None,
+    )
+    assert outcome == "created"
+    assert action_call is not None
+    assert action_call[1] == "labour_request"
 
 
 async def test_meta_provider_marks_transient_send_failure_retryable() -> None:

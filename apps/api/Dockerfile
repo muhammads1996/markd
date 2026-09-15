@@ -22,4 +22,4 @@ COPY run.py ./run.py
 
 USER markd
 EXPOSE 8000
-CMD ["python", "run.py"]
+CMD ["sh", "-c", "if [ \"$MARKD_PROCESS_ROLE\" = worker ]; then python run.py worker --continuous; else python run.py; fi"]

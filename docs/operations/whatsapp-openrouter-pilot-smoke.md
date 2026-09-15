@@ -19,6 +19,9 @@ variables, logs, fixtures, issue comments, or screenshots.
 5. Start local Supabase, FastAPI, and Next.js in separate terminals:
    `corepack pnpm db:start`, `corepack pnpm api:dev`, and `corepack pnpm dev`.
    Run queued work with `corepack pnpm api:worker`.
+   Production runs a separate deployment of the same FastAPI image with
+   `MARKD_PROCESS_ROLE=worker`; that process polls the durable queue and logs
+   failed passes while database leases/retries retain operational recovery state.
 6. Expose FastAPI through an HTTPS tunnel. Configure Meta's callback as
    `https://<tunnel-host>/webhooks/whatsapp`, subscription field `messages`.
 

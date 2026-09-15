@@ -22,19 +22,28 @@ const assignmentCopyTemplates: Record<
   Record<SupportedLanguageCode, CopyTemplate>
 > = {
   "assignment.offer": {
-    en: (v) => `Work offer: ${v.rateLabel} on ${v.dateLabel} at ${v.timeLabel}, ${v.locationLabel}. Reply YES to accept.`,
-    af: (v) => `Werkaanbod: ${v.rateLabel} op ${v.dateLabel} om ${v.timeLabel}, ${v.locationLabel}. Antwoord JA om te aanvaar.`,
-    xh: (v) => `Isicelo somsebenzi: ${v.rateLabel} nge ${v.dateLabel} nge ${v.timeLabel}, ${v.locationLabel}. Phendula EWE ukuvuma.`,
+    en: (v) =>
+      `Work offer: ${v.rateLabel} on ${v.dateLabel} at ${v.timeLabel}, ${v.locationLabel}. Reply YES to accept.`,
+    af: (v) =>
+      `Werkaanbod: ${v.rateLabel} op ${v.dateLabel} om ${v.timeLabel}, ${v.locationLabel}. Antwoord JA om te aanvaar.`,
+    xh: (v) =>
+      `Isicelo somsebenzi: ${v.rateLabel} nge ${v.dateLabel} nge ${v.timeLabel}, ${v.locationLabel}. Phendula EWE ukuvuma.`,
   },
   "assignment.confirmed": {
-    en: (v) => `Confirmed job: ${v.rateLabel} on ${v.dateLabel} at ${v.timeLabel}, ${v.locationLabel}.`,
-    af: (v) => `Bevestigde werk: ${v.rateLabel} op ${v.dateLabel} om ${v.timeLabel}, ${v.locationLabel}.`,
-    xh: (v) => `Umsebenzi oqinisekisiweyo: ${v.rateLabel} nge ${v.dateLabel} nge ${v.timeLabel}, ${v.locationLabel}.`,
+    en: (v) =>
+      `Confirmed job: ${v.rateLabel} on ${v.dateLabel} at ${v.timeLabel}, ${v.locationLabel}.`,
+    af: (v) =>
+      `Bevestigde werk: ${v.rateLabel} op ${v.dateLabel} om ${v.timeLabel}, ${v.locationLabel}.`,
+    xh: (v) =>
+      `Umsebenzi oqinisekisiweyo: ${v.rateLabel} nge ${v.dateLabel} nge ${v.timeLabel}, ${v.locationLabel}.`,
   },
   "assignment.cancelled": {
-    en: (v) => `Cancelled: the job on ${v.dateLabel} at ${v.locationLabel} will not go ahead.`,
-    af: (v) => `Gekanselleer: die werk op ${v.dateLabel} by ${v.locationLabel} gaan nie voort nie.`,
-    xh: (v) => `Kurhoxisiwe: umsebenzi nge ${v.dateLabel} ku ${v.locationLabel} awuyi kuqhubeka.`,
+    en: (v) =>
+      `Cancelled: the job on ${v.dateLabel} at ${v.locationLabel} will not go ahead.`,
+    af: (v) =>
+      `Gekanselleer: die werk op ${v.dateLabel} by ${v.locationLabel} gaan nie voort nie.`,
+    xh: (v) =>
+      `Kurhoxisiwe: umsebenzi nge ${v.dateLabel} ku ${v.locationLabel} awuyi kuqhubeka.`,
   },
 };
 

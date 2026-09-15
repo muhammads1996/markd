@@ -68,8 +68,11 @@ paths:
         '200':
           description: Successful Response
           content:
-            application/json:
-              schema: {}
+            text/plain:
+              schema:
+                type: string
+        '403':
+          description: Webhook verification was rejected.
         '422':
           description: Validation Error
           content:
@@ -95,7 +98,14 @@ paths:
           description: Successful Response
           content:
             application/json:
-              schema: {}
+              schema:
+                $ref: '#/components/schemas/WebhookReceipt'
+        '400':
+          description: Webhook payload was invalid.
+        '401':
+          description: Webhook signature was invalid.
+        '503':
+          description: Webhook evidence could not be persisted.
         '422':
           description: Validation Error
           content:
@@ -128,7 +138,12 @@ paths:
           description: Successful Response
           content:
             application/json:
-              schema: {}
+              schema:
+                $ref: '#/components/schemas/DeliveryQueueReceipt'
+        '401':
+          description: Internal service authentication was rejected.
+        '503':
+          description: Delivery queue persistence failed.
         '422':
           description: Validation Error
           content:
@@ -572,6 +587,15 @@ components:
       - object_path
       - portrait
       title: Body_upload_portrait_api_v1_onboarding_workers__worker_id__portrait_post
+    DeliveryQueueReceipt:
+      properties:
+        queued:
+          type: boolean
+          title: Queued
+      type: object
+      required:
+      - queued
+      title: DeliveryQueueReceipt
     HTTPValidationError:
       properties:
         detail:
@@ -729,6 +753,23 @@ components:
       - msg
       - type
       title: ValidationError
+    WebhookReceipt:
+      properties:
+        received:
+          type: boolean
+          title: Received
+        inbound_messages:
+          type: integer
+          title: Inbound Messages
+        delivery_statuses:
+          type: integer
+          title: Delivery Statuses
+      type: object
+      required:
+      - received
+      - inbound_messages
+      - delivery_statuses
+      title: WebhookReceipt
     WorkerBeginResponse:
       properties:
         worker_id:

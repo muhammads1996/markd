@@ -1,4 +1,6 @@
 import asyncio
+import logging
+import os
 import sys
 from pathlib import Path
 
@@ -8,7 +10,7 @@ if sys.platform == "win32":
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 
-async def run_worker() -> None:
+async def run_worker(continuous: bool = False) -> None:
     from app.core.config import get_settings
     from app.integrations.database import Database
     from app.workers.whatsapp import run_delivery_jobs, run_processing_jobs
@@ -17,15 +19,28 @@ async def run_worker() -> None:
     database = Database(settings)
     await database.open()
     try:
-        await run_processing_jobs(database, settings)
-        await run_delivery_jobs(database, settings)
+        while True:
+            try:
+                await run_processing_jobs(database, settings)
+                await run_delivery_jobs(database, settings)
+            except Exception:
+                logging.exception("FastAPI WhatsApp worker pass failed")
+                if not continuous:
+                    raise
+            if not continuous:
+                break
+            await asyncio.sleep(settings.worker_poll_interval_seconds)
     finally:
         await database.close()
 
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "worker":
-        asyncio.run(run_worker())
+        asyncio.run(run_worker(continuous="--continuous" in sys.argv[2:]))
+        raise SystemExit(0)
+
+    if os.getenv("MARKD_PROCESS_ROLE") == "worker":
+        asyncio.run(run_worker(continuous=True))
         raise SystemExit(0)
 
     import uvicorn
