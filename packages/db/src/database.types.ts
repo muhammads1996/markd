@@ -9,6 +9,33 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      areas: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          id: string
+          locality: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          locality?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          locality?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       assignments: {
         Row: {
           agreed_rate_cents: number | null
@@ -102,6 +129,34 @@ export type Database = {
             columns: ["worker_id"]
             isOneToOne: false
             referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_profile_preferences"
             referencedColumns: ["worker_id"]
           },
           {
@@ -240,6 +295,34 @@ export type Database = {
             foreignKeyName: "availability_signals_worker_id_fkey"
             columns: ["worker_id"]
             isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "availability_signals_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "availability_signals_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "availability_signals_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_profile_preferences"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "availability_signals_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
             referencedRelation: "worker_profiles"
             referencedColumns: ["person_id"]
           },
@@ -315,6 +398,34 @@ export type Database = {
             foreignKeyName: "crew_links_worker_a_id_fkey"
             columns: ["worker_a_id"]
             isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "crew_links_worker_a_id_fkey"
+            columns: ["worker_a_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "crew_links_worker_a_id_fkey"
+            columns: ["worker_a_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "crew_links_worker_a_id_fkey"
+            columns: ["worker_a_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_profile_preferences"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "crew_links_worker_a_id_fkey"
+            columns: ["worker_a_id"]
+            isOneToOne: false
             referencedRelation: "worker_profiles"
             referencedColumns: ["person_id"]
           },
@@ -323,6 +434,34 @@ export type Database = {
             columns: ["worker_b_id"]
             isOneToOne: false
             referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "crew_links_worker_b_id_fkey"
+            columns: ["worker_b_id"]
+            isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "crew_links_worker_b_id_fkey"
+            columns: ["worker_b_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "crew_links_worker_b_id_fkey"
+            columns: ["worker_b_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "crew_links_worker_b_id_fkey"
+            columns: ["worker_b_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_profile_preferences"
             referencedColumns: ["worker_id"]
           },
           {
@@ -405,6 +544,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "proposed_actions"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exception_cases_workmark_id_fkey"
+            columns: ["workmark_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_work"
+            referencedColumns: ["workmark_id"]
           },
           {
             foreignKeyName: "exception_cases_workmark_id_fkey"
@@ -540,6 +686,13 @@ export type Database = {
             foreignKeyName: "labour_requirements_skill_id_fkey"
             columns: ["skill_id"]
             isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["skill_id"]
+          },
+          {
+            foreignKeyName: "labour_requirements_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
             referencedRelation: "skills"
             referencedColumns: ["id"]
           },
@@ -655,6 +808,91 @@ export type Database = {
           },
         ]
       }
+      organisation_operating_areas: {
+        Row: {
+          archived_at: string | null
+          area_id: string
+          created_at: string
+          organisation_id: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          area_id: string
+          created_at?: string
+          organisation_id: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          area_id?: string
+          created_at?: string
+          organisation_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organisation_operating_areas_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organisation_operating_areas_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organisation_typical_skills: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          organisation_id: string
+          skill_id: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          organisation_id: string
+          skill_id: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          organisation_id?: string
+          skill_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organisation_typical_skills_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organisation_typical_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["skill_id"]
+          },
+          {
+            foreignKeyName: "organisation_typical_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organisations: {
         Row: {
           archived_at: string | null
@@ -662,6 +900,7 @@ export type Database = {
           display_name: string
           id: string
           legal_name: string
+          record_status: Database["public"]["Enums"]["record_status"]
           updated_at: string
         }
         Insert: {
@@ -670,6 +909,7 @@ export type Database = {
           display_name: string
           id?: string
           legal_name: string
+          record_status?: Database["public"]["Enums"]["record_status"]
           updated_at?: string
         }
         Update: {
@@ -678,6 +918,7 @@ export type Database = {
           display_name?: string
           id?: string
           legal_name?: string
+          record_status?: Database["public"]["Enums"]["record_status"]
           updated_at?: string
         }
         Relationships: []
@@ -1012,6 +1253,13 @@ export type Database = {
             foreignKeyName: "verification_claims_skill_id_fkey"
             columns: ["skill_id"]
             isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["skill_id"]
+          },
+          {
+            foreignKeyName: "verification_claims_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
             referencedRelation: "skills"
             referencedColumns: ["id"]
           },
@@ -1047,6 +1295,34 @@ export type Database = {
             foreignKeyName: "verification_claims_worker_id_fkey"
             columns: ["worker_id"]
             isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "verification_claims_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "verification_claims_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "verification_claims_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_profile_preferences"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "verification_claims_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
             referencedRelation: "worker_profiles"
             referencedColumns: ["person_id"]
           },
@@ -1054,8 +1330,95 @@ export type Database = {
             foreignKeyName: "verification_claims_workmark_id_fkey"
             columns: ["workmark_id"]
             isOneToOne: false
+            referencedRelation: "participant_worker_work"
+            referencedColumns: ["workmark_id"]
+          },
+          {
+            foreignKeyName: "verification_claims_workmark_id_fkey"
+            columns: ["workmark_id"]
+            isOneToOne: false
             referencedRelation: "workmarks"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_area_preferences: {
+        Row: {
+          archived_at: string | null
+          area_id: string
+          created_at: string
+          is_familiar: boolean
+          updated_at: string
+          willing_to_travel: boolean
+          worker_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          area_id: string
+          created_at?: string
+          is_familiar?: boolean
+          updated_at?: string
+          willing_to_travel?: boolean
+          worker_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          area_id?: string
+          created_at?: string
+          is_familiar?: boolean
+          updated_at?: string
+          willing_to_travel?: boolean
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_area_preferences_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_area_preferences_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_area_preferences_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_area_preferences_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_area_preferences_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_area_preferences_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_profile_preferences"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_area_preferences_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["person_id"]
           },
         ]
       }
@@ -1099,6 +1462,182 @@ export type Database = {
             foreignKeyName: "worker_media_assets_worker_id_fkey"
             columns: ["worker_id"]
             isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_media_assets_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_media_assets_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_media_assets_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_profile_preferences"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_media_assets_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["person_id"]
+          },
+        ]
+      }
+      worker_participation_preferences: {
+        Row: {
+          app_participation: string
+          created_at: string
+          read_aloud_enabled: boolean
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          app_participation?: string
+          created_at?: string
+          read_aloud_enabled?: boolean
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          app_participation?: string
+          created_at?: string
+          read_aloud_enabled?: boolean
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_participation_preferences_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_participation_preferences_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_participation_preferences_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_participation_preferences_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_participation_preferences_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "participant_worker_profile_preferences"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_participation_preferences_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["person_id"]
+          },
+        ]
+      }
+      worker_primary_skills: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          skill_id: string
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          skill_id: string
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          skill_id?: string
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_primary_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["skill_id"]
+          },
+          {
+            foreignKeyName: "worker_primary_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_primary_skills_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_primary_skills_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_primary_skills_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_primary_skills_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_primary_skills_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_profile_preferences"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_primary_skills_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
             referencedRelation: "worker_profiles"
             referencedColumns: ["person_id"]
           },
@@ -1138,6 +1677,34 @@ export type Database = {
             foreignKeyName: "worker_private_details_worker_id_fkey"
             columns: ["worker_id"]
             isOneToOne: true
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_private_details_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_private_details_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_private_details_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "participant_worker_profile_preferences"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_private_details_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
             referencedRelation: "worker_profiles"
             referencedColumns: ["person_id"]
           },
@@ -1146,26 +1713,49 @@ export type Database = {
       worker_profiles: {
         Row: {
           archived_at: string | null
+          base_area_id: string | null
           created_at: string
+          created_by_operator_id: string | null
           person_id: string
           preferred_name: string | null
+          record_status: Database["public"]["Enums"]["record_status"]
           updated_at: string
         }
         Insert: {
           archived_at?: string | null
+          base_area_id?: string | null
           created_at?: string
+          created_by_operator_id?: string | null
           person_id: string
           preferred_name?: string | null
+          record_status?: Database["public"]["Enums"]["record_status"]
           updated_at?: string
         }
         Update: {
           archived_at?: string | null
+          base_area_id?: string | null
           created_at?: string
+          created_by_operator_id?: string | null
           person_id?: string
           preferred_name?: string | null
+          record_status?: Database["public"]["Enums"]["record_status"]
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "worker_profiles_base_area_id_fkey"
+            columns: ["base_area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_profiles_created_by_operator_id_fkey"
+            columns: ["created_by_operator_id"]
+            isOneToOne: false
+            referencedRelation: "operator_accounts"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "worker_profiles_person_id_fkey"
             columns: ["person_id"]
@@ -1217,6 +1807,13 @@ export type Database = {
             foreignKeyName: "worker_skill_evidence_skill_id_fkey"
             columns: ["skill_id"]
             isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["skill_id"]
+          },
+          {
+            foreignKeyName: "worker_skill_evidence_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
             referencedRelation: "skills"
             referencedColumns: ["id"]
           },
@@ -1239,6 +1836,34 @@ export type Database = {
             columns: ["worker_id"]
             isOneToOne: false
             referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_skill_evidence_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_skill_evidence_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_skill_evidence_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_skill_evidence_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_profile_preferences"
             referencedColumns: ["worker_id"]
           },
           {
@@ -1271,8 +1896,22 @@ export type Database = {
             foreignKeyName: "workmark_skills_skill_id_fkey"
             columns: ["skill_id"]
             isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["skill_id"]
+          },
+          {
+            foreignKeyName: "workmark_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
             referencedRelation: "skills"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workmark_skills_workmark_id_fkey"
+            columns: ["workmark_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_work"
+            referencedColumns: ["workmark_id"]
           },
           {
             foreignKeyName: "workmark_skills_workmark_id_fkey"
@@ -1429,6 +2068,34 @@ export type Database = {
             foreignKeyName: "workmarks_worker_id_fkey"
             columns: ["worker_id"]
             isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_profile_preferences"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
             referencedRelation: "worker_profiles"
             referencedColumns: ["person_id"]
           },
@@ -1452,6 +2119,225 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "people"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      participant_candidate_summary: {
+        Row: {
+          confirmed_workmark_count: number | null
+          display_name: string | null
+          last_confirmed_worked_on: string | null
+          preferred_name: string | null
+          skill_id: string | null
+          skill_name: string | null
+          worker_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_profiles_person_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      participant_contractor_labour_book: {
+        Row: {
+          confirmed_workmark_count: number | null
+          first_worked_on: string | null
+          is_repeat_relationship: boolean | null
+          last_worked_on: string | null
+          organisation_id: string | null
+          worker_id: string | null
+          worker_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workmarks_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_profile_preferences"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["person_id"]
+          },
+        ]
+      }
+      participant_worker_card: {
+        Row: {
+          base_area_name: string | null
+          confirmed_workmark_count: number | null
+          display_name: string | null
+          last_confirmed_worked_on: string | null
+          preferred_name: string | null
+          worker_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_profiles_person_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      participant_worker_home: {
+        Row: {
+          app_participation: string | null
+          base_area_locality: string | null
+          base_area_name: string | null
+          display_name: string | null
+          preferred_communication_mode: string | null
+          preferred_language_code: string | null
+          preferred_name: string | null
+          read_aloud_enabled: boolean | null
+          worker_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_profiles_person_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      participant_worker_profile_preferences: {
+        Row: {
+          app_participation: string | null
+          availability_status: string | null
+          available_from: string | null
+          available_to: string | null
+          familiar_area_ids: string[] | null
+          preferred_communication_mode: string | null
+          preferred_language_code: string | null
+          read_aloud_enabled: boolean | null
+          willing_to_travel_area_ids: string[] | null
+          worker_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_profiles_person_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      participant_worker_work: {
+        Row: {
+          is_markd_arranged: boolean | null
+          organisation_id: string | null
+          organisation_name: string | null
+          origin: Database["public"]["Enums"]["workmark_origin"] | null
+          site_id: string | null
+          site_locality: string | null
+          site_name: string | null
+          work_ended_on: string | null
+          work_started_on: string | null
+          worker_id: string | null
+          workmark_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workmarks_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workmarks_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_profile_preferences"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["person_id"]
           },
         ]
       }
@@ -1483,6 +2369,34 @@ export type Database = {
             foreignKeyName: "crew_links_worker_a_id_fkey"
             columns: ["worker_a_id"]
             isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "crew_links_worker_a_id_fkey"
+            columns: ["worker_a_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "crew_links_worker_a_id_fkey"
+            columns: ["worker_a_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "crew_links_worker_a_id_fkey"
+            columns: ["worker_a_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_profile_preferences"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "crew_links_worker_a_id_fkey"
+            columns: ["worker_a_id"]
+            isOneToOne: false
             referencedRelation: "worker_profiles"
             referencedColumns: ["person_id"]
           },
@@ -1491,6 +2405,34 @@ export type Database = {
             columns: ["worker_b_id"]
             isOneToOne: false
             referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "crew_links_worker_b_id_fkey"
+            columns: ["worker_b_id"]
+            isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "crew_links_worker_b_id_fkey"
+            columns: ["worker_b_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "crew_links_worker_b_id_fkey"
+            columns: ["worker_b_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "crew_links_worker_b_id_fkey"
+            columns: ["worker_b_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_profile_preferences"
             referencedColumns: ["worker_id"]
           },
           {
@@ -1537,6 +2479,34 @@ export type Database = {
             foreignKeyName: "workmarks_worker_id_fkey"
             columns: ["worker_id"]
             isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_profile_preferences"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
             referencedRelation: "worker_profiles"
             referencedColumns: ["person_id"]
           },
@@ -1551,6 +2521,13 @@ export type Database = {
           worker_id: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "workmark_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["skill_id"]
+          },
           {
             foreignKeyName: "workmark_skills_skill_id_fkey"
             columns: ["skill_id"]
@@ -1576,6 +2553,34 @@ export type Database = {
             foreignKeyName: "workmarks_worker_id_fkey"
             columns: ["worker_id"]
             isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_profile_preferences"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
             referencedRelation: "worker_profiles"
             referencedColumns: ["person_id"]
           },
@@ -1590,12 +2595,61 @@ export type Database = {
           object_path: string
         }[]
       }
+      begin_worker_onboarding: {
+        Args: { payload: Json; requested_worker_id: string }
+        Returns: {
+          bucket_id: string
+          object_path: string
+          portrait_asset_id: string
+          worker_id: string
+        }[]
+      }
+      cancel_worker_onboarding: { Args: { worker_id: string }; Returns: string }
+      complete_worker_onboarding: {
+        Args: {
+          object_path: string
+          portrait_asset_id: string
+          target_status: string
+          worker_id: string
+        }
+        Returns: string
+      }
       current_operator_role: {
         Args: never
         Returns: Database["public"]["Enums"]["operator_role"]
       }
       is_active_operator: { Args: never; Returns: boolean }
       is_ops_admin: { Args: never; Returns: boolean }
+      onboard_organisation: {
+        Args: {
+          contact_display_name: string
+          contact_phone_number?: string
+          contact_role_name?: string
+          display_name: string
+          legal_name: string
+          operating_area_ids?: string[]
+          record_status?: string
+          typical_skill_ids?: string[]
+        }
+        Returns: string
+      }
+      search_work_graph: {
+        Args: { max_results?: number; search_term: string }
+        Returns: {
+          detail: string
+          result_id: string
+          result_kind: string
+          title: string
+        }[]
+      }
+      update_organisation_record: {
+        Args: { organisation_id: string; payload: Json }
+        Returns: string
+      }
+      update_worker_record: {
+        Args: { payload: Json; worker_id: string }
+        Returns: string
+      }
     }
     Enums: {
       assignment_state:
@@ -1623,6 +2677,7 @@ export type Database = {
         | "rejected"
         | "executed"
         | "expired"
+      record_status: "draft" | "active" | "inactive"
       reuse_preference: "unknown" | "would_reuse" | "would_not_reuse"
       workmark_lifecycle: "draft" | "confirmed" | "corrected" | "voided"
       workmark_origin:
@@ -1784,6 +2839,7 @@ export const Constants = {
         "executed",
         "expired",
       ],
+      record_status: ["draft", "active", "inactive"],
       reuse_preference: ["unknown", "would_reuse", "would_not_reuse"],
       workmark_lifecycle: ["draft", "confirmed", "corrected", "voided"],
       workmark_origin: [

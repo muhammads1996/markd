@@ -5,6 +5,9 @@ insert into public.languages (id, code, name) values
   ('00000000-0000-4000-8000-000000000001', 'en', 'English'),
   ('00000000-0000-4000-8000-000000000003', 'af', 'Afrikaans'),
   ('00000000-0000-4000-8000-000000000002', 'xh', 'isiXhosa');
+insert into public.areas (id, name, locality) values
+  ('08000000-0000-4000-8000-000000000001', 'Khayelitsha', 'Cape Town'),
+  ('08000000-0000-4000-8000-000000000002', 'Bellville', 'Cape Town');
 insert into public.people (id, display_name, given_name, family_name, preferred_language_id, preferred_communication_mode) values
   ('10000000-0000-4000-8000-000000000001', 'Anele Sample', 'Anele', 'Sample', '00000000-0000-4000-8000-000000000002', 'text'),
   ('10000000-0000-4000-8000-000000000002', 'Jordan Example', 'Jordan', 'Example', '00000000-0000-4000-8000-000000000003', 'call'),
@@ -18,8 +21,18 @@ insert into public.person_languages (person_id, language_id, proficiency) values
 insert into public.worker_profiles (person_id, preferred_name) values
   ('10000000-0000-4000-8000-000000000001', 'Anele'),
   ('10000000-0000-4000-8000-000000000003', 'Lebo');
+update public.worker_profiles set base_area_id = '08000000-0000-4000-8000-000000000001' where person_id in ('10000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000003');
+insert into public.worker_participation_preferences (worker_id, read_aloud_enabled, app_participation) values
+  ('10000000-0000-4000-8000-000000000001', false, 'whatsapp_only'),
+  ('10000000-0000-4000-8000-000000000003', true, 'interested');
+insert into public.worker_area_preferences (worker_id, area_id, is_familiar, willing_to_travel) values
+  ('10000000-0000-4000-8000-000000000001', '08000000-0000-4000-8000-000000000001', true, true),
+  ('10000000-0000-4000-8000-000000000001', '08000000-0000-4000-8000-000000000002', false, true),
+  ('10000000-0000-4000-8000-000000000003', '08000000-0000-4000-8000-000000000001', true, false);
 insert into public.organisations (id, legal_name, display_name) values
   ('20000000-0000-4000-8000-000000000001', 'Example Build (Pty) Ltd', 'Example Build');
+insert into public.organisation_operating_areas (organisation_id, area_id) values
+  ('20000000-0000-4000-8000-000000000001', '08000000-0000-4000-8000-000000000001');
 insert into public.organisation_contacts (id, organisation_id, person_id, role_name, is_primary) values
   ('21000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000002', 'Site supervisor', true);
 insert into public.sites (id, organisation_id, name, locality) values
@@ -28,6 +41,11 @@ insert into public.skills (id, name) values
   ('30000000-0000-4000-8000-000000000001', 'General labour');
 insert into public.worker_skill_evidence (id, worker_id, skill_id, source, confidence) values
   ('31000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001', 'synthetic seed', 1.00);
+insert into public.worker_primary_skills (worker_id, skill_id) values
+  ('10000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001'),
+  ('10000000-0000-4000-8000-000000000003', '30000000-0000-4000-8000-000000000001');
+insert into public.organisation_typical_skills (organisation_id, skill_id) values
+  ('20000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001');
 insert into public.workmarks (id, worker_id, organisation_id, site_id, organisation_contact_id, work_started_on, work_ended_on, origin, lifecycle, attendance, completion, payment, organisation_reuse_preference, source) values
   ('40000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', '22000000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000001', '2026-09-01', '2026-09-01', 'operator_recorded', 'confirmed', 'attended', 'completed', 'paid', 'would_reuse', 'synthetic seed');
 insert into public.workmark_skills (workmark_id, skill_id) values
