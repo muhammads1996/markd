@@ -68,6 +68,6 @@ insert into public.availability_signals (id, worker_id, available_from, availabl
 insert into public.channel_events (id, channel, provider_event_id, sender_phone_number, payload) values
   ('72000000-0000-4000-8000-000000000001', 'whatsapp', 'synthetic-event-1', '+27820000002', '{"synthetic":true}');
 insert into public.proposed_actions (id, channel_event_id, action_type, risk_tier, payload, state) values
-  ('73000000-0000-4000-8000-000000000001', '72000000-0000-4000-8000-000000000001', 'propose_workmark', 1, '{"synthetic":true}', 'approved');
+  ('73000000-0000-4000-8000-000000000001', '72000000-0000-4000-8000-000000000001', 'propose_workmark', 'operational', '{"synthetic":true}', 'approved');
 insert into public.exception_cases (id, assignment_id, category, opened_by_person_id, source) values
   ('74000000-0000-4000-8000-000000000001', '62000000-0000-4000-8000-000000000001', 'synthetic follow-up', '10000000-0000-4000-8000-000000000002', 'synthetic seed');

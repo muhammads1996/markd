@@ -32,6 +32,7 @@
     "db:backup-restore-drill": "node scripts/disposable-backup-restore-drill.ts"
   },
   "devDependencies": {
+    "@faker-js/faker": "^10.6.0",
     "@playwright/test": "1.63.0",
     "@types/node": "24.13.4",
     "@types/pg": "8.23.1",

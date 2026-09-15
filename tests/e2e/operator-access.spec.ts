@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/fixtures";
 
 const protectedRoutes = [
   "/operator",
@@ -12,33 +12,32 @@ test.describe("operator access boundary", () => {
   for (const route of protectedRoutes) {
     test(`${route} redirects unauthenticated visitors to sign-in`, async ({
       page,
+      signInPage,
     }) => {
       await page.goto(route);
 
       await expect(page).toHaveURL(
         /\/sign-in(?:\?reason=(?:configuration|not-authorised))?$/,
       );
-      await expect(
-        page.getByRole("heading", { name: "Sign in" }),
-      ).toBeVisible();
+      await expect(signInPage.heading).toBeVisible();
     });
   }
 
   test("renders the operator sign-in form with browser validation", async ({
-    page,
+    signInPage,
   }) => {
-    await page.goto("/sign-in");
+    await signInPage.goto();
 
-    await expect(page.getByLabel("Email")).toHaveAttribute(
+    await expect(signInPage.emailInput).toHaveAttribute(
       "autocomplete",
       "email",
     );
-    await expect(page.getByLabel("Password")).toHaveAttribute(
+    await expect(signInPage.passwordInput).toHaveAttribute(
       "autocomplete",
       "current-password",
     );
 
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page.getByLabel("Email")).toBeFocused();
+    await signInPage.submitButton.click();
+    await expect(signInPage.emailInput).toBeFocused();
   });
 });
