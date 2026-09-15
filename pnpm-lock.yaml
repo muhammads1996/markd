@@ -205,6 +205,12 @@ importers:
 
   apps/web:
     dependencies:
+      '@markd/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@markd/language':
+        specifier: workspace:*
+        version: link:../../packages/language
       '@markd/messaging':
         specifier: workspace:*
         version: link:../../packages/messaging
@@ -239,7 +245,11 @@ importers:
 
   packages/i18n: {}
 
-  packages/language: {}
+  packages/language:
+    dependencies:
+      '@markd/contracts':
+        specifier: workspace:*
+        version: link:../contracts
 
   packages/messaging:
     dependencies:

@@ -12,9 +12,7 @@ export class WorkerProfilePage {
   }
 
   get confirmedWorkmarkEvidenceText(): Locator {
-    return this.page.getByText(
-      "Confirmed Workmark evidence from work history",
-    );
+    return this.page.getByText("Confirmed Workmark evidence from work history");
   }
 
   get editWorkerLink(): Locator {

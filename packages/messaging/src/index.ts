@@ -60,11 +60,15 @@ export function verifyWebhookSignature(
   signature: string | null,
   appSecret: string | undefined,
 ): boolean {
-  if (!signature || !appSecret || !signature.startsWith("sha256=")) return false;
+  if (!signature || !appSecret || !signature.startsWith("sha256="))
+    return false;
   const expected = `sha256=${createHmac("sha256", appSecret).update(body).digest("hex")}`;
   const received = Buffer.from(signature);
   const calculated = Buffer.from(expected);
-  return received.length === calculated.length && timingSafeEqual(received, calculated);
+  return (
+    received.length === calculated.length &&
+    timingSafeEqual(received, calculated)
+  );
 }
 
 export function normalizeInboundMessage(
@@ -107,16 +111,28 @@ export function buildOutboundDeliveryRow(input: OutboundDeliveryInput) {
   };
 }
 
-function normalizeMedia(message: Record<string, unknown>): WhatsAppInboundMessage["media"] {
-  const mediaTypes = ["image", "audio", "video", "document", "sticker"] as const;
+function normalizeMedia(
+  message: Record<string, unknown>,
+): WhatsAppInboundMessage["media"] {
+  const mediaTypes = [
+    "image",
+    "audio",
+    "video",
+    "document",
+    "sticker",
+  ] as const;
   for (const mediaType of mediaTypes) {
     const media = asRecord(message[mediaType]);
     if (media && typeof media.id === "string") {
-      return [{
-        providerMediaId: media.id,
-        mediaType,
-        ...(typeof media.mime_type === "string" ? { mimeType: media.mime_type } : {}),
-      }];
+      return [
+        {
+          providerMediaId: media.id,
+          mediaType,
+          ...(typeof media.mime_type === "string"
+            ? { mimeType: media.mime_type }
+            : {}),
+        },
+      ];
     }
   }
   return [];

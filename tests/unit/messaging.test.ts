@@ -50,9 +50,31 @@ describe("WhatsApp transport boundary", () => {
 
   it("captures provider media metadata without retrieving the media inline", () => {
     const result = normalizeInboundMessage({
-      entry: [{ changes: [{ value: { messages: [{ from: "27821234567", id: "wamid-2", image: { id: "media-1", mime_type: "image/jpeg" } }] } }] }],
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                messages: [
+                  {
+                    from: "27821234567",
+                    id: "wamid-2",
+                    image: { id: "media-1", mime_type: "image/jpeg" },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
     });
-    expect(result?.media).toEqual([{ providerMediaId: "media-1", mediaType: "image", mimeType: "image/jpeg" }]);
+    expect(result?.media).toEqual([
+      {
+        providerMediaId: "media-1",
+        mediaType: "image",
+        mimeType: "image/jpeg",
+      },
+    ]);
   });
 
   it("verifies the signed raw provider body", () => {
@@ -61,13 +83,19 @@ describe("WhatsApp transport boundary", () => {
   });
 
   it("builds an idempotent outbound delivery with typed provenance", () => {
-    expect(buildOutboundDeliveryRow({
-      recipientPhoneNumber: "+27821234567",
-      body: "WORK CONFIRMED",
-      messageKind: "work_confirmed",
-      idempotencyKey: "assignment-1-work-confirmed",
-      sourceProposedActionId: "73000000-0000-4000-8000-000000000001",
-      sourceChannelEventId: "72000000-0000-4000-8000-000000000001",
-    })).toMatchObject({ channel: "whatsapp", state: "queued", source_proposed_action_id: "73000000-0000-4000-8000-000000000001" });
+    expect(
+      buildOutboundDeliveryRow({
+        recipientPhoneNumber: "+27821234567",
+        body: "WORK CONFIRMED",
+        messageKind: "work_confirmed",
+        idempotencyKey: "assignment-1-work-confirmed",
+        sourceProposedActionId: "73000000-0000-4000-8000-000000000001",
+        sourceChannelEventId: "72000000-0000-4000-8000-000000000001",
+      }),
+    ).toMatchObject({
+      channel: "whatsapp",
+      state: "queued",
+      source_proposed_action_id: "73000000-0000-4000-8000-000000000001",
+    });
   });
 });

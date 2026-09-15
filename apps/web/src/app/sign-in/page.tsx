@@ -1,35 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import type { FormEvent } from "react";
-import { createSupabaseBrowserClient } from "../../lib/supabase/browser";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
+import { signInAction, type SignInState } from "./actions";
+
+const initialState: SignInState = { error: null };
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" disabled={pending}>
+      {pending ? "Signing in…" : "Sign in"}
+    </button>
+  );
+}
 
 export default function SignInPage() {
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-
-  async function signIn(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    setPending(true);
-    const data = new FormData(event.currentTarget);
-    try {
-      const supabase = createSupabaseBrowserClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: String(data.get("email") ?? ""),
-        password: String(data.get("password") ?? ""),
-      });
-      if (signInError) {
-        setError("We could not sign you in. Check your operator credentials.");
-        return;
-      }
-      window.location.replace("/operator");
-    } catch {
-      setError("Operator sign-in is not configured on this device.");
-    } finally {
-      setPending(false);
-    }
-  }
+  const [state, formAction] = useActionState(signInAction, initialState);
 
   return (
     <main className="shell auth-shell">
@@ -39,7 +26,7 @@ export default function SignInPage() {
         <p className="lede">
           Use the account provisioned for your operator role.
         </p>
-        <form className="auth-form" onSubmit={signIn}>
+        <form className="auth-form" action={formAction}>
           <label>
             Email
             <input name="email" type="email" autoComplete="email" required />
@@ -53,14 +40,12 @@ export default function SignInPage() {
               required
             />
           </label>
-          {error ? (
+          {state.error ? (
             <p role="alert" className="auth-error">
-              {error}
+              {state.error}
             </p>
           ) : null}
-          <button type="submit" disabled={pending}>
-            {pending ? "Signing in…" : "Sign in"}
-          </button>
+          <SubmitButton />
         </form>
       </section>
     </main>

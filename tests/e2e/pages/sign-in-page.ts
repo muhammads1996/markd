@@ -38,9 +38,8 @@ export class SignInPage {
     password: string,
   ): Promise<void> {
     await this.signIn(email, password);
-    // The sign-in call round-trips to local Supabase auth before the client
-    // redirects; under parallel e2e load this can take longer than the
-    // framework's default assertion timeout, so wait generously here.
+    // Sign-in is a server action that sets the session cookie and redirects
+    // in one round trip; still allow generous margin for slower CI runners.
     await this.page.waitForURL(/\/operator$/, { timeout: 15_000 });
   }
 }

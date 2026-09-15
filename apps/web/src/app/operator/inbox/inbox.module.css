@@ -1,0 +1,108 @@
+.shell {
+  margin: 0 auto;
+  max-width: 40rem;
+  padding: 1rem;
+}
+.eyebrow {
+  color: #456;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.empty {
+  color: #64748b;
+  margin-top: 1.5rem;
+}
+.list {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.card {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+  display: grid;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+.cardHeader {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+.riskBadge,
+.ambiguityBadge {
+  border-radius: 999px;
+  font-weight: 700;
+  padding: 0.15rem 0.6rem;
+  text-transform: uppercase;
+}
+.riskBadge {
+  background: #e2e8f0;
+}
+.riskBadge[data-tier="trust"],
+.riskBadge[data-tier="economic"] {
+  background: #fee2e2;
+}
+.ambiguityBadge {
+  background: #e0f2fe;
+}
+.ambiguityBadge[data-ambiguity="ambiguous"],
+.ambiguityBadge[data-ambiguity="unresolved"] {
+  background: #fef3c7;
+}
+.sourceText {
+  overflow-wrap: anywhere;
+}
+.confidence {
+  color: #64748b;
+}
+.meta {
+  color: #64748b;
+  font-size: 0.85rem;
+}
+.intentHeading {
+  font-size: 1rem;
+  text-transform: capitalize;
+}
+.editForm,
+.rejectForm {
+  display: grid;
+  gap: 0.5rem;
+}
+.editForm label,
+.rejectForm label {
+  display: grid;
+  font-size: 0.85rem;
+  font-weight: 600;
+  gap: 0.25rem;
+}
+.editForm input,
+.rejectForm input {
+  border: 1px solid #94a3b8;
+  border-radius: 0.5rem;
+  font: inherit;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.65rem;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.actions button,
+.editForm button,
+.rejectForm button,
+.deferButton {
+  border: 1px solid #94a3b8;
+  border-radius: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+}
+.error {
+  color: #b91c1c;
+  font-weight: 600;
+}

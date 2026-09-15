@@ -60,9 +60,10 @@ export async function provisionOperatorUser(
 
 export async function removeOperatorUser(userId: string): Promise<void> {
   await withClient(async (client) => {
-    await client.query(`delete from public.operator_accounts where user_id = $1`, [
-      userId,
-    ]);
+    await client.query(
+      `delete from public.operator_accounts where user_id = $1`,
+      [userId],
+    );
     await client.query(`delete from auth.users where id = $1`, [userId]);
   });
 }

@@ -46,40 +46,55 @@ export async function POST(request: Request) {
   const { data: event, error } = await client
     .from("channel_events")
     .insert({
-    channel: "whatsapp",
-    event_type: "message",
-    occurred_at: inbound.occurredAt,
-    payload: inbound.rawPayload,
-    provider_event_id: inbound.providerEventId,
-    provider_message_id: inbound.providerMessageId,
-    sender_phone_number: inbound.senderPhoneNumber,
-    media: inbound.media,
+      channel: "whatsapp",
+      event_type: "message",
+      occurred_at: inbound.occurredAt,
+      payload: inbound.rawPayload,
+      provider_event_id: inbound.providerEventId,
+      provider_message_id: inbound.providerMessageId,
+      sender_phone_number: inbound.senderPhoneNumber,
+      media: inbound.media,
     })
     .select("id")
     .single();
   if (error && error.code !== "23505") {
-    return NextResponse.json({ error: "event persistence failed" }, { status: 503 });
-  }
-  const eventId = event?.id ?? (
-    await client
-      .from("channel_events")
-      .select("id")
-      .eq("channel", "whatsapp")
-      .eq("provider_message_id", inbound.providerMessageId)
-      .single()
-  ).data?.id;
-  if (!eventId) return NextResponse.json({ error: "event lookup failed" }, { status: 503 });
-  if (inbound.media.length > 0) {
-    const { error: mediaError } = await client.from("channel_media_assets").upsert(
-      inbound.media.map((media) => ({
-        channel_event_id: eventId,
-        provider_media_id: media.providerMediaId,
-        media_type: media.mediaType,
-        mime_type: media.mimeType ?? null,
-      })),
-      { onConflict: "channel_event_id,provider_media_id", ignoreDuplicates: true },
+    return NextResponse.json(
+      { error: "event persistence failed" },
+      { status: 503 },
     );
-    if (mediaError) return NextResponse.json({ error: "media persistence failed" }, { status: 503 });
+  }
+  const eventId =
+    event?.id ??
+    (
+      await client
+        .from("channel_events")
+        .select("id")
+        .eq("channel", "whatsapp")
+        .eq("provider_message_id", inbound.providerMessageId)
+        .single()
+    ).data?.id;
+  if (!eventId)
+    return NextResponse.json({ error: "event lookup failed" }, { status: 503 });
+  if (inbound.media.length > 0) {
+    const { error: mediaError } = await client
+      .from("channel_media_assets")
+      .upsert(
+        inbound.media.map((media) => ({
+          channel_event_id: eventId,
+          provider_media_id: media.providerMediaId,
+          media_type: media.mediaType,
+          mime_type: media.mimeType ?? null,
+        })),
+        {
+          onConflict: "channel_event_id,provider_media_id",
+          ignoreDuplicates: true,
+        },
+      );
+    if (mediaError)
+      return NextResponse.json(
+        { error: "media persistence failed" },
+        { status: 503 },
+      );
   }
   return NextResponse.json(
     {

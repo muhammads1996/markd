@@ -3,13 +3,14 @@ import { expect, test } from "./support/fixtures";
 
 test("supports phone-sized onboarding, search, editing, and relationship history", async ({
   page,
-  loggedInAsOperator: _loggedInAsOperator,
+  loggedInAsOperator,
   onboardingPage,
   searchPage,
   workerProfilePage,
   contractorProfilePage,
 }) => {
   await expect(page).toHaveURL(/\/operator$/);
+  expect(loggedInAsOperator.role).toBe("ops_user");
 
   await onboardingPage.goto();
   await expect(onboardingPage.addHeading).toBeVisible();
