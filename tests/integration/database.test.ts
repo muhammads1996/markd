@@ -554,6 +554,16 @@ describe("local Supabase database", () => {
       ) returning id`,
     );
     const channelEventId = messageEvent.rows[0]?.id;
+    const inboundReplay = await client.query<{ id: string }>(
+      `insert into public.channel_events(
+        channel, event_type, provider_event_id, provider_message_id, payload
+      ) values (
+        'whatsapp', 'message', 'flo-129-replay-event', 'flo-129-inbound-message', '{}'
+      ) on conflict (channel, provider_message_id)
+        where event_type = 'message' and provider_message_id is not null
+        do nothing returning id`,
+    );
+    expect(inboundReplay.rows).toEqual([]);
     const processingJob = await client.query<{ id: string }>(
       "select id from public.channel_processing_jobs where channel_event_id = $1",
       [channelEventId],
@@ -601,7 +611,7 @@ describe("local Supabase database", () => {
       `insert into public.channel_events(
         channel, event_type, provider_event_id, provider_message_id, payload
       ) values (
-        'whatsapp', 'status', 'flo-129-status-event', 'flo-129-status-event', '{}'
+        'whatsapp', 'status', 'flo-129-status-event', 'flo-129-inbound-message', '{}'
       ) returning id`,
     );
     const statusJob = await client.query(
@@ -609,6 +619,11 @@ describe("local Supabase database", () => {
       [statusEvent.rows[0]?.id],
     );
     expect(statusJob.rows).toHaveLength(0);
+    const sharedMessageIdEvents = await client.query<{ count: string }>(
+      `select count(*)::text as count from public.channel_events
+       where provider_message_id = 'flo-129-inbound-message'`,
+    );
+    expect(sharedMessageIdEvents.rows[0]?.count).toBe("2");
 
     const media = await client.query<{ id: string }>(
       `insert into public.channel_media_assets(
