@@ -52,6 +52,9 @@ jobs:
       - name: Start local Supabase
         run: pnpm db:start
 
+      - name: Generate local app environment
+        run: pnpm env:local
+
       - name: Reset local database
         run: pnpm db:reset
 
