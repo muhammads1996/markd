@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   buildOutboundDeliveryRow,
+  MetaWhatsAppCloudProvider,
   normalizeInboundMessage,
+  normalizeWhatsAppDeliveryStatuses,
   verifyWebhookSignature,
   verifyWebhookToken,
 } from "@markd/messaging";
@@ -77,6 +79,35 @@ describe("WhatsApp transport boundary", () => {
     ]);
   });
 
+  it("normalizes a provider delivery callback without treating read as a new state", () => {
+    const statuses = normalizeWhatsAppDeliveryStatuses({
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                statuses: [
+                  {
+                    id: "wamid-outbound-1",
+                    status: "read",
+                    timestamp: "1789459200",
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(statuses).toMatchObject([
+      {
+        providerMessageId: "wamid-outbound-1",
+        state: "delivered",
+      },
+    ]);
+  });
+
   it("verifies the signed raw provider body", () => {
     const body = '{"entry":[]}';
     expect(verifyWebhookSignature(body, "sha256=bad", "secret")).toBe(false);
@@ -97,5 +128,54 @@ describe("WhatsApp transport boundary", () => {
       state: "queued",
       source_proposed_action_id: "73000000-0000-4000-8000-000000000001",
     });
+  });
+
+  it("uses the Meta API for a text send and authenticated media download", async () => {
+    const requests: Array<{ url: string; authorization: string | null }> = [];
+    const provider = new MetaWhatsAppCloudProvider({
+      accessToken: "test-token",
+      phoneNumberId: "12345",
+      apiVersion: "v24.0",
+      fetchImplementation: async (input, init) => {
+        const url = String(input);
+        requests.push({
+          url,
+          authorization: new Headers(init?.headers).get("authorization"),
+        });
+        if (url.endsWith("/messages")) {
+          return new Response(
+            JSON.stringify({ messages: [{ id: "wamid-outbound-1" }] }),
+            { status: 200 },
+          );
+        }
+        if (url.includes("graph.facebook.com") && url.endsWith("/media-1")) {
+          return new Response(
+            JSON.stringify({
+              url: "https://lookaside.fbsbx.com/media-1",
+              mime_type: "audio/ogg",
+              file_size: 3,
+            }),
+            { status: 200 },
+          );
+        }
+        return new Response(new Uint8Array([1, 2, 3]), {
+          status: 200,
+          headers: { "content-length": "3" },
+        });
+      },
+    });
+
+    await expect(
+      provider.sendText({ recipientPhoneNumber: "+27821234567", body: "Test" }),
+    ).resolves.toEqual({ providerMessageId: "wamid-outbound-1" });
+    await expect(provider.getMedia({ providerMediaId: "media-1" })).resolves.toMatchObject({
+      mimeType: "audio/ogg",
+      bytes: new Uint8Array([1, 2, 3]),
+    });
+    expect(requests).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ authorization: "Bearer test-token" }),
+      ]),
+    );
   });
 });

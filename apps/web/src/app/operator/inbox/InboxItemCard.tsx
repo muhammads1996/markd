@@ -63,6 +63,17 @@ export function InboxItemCard({ item }: { item: InboxItem }) {
       {!item.transcript && !item.originalText && (
         <p className={styles.sourceText}>Voice note pending transcription.</p>
       )}
+      {item.sourceMediaAssetId && item.sourceMediaType === "audio" && (
+        <p className={styles.sourceText}>
+          <a
+            href={`/api/operator/channel-media/${item.sourceMediaAssetId}`}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Listen to source voice note
+          </a>
+        </p>
+      )}
       {item.detectedLanguageCode && (
         <p className={styles.meta}>
           Detected language: {item.detectedLanguageCode}

@@ -19,6 +19,7 @@
     "test": "corepack pnpm test:unit && corepack pnpm test:integration",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
+    "test:providers": "node --experimental-transform-types --env-file=apps/web/.env.local apps/web/scripts/provider-smoke.ts",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "env:local": "node scripts/env-local.ts",

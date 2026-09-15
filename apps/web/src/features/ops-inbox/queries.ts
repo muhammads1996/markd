@@ -23,6 +23,8 @@ export type InboxItem = {
   transcript: string | null;
   transcriptConfidence: number | null;
   detectedLanguageCode: string | null;
+  sourceMediaAssetId: string | null;
+  sourceMediaType: string | null;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -46,7 +48,7 @@ export async function listInboxItems(): Promise<InboxItem[]> {
   const { data, error } = await supabase
     .from("proposed_actions")
     .select(
-      "id, channel_event_id, action_type, payload, confidence, ambiguity, risk_tier, interpretation, created_at, channel_events(sender_phone_number, occurred_at)",
+      "id, channel_event_id, action_type, payload, confidence, ambiguity, risk_tier, interpretation, created_at, channel_events(sender_phone_number, occurred_at, channel_media_assets(id, media_type, retrieval_state))",
     )
     .eq("state", "pending")
     .order("created_at", { ascending: true });
@@ -61,6 +63,17 @@ function mapInboxRow(row: Record<string, unknown>): InboxItem {
   const channelEvent = Array.isArray(channelEventRaw)
     ? channelEventRaw[0]
     : channelEventRaw;
+  const mediaAssets = isRecord(channelEvent)
+    ? channelEvent.channel_media_assets
+    : null;
+  const mediaAsset = Array.isArray(mediaAssets)
+    ? mediaAssets.find(
+        (asset) =>
+          isRecord(asset) &&
+          asset.media_type === "audio" &&
+          asset.retrieval_state === "retrieved",
+      )
+    : null;
   const fieldsSource = isRecord(payload.fields) ? payload.fields : {};
   const entityIdsSource = isRecord(payload.entityIds) ? payload.entityIds : {};
   const fields: Record<string, InboxFieldValue> = {};
@@ -96,5 +109,9 @@ function mapInboxRow(row: Record<string, unknown>): InboxItem {
     transcript: stringField(interpretation.transcript),
     transcriptConfidence: numberField(interpretation.transcriptConfidence),
     detectedLanguageCode: stringField(interpretation.detectedLanguageCode),
+    sourceMediaAssetId: isRecord(mediaAsset) ? stringField(mediaAsset.id) : null,
+    sourceMediaType: isRecord(mediaAsset)
+      ? stringField(mediaAsset.media_type)
+      : null,
   };
 }

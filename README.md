@@ -28,6 +28,9 @@ Open <http://localhost:3000>. `env:local` creates `apps/web/.env.local` from the
 - Local development uses ignored `apps/web/.env.local`. Generate it with `pnpm env:local`; do not copy the database URL, secret key, JWT secret, service-role key, or S3 credentials from `supabase status` into browser-visible variables.
 - Production uses `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in the deployment provider's environment settings. For a local production-mode run, place those values in ignored `apps/web/.env.production.local`.
 - `.env.example` documents the variable contract and intentionally contains no environment credentials.
+- WhatsApp and OpenRouter variables are server-only. The credentialed provider
+	smoke sequence is documented in
+	[whatsapp-openrouter-pilot-smoke.md](docs/operations/whatsapp-openrouter-pilot-smoke.md).
 
 ## Quality checks
 
@@ -71,6 +74,9 @@ The integration suite uses `postgresql://postgres:postgres@127.0.0.1:54322/postg
 - `packages/db` — generated database types and future repositories.
 - `packages/contracts` — future shared validation contracts.
 - `packages/messaging`, `packages/language`, `packages/i18n`, `packages/observability` — reserved boundaries defined by the architecture; currently empty.
+- `packages/messaging` and `packages/language` contain provider-abstracted
+	WhatsApp/OpenRouter transport and language adapters; provider credentials stay
+	in server-only runtime configuration.
 - `supabase` — local Supabase configuration, future migrations, and future Edge Functions.
 - `tests` — unit, local integration, and Playwright suites.
 

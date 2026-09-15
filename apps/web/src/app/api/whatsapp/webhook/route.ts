@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import {
-  normalizeInboundMessage,
+  normalizeInboundMessages,
+  normalizeWhatsAppDeliveryStatuses,
   verifyWebhookSignature,
   verifyWebhookToken,
+  type WhatsAppInboundMessage,
 } from "@markd/messaging";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -39,10 +41,71 @@ export async function POST(request: Request) {
   if (!payload || typeof payload !== "object") {
     return NextResponse.json({ error: "invalid payload" }, { status: 400 });
   }
-  const inbound = normalizeInboundMessage(payload as Record<string, unknown>);
-  if (!inbound) return NextResponse.json({ received: true }, { status: 200 });
+  const webhookPayload = payload as Record<string, unknown>;
+  const inboundMessages = normalizeInboundMessages(webhookPayload);
+  const deliveryStatuses = normalizeWhatsAppDeliveryStatuses(webhookPayload);
+  if (inboundMessages.length === 0 && deliveryStatuses.length === 0) {
+    return NextResponse.json({ received: true }, { status: 200 });
+  }
 
   const client = createSupabaseAdminClient();
+  for (const inbound of inboundMessages) {
+    const eventId = await persistInboundEvent(client, inbound);
+    if (!eventId) {
+      return NextResponse.json(
+        { error: "event persistence failed" },
+        { status: 503 },
+      );
+    }
+  }
+
+  for (const status of deliveryStatuses) {
+    const { error: eventError } = await client.from("channel_events").insert({
+      channel: "whatsapp",
+      event_type: "status",
+      occurred_at: status.occurredAt,
+      payload: status.rawPayload,
+      provider_event_id: status.providerEventId,
+      provider_message_id: status.providerEventId,
+      media: [],
+    });
+    if (eventError && eventError.code !== "23505") {
+      return NextResponse.json(
+        { error: "status evidence persistence failed" },
+        { status: 503 },
+      );
+    }
+    const { error: deliveryError } = await client.rpc(
+      "record_channel_delivery_status",
+      {
+        target_provider_message_id: status.providerMessageId,
+        reported_state: status.state,
+        reported_at: status.occurredAt,
+        reported_failure_reason: status.failureReason,
+      },
+    );
+    if (deliveryError) {
+      return NextResponse.json(
+        { error: "delivery status persistence failed" },
+        { status: 503 },
+      );
+    }
+  }
+
+  return NextResponse.json(
+    {
+      received: true,
+      inboundMessages: inboundMessages.length,
+      deliveryStatuses: deliveryStatuses.length,
+    },
+    { status: 200 },
+  );
+}
+
+async function persistInboundEvent(
+  client: ReturnType<typeof createSupabaseAdminClient>,
+  inbound: WhatsAppInboundMessage,
+): Promise<string | null> {
   const { data: event, error } = await client
     .from("channel_events")
     .insert({
@@ -57,12 +120,7 @@ export async function POST(request: Request) {
     })
     .select("id")
     .single();
-  if (error && error.code !== "23505") {
-    return NextResponse.json(
-      { error: "event persistence failed" },
-      { status: 503 },
-    );
-  }
+  if (error && error.code !== "23505") return null;
   const eventId =
     event?.id ??
     (
@@ -73,35 +131,22 @@ export async function POST(request: Request) {
         .eq("provider_message_id", inbound.providerMessageId)
         .single()
     ).data?.id;
-  if (!eventId)
-    return NextResponse.json({ error: "event lookup failed" }, { status: 503 });
-  if (inbound.media.length > 0) {
-    const { error: mediaError } = await client
-      .from("channel_media_assets")
-      .upsert(
-        inbound.media.map((media) => ({
-          channel_event_id: eventId,
-          provider_media_id: media.providerMediaId,
-          media_type: media.mediaType,
-          mime_type: media.mimeType ?? null,
-        })),
-        {
-          onConflict: "channel_event_id,provider_media_id",
-          ignoreDuplicates: true,
-        },
-      );
-    if (mediaError)
-      return NextResponse.json(
-        { error: "media persistence failed" },
-        { status: 503 },
-      );
-  }
-  return NextResponse.json(
-    {
-      received: true,
-      providerEventId: inbound.providerEventId,
-      providerMessageId: inbound.providerMessageId,
-    },
-    { status: 200 },
-  );
+  if (!eventId) return null;
+  if (inbound.media.length === 0) return eventId;
+
+  const { error: mediaError } = await client
+    .from("channel_media_assets")
+    .upsert(
+      inbound.media.map((media) => ({
+        channel_event_id: eventId,
+        provider_media_id: media.providerMediaId,
+        media_type: media.mediaType,
+        mime_type: media.mimeType ?? null,
+      })),
+      {
+        onConflict: "channel_event_id,provider_media_id",
+        ignoreDuplicates: true,
+      },
+    );
+  return mediaError ? null : eventId;
 }
