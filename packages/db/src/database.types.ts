@@ -40,60 +40,119 @@ export type Database = {
         Row: {
           agreed_rate_cents: number | null
           archived_at: string | null
+          cancellation_note: string | null
+          cancellation_reason: string | null
+          cancelled_after_travel_authorised: boolean
+          cancelled_at: string | null
+          contractor_confirmation: string
+          contractor_confirmed_at: string | null
           created_at: string
           currency: string | null
           ends_on: string
+          hirer_person_id: string | null
           id: string
           labour_request_id: string
-          organisation_id: string
+          labour_requirement_id: string | null
+          lifecycle: string
+          offered_at: string | null
+          organisation_id: string | null
           site_id: string | null
+          source: string
           source_channel_event_id: string | null
           source_proposed_action_id: string | null
           starts_on: string
-          state: Database["public"]["Enums"]["assignment_state"]
+          travel_authorised_at: string | null
+          travel_revoked_at: string | null
           updated_at: string
+          version: number
           worker_id: string
+          worker_responded_at: string | null
+          worker_response: string
         }
         Insert: {
           agreed_rate_cents?: number | null
           archived_at?: string | null
+          cancellation_note?: string | null
+          cancellation_reason?: string | null
+          cancelled_after_travel_authorised?: boolean
+          cancelled_at?: string | null
+          contractor_confirmation?: string
+          contractor_confirmed_at?: string | null
           created_at?: string
           currency?: string | null
           ends_on: string
+          hirer_person_id?: string | null
           id?: string
           labour_request_id: string
-          organisation_id: string
+          labour_requirement_id?: string | null
+          lifecycle?: string
+          offered_at?: string | null
+          organisation_id?: string | null
           site_id?: string | null
+          source?: string
           source_channel_event_id?: string | null
           source_proposed_action_id?: string | null
           starts_on: string
-          state?: Database["public"]["Enums"]["assignment_state"]
+          travel_authorised_at?: string | null
+          travel_revoked_at?: string | null
           updated_at?: string
+          version?: number
           worker_id: string
+          worker_responded_at?: string | null
+          worker_response?: string
         }
         Update: {
           agreed_rate_cents?: number | null
           archived_at?: string | null
+          cancellation_note?: string | null
+          cancellation_reason?: string | null
+          cancelled_after_travel_authorised?: boolean
+          cancelled_at?: string | null
+          contractor_confirmation?: string
+          contractor_confirmed_at?: string | null
           created_at?: string
           currency?: string | null
           ends_on?: string
+          hirer_person_id?: string | null
           id?: string
           labour_request_id?: string
-          organisation_id?: string
+          labour_requirement_id?: string | null
+          lifecycle?: string
+          offered_at?: string | null
+          organisation_id?: string | null
           site_id?: string | null
+          source?: string
           source_channel_event_id?: string | null
           source_proposed_action_id?: string | null
           starts_on?: string
-          state?: Database["public"]["Enums"]["assignment_state"]
+          travel_authorised_at?: string | null
+          travel_revoked_at?: string | null
           updated_at?: string
+          version?: number
           worker_id?: string
+          worker_responded_at?: string | null
+          worker_response?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "assignments_hirer_person_id_fkey"
+            columns: ["hirer_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "assignments_labour_request_id_fkey"
             columns: ["labour_request_id"]
             isOneToOne: false
             referencedRelation: "labour_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_labour_requirement_id_fkey"
+            columns: ["labour_requirement_id"]
+            isOneToOne: false
+            referencedRelation: "labour_requirements"
             referencedColumns: ["id"]
           },
           {
@@ -790,60 +849,90 @@ export type Database = {
       labour_requests: {
         Row: {
           archived_at: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
           created_at: string
           currency: string | null
           headcount: number
           id: string
+          lifecycle: string
           needed_at: string | null
           needed_from: string
           needed_to: string
           notes: string | null
-          organisation_id: string
+          organisation_id: string | null
+          rate_basis: string
           rate_cents: number | null
           requested_by_contact_id: string | null
+          requester_person_id: string | null
+          site_area: string
           site_id: string | null
+          site_text: string | null
           source: string
-          state: string
+          source_channel_event_id: string | null
+          source_proposed_action_id: string | null
           terms: string | null
+          timezone: string
           updated_at: string
+          version: number
         }
         Insert: {
           archived_at?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
           created_at?: string
           currency?: string | null
           headcount: number
           id?: string
+          lifecycle?: string
           needed_at?: string | null
           needed_from: string
           needed_to: string
           notes?: string | null
-          organisation_id: string
+          organisation_id?: string | null
+          rate_basis?: string
           rate_cents?: number | null
           requested_by_contact_id?: string | null
+          requester_person_id?: string | null
+          site_area?: string
           site_id?: string | null
+          site_text?: string | null
           source?: string
-          state?: string
+          source_channel_event_id?: string | null
+          source_proposed_action_id?: string | null
           terms?: string | null
+          timezone?: string
           updated_at?: string
+          version?: number
         }
         Update: {
           archived_at?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
           created_at?: string
           currency?: string | null
           headcount?: number
           id?: string
+          lifecycle?: string
           needed_at?: string | null
           needed_from?: string
           needed_to?: string
           notes?: string | null
-          organisation_id?: string
+          organisation_id?: string | null
+          rate_basis?: string
           rate_cents?: number | null
           requested_by_contact_id?: string | null
+          requester_person_id?: string | null
+          site_area?: string
           site_id?: string | null
+          site_text?: string | null
           source?: string
-          state?: string
+          source_channel_event_id?: string | null
+          source_proposed_action_id?: string | null
           terms?: string | null
+          timezone?: string
           updated_at?: string
+          version?: number
         }
         Relationships: [
           {
@@ -861,10 +950,31 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "labour_requests_requester_person_id_fkey"
+            columns: ["requester_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "labour_requests_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "labour_requests_source_channel_event_id_fkey"
+            columns: ["source_channel_event_id"]
+            isOneToOne: false
+            referencedRelation: "channel_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "labour_requests_source_proposed_action_id_fkey"
+            columns: ["source_proposed_action_id"]
+            isOneToOne: false
+            referencedRelation: "proposed_actions"
             referencedColumns: ["id"]
           },
         ]
@@ -879,6 +989,8 @@ export type Database = {
           notes: string | null
           skill_id: string | null
           updated_at: string
+          version: number
+          work_type: string
         }
         Insert: {
           archived_at?: string | null
@@ -889,6 +1001,8 @@ export type Database = {
           notes?: string | null
           skill_id?: string | null
           updated_at?: string
+          version?: number
+          work_type: string
         }
         Update: {
           archived_at?: string | null
@@ -899,6 +1013,8 @@ export type Database = {
           notes?: string | null
           skill_id?: string | null
           updated_at?: string
+          version?: number
+          work_type?: string
         }
         Relationships: [
           {
@@ -3203,14 +3319,6 @@ export type Database = {
       }
     }
     Enums: {
-      assignment_state:
-        | "proposed"
-        | "contacted"
-        | "worker_accepted"
-        | "contractor_confirmed"
-        | "cancelled"
-        | "no_show"
-        | "completed"
       attendance_outcome: "unknown" | "attended" | "no_show" | "partial"
       channel_delivery_state:
         | "queued"
@@ -3382,15 +3490,6 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      assignment_state: [
-        "proposed",
-        "contacted",
-        "worker_accepted",
-        "contractor_confirmed",
-        "cancelled",
-        "no_show",
-        "completed",
-      ],
       attendance_outcome: ["unknown", "attended", "no_show", "partial"],
       channel_delivery_state: [
         "queued",
