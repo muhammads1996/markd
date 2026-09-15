@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-test("serves the responsive MARKD application shell", async ({ page }) => {
+test("routes the root entry into participant authentication", async ({
+  page,
+}) => {
   const browserErrors: string[] = [];
   page.on("pageerror", (error) => browserErrors.push(error.message));
   page.on("console", (message) => {
@@ -9,12 +11,8 @@ test("serves the responsive MARKD application shell", async ({ page }) => {
 
   await page.goto("/");
 
-  await expect(page).toHaveTitle("MARKD | Work leaves a mark");
-  await expect(
-    page.getByRole("heading", { name: "Do I have work today?" }),
-  ).toBeVisible();
-  await expect(page.getByText("WORK CONFIRMED")).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "worker navigation" })).toBeVisible();
+  await expect(page).toHaveURL(/\/sign-in(?:\?.*)?$/);
+  await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
 
   const hasHorizontalOverflow = await page.evaluate(
     () =>
@@ -34,9 +32,9 @@ test("publishes a local web app manifest and icons", async ({ request }) => {
     name?: string;
     start_url?: string;
   };
-  expect(manifest.name).toBe("MARKD Participant");
+  expect(manifest.name).toBe("MARKD");
   expect(manifest.start_url).toBe("/participant");
-  expect(manifest.icons?.length).toBeGreaterThanOrEqual(2);
+  expect(manifest.icons?.length).toBeGreaterThanOrEqual(3);
 
   for (const icon of manifest.icons ?? []) {
     const iconResponse = await request.get(icon.src);

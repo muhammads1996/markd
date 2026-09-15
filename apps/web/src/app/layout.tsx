@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
+import "@markd/design-tokens/tokens.css";
 import "./styles.css";
 
 export const metadata: Metadata = {

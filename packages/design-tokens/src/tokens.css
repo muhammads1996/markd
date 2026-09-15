@@ -1,0 +1,72 @@
+:root {
+  --markd-color-obsidian: #111315;
+  --markd-color-ink-2: #171a1d;
+  --markd-color-ink-3: #202428;
+  --markd-color-signal-lime: #c7f43d;
+  --markd-color-lime-soft: #e8ff9f;
+  --markd-color-concrete: #f2f1ec;
+  --markd-color-steel: #687078;
+  --markd-color-white: #fff;
+  --markd-color-danger: #ff685f;
+
+  --markd-color-canvas: var(--markd-color-concrete);
+  --markd-color-surface: var(--markd-color-white);
+  --markd-color-surface-strong: var(--markd-color-obsidian);
+  --markd-color-surface-elevated-dark: var(--markd-color-ink-2);
+  --markd-color-surface-secondary-dark: var(--markd-color-ink-3);
+  --markd-color-text: var(--markd-color-obsidian);
+  --markd-color-text-muted: var(--markd-color-steel);
+  --markd-color-text-inverse: var(--markd-color-white);
+  --markd-color-primary-action: var(--markd-color-signal-lime);
+  --markd-color-confirmed: var(--markd-color-signal-lime);
+  --markd-color-verified: var(--markd-color-signal-lime);
+  --markd-color-positive-subtle: var(--markd-color-lime-soft);
+  --markd-color-destructive: var(--markd-color-danger);
+
+  --markd-space-none: 0;
+  --markd-space-xs: 0.25rem;
+  --markd-space-sm: 0.5rem;
+  --markd-space-md: 0.75rem;
+  --markd-space-lg: 1rem;
+  --markd-space-xl: 1.5rem;
+  --markd-space-2xl: 2rem;
+  --markd-space-3xl: 3rem;
+
+  --markd-radius-xs: 0.25rem;
+  --markd-radius-sm: 0.5rem;
+  --markd-radius-md: 0.75rem;
+  --markd-radius-lg: 1.25rem;
+  --markd-radius-xl: 1.75rem;
+  --markd-radius-full: 999px;
+
+  --markd-font-family: "Sora", ui-sans-serif, system-ui, sans-serif;
+  --markd-font-size-xs: 0.75rem;
+  --markd-font-size-sm: 0.875rem;
+  --markd-font-size-base: 1rem;
+  --markd-font-size-lg: 1.25rem;
+  --markd-font-size-xl: 1.75rem;
+  --markd-font-size-display: 2.5rem;
+  --markd-font-weight-regular: 400;
+  --markd-font-weight-strong: 700;
+  --markd-font-weight-heavy: 800;
+  --markd-line-height-tight: 1.1;
+  --markd-line-height-normal: 1.4;
+  --markd-line-height-relaxed: 1.6;
+
+  --markd-shadow-subtle: 0 0.25rem 1rem rgb(17 19 21 / 8%);
+  --markd-shadow-card: 0 1rem 2.5rem rgb(17 19 21 / 18%);
+  --markd-shadow-overlay: 0 1.5rem 5rem rgb(17 19 21 / 28%);
+
+  --markd-motion-fast: 120ms;
+  --markd-motion-base: 200ms;
+  --markd-motion-slow: 320ms;
+  --markd-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  --markd-touch-minimum: 2.75rem;
+  --markd-touch-comfortable: 3rem;
+  --markd-touch-primary: 3.5rem;
+
+  --markd-content-compact: 40rem;
+  --markd-content-reading: 48rem;
+  --markd-content-app: 74rem;
+}

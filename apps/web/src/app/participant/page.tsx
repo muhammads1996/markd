@@ -1,12 +1,49 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import ParticipantShell from "./participant-shell";
+import {
+  ActionLink,
+  ParticipantAppBar,
+  participantStyles as styles,
+} from "../../components/participant";
+import { requireParticipantSession } from "../../lib/participant/auth";
 
-export const metadata: Metadata = {
-  title: "MARKD | Worker home",
-  description: "Your confirmed work and portable Work Card.",
-};
+export default async function ParticipantPage() {
+  const session = await requireParticipantSession();
+  if (session.scopes.length === 1) {
+    redirect(`/participant/${session.scopes[0]?.kind}`);
+  }
 
-export default function ParticipantPage() {
-  return <ParticipantShell role="worker" />;
+  return (
+    <div className={styles.app}>
+      <ParticipantAppBar />
+      <main className={styles.content}>
+        <header className={styles.pageHeader}>
+          <p className={styles.eyebrow}>Participant access</p>
+          <h1 className={styles.title}>
+            {session.scopes.length ? "Choose your view" : "Access unavailable"}
+          </h1>
+          <p className={styles.lede}>
+            {session.scopes.length
+              ? "Choose the scope you need for this visit."
+              : "Your account has no active worker or contractor scope. Contact your MARKD operator."}
+          </p>
+        </header>
+        {session.scopes.length ? (
+          <div className={styles.stack}>
+            {session.scopes.map((scope, index) => (
+              <ActionLink
+                key={`${scope.kind}-${index}`}
+                href={`/participant/${scope.kind}`}
+                variant={index === 0 ? "primary" : "secondary"}
+              >
+                {scope.kind === "worker"
+                  ? "Open worker view"
+                  : "Open contractor view"}
+              </ActionLink>
+            ))}
+          </div>
+        ) : null}
+      </main>
+    </div>
+  );
 }

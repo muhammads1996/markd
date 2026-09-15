@@ -1,5 +1,5 @@
-import ParticipantShell from "../participant-shell";
+import { ContractorHomePage } from "../production-pages";
 
 export default function ContractorParticipantPage() {
-  return <ParticipantShell role="contractor" />;
+  return <ContractorHomePage />;
 }

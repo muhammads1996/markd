@@ -1,5 +1,5 @@
-import ParticipantShell from "./participant/participant-shell";
+import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  return <ParticipantShell role="worker" />;
+  redirect("/participant");
 }

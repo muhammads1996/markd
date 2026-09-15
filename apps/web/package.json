@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@markd/contracts": "workspace:*",
+    "@markd/design-tokens": "workspace:*",
+    "@markd/i18n": "workspace:*",
     "@markd/language": "workspace:*",
     "@markd/messaging": "workspace:*",
     "@supabase/ssr": "0.8.0",

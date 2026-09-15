@@ -208,6 +208,12 @@ importers:
       '@markd/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@markd/design-tokens':
+        specifier: workspace:*
+        version: link:../../packages/design-tokens
+      '@markd/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@markd/language':
         specifier: workspace:*
         version: link:../../packages/language
@@ -240,6 +246,8 @@ importers:
   packages/contracts: {}
 
   packages/db: {}
+
+  packages/design-tokens: {}
 
   packages/domain: {}
 
