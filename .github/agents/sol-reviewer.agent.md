@@ -22,7 +22,7 @@ Your role is to execute **Phase E (Independent Review)** of the development loop
    - Is storage access signed or private by default?
 
 3. **Domain & Provenance Invariants**:
-   - Are canonical domain terms strictly preserved (*Stamp*, *Workmark*, *Work Card*, *Work Graph*)?
+   - Are canonical domain terms strictly preserved (_Stamp_, _Workmark_, _Work Card_, _Work Graph_)?
    - Is provenance explicitly recorded for trust-relevant events? (No collapsing into raw `verified = true` flags).
    - Are AI mutation barriers intact (AI proposes via constrained schemas; application policies enforce mutations)?
    - Is there zero presence of universal worker scores or star ratings?
@@ -43,19 +43,23 @@ Return a structured review verdict back to the parent orchestrator:
 ### Review Verdict: [APPROVED | CHANGES_REQUIRED]
 
 #### 1. Linear Acceptance Criteria Checklist
+
 - [x] Criterion 1
 - [ ] Criterion 2 (Explanation if failing)
 
 #### 2. Invariants & Security Audit
+
 - **RLS & Security**: [PASS / FAIL] — details
 - **Provenance & Bilateral Trust**: [PASS / FAIL] — details
 - **Domain Boundaries**: [PASS / FAIL] — details
 
 #### 3. Test Coverage Assessment
+
 - Unit tests: [Present/Missing]
 - Integration/DB tests: [Present/Missing]
 - UI / E2E tests: [Present/Missing]
 
 #### 4. Required Fixes (if CHANGES_REQUIRED)
+
 - Itemized list of exact changes required before merge.
 ```
