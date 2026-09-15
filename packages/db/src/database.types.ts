@@ -871,7 +871,6 @@ export type Database = {
           source: string
           source_channel_event_id: string | null
           source_proposed_action_id: string | null
-          state: string
           terms: string | null
           timezone: string
           updated_at: string
@@ -901,7 +900,6 @@ export type Database = {
           source?: string
           source_channel_event_id?: string | null
           source_proposed_action_id?: string | null
-          state?: string
           terms?: string | null
           timezone?: string
           updated_at?: string
@@ -931,7 +929,6 @@ export type Database = {
           source?: string
           source_channel_event_id?: string | null
           source_proposed_action_id?: string | null
-          state?: string
           terms?: string | null
           timezone?: string
           updated_at?: string

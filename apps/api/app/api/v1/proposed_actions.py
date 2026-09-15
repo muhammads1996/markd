@@ -4,11 +4,15 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.encoders import jsonable_encoder
 from psycopg.types.json import Jsonb
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.api.dependencies import get_correlation_id, get_database, get_operator_actor
 from app.api.v1.labour_requests import (
+    CancelAssignmentInput,
+    ContractorConfirmationInput,
     CreateLabourRequestInput,
+    cancel_assignment_mutation,
+    confirm_assignment_mutation,
     create_labour_request_mutation,
 )
 from app.application.dispatcher import MutationResult, execute_command
@@ -38,8 +42,42 @@ class RejectionInput(BaseModel):
     reason: str
 
 
-class ConfirmLabourRequestActionInput(BaseModel):
-    labour_request: CreateLabourRequestInput
+class ConfirmAssignmentActionInput(BaseModel):
+    assignment_id: UUID
+    confirmed: bool = True
+    expected_version: int | None = Field(default=None, ge=1)
+
+
+class CancelAssignmentActionInput(BaseModel):
+    assignment_id: UUID
+    reason_code: Literal[
+        "worker_withdrew",
+        "contractor_cancelled",
+        "job_cancelled",
+        "operator_cancelled",
+        "other",
+    ]
+    reason_text: str | None = Field(default=None, max_length=1000)
+    expected_version: int | None = Field(default=None, ge=1)
+
+
+class ConfirmProposedActionInput(BaseModel):
+    labour_request: CreateLabourRequestInput | None = None
+    assignment_confirmation: ConfirmAssignmentActionInput | None = None
+    assignment_cancellation: CancelAssignmentActionInput | None = None
+
+    @model_validator(mode="after")
+    def validate_action_payload(self) -> "ConfirmProposedActionInput":
+        if sum(
+            value is not None
+            for value in (
+                self.labour_request,
+                self.assignment_confirmation,
+                self.assignment_cancellation,
+            )
+        ) != 1:
+            raise ValueError("Exactly one Proposed Action payload is required.")
+        return self
 
 
 def _headers(command_id: UUID, replayed: bool) -> dict[str, str]:
@@ -52,7 +90,7 @@ def _headers(command_id: UUID, replayed: bool) -> dict[str, str]:
 @router.post("/{action_id}/confirm")
 async def confirm_labour_request_action(
     action_id: UUID,
-    input: ConfirmLabourRequestActionInput,
+    input: ConfirmProposedActionInput,
     idempotency_key: str = Header(alias="Idempotency-Key"),
     actor: CurrentActor = Depends(get_operator_actor),
     database: Database = Depends(get_database),
@@ -74,13 +112,6 @@ async def confirm_labour_request_action(
             raise ProblemDetail(
                 404, "NOT_FOUND", "Not found", "Proposed Action was not found."
             )
-        if action["action_type"] != "labour_request":
-            raise ProblemDetail(
-                409,
-                "INVALID_STATE",
-                "Invalid state transition",
-                "Only Labour Request actions can create a Labour Request.",
-            )
         if action["state"] != "pending":
             raise ProblemDetail(
                 409,
@@ -88,14 +119,82 @@ async def confirm_labour_request_action(
                 "Invalid state transition",
                 "Only pending Proposed Actions can be confirmed.",
             )
-        mutation = await create_labour_request_mutation(
-            connection,
-            actor,
-            input.labour_request,
-            "whatsapp",
-            action["channel_event_id"],
-            action_id,
-        )
+        if action["action_type"] == "labour_request":
+            if input.labour_request is None:
+                raise ProblemDetail(
+                    422,
+                    "INVALID_PAYLOAD",
+                    "Invalid payload",
+                    "A Labour Request payload is required.",
+                )
+            mutation = await create_labour_request_mutation(
+                connection,
+                actor,
+                input.labour_request,
+                "whatsapp",
+                action["channel_event_id"],
+                action_id,
+            )
+        elif action["action_type"] == "assignment_confirmation":
+            if input.assignment_confirmation is None:
+                raise ProblemDetail(
+                    422,
+                    "INVALID_PAYLOAD",
+                    "Invalid payload",
+                    "An assignment confirmation payload is required.",
+                )
+            assignment_input = ContractorConfirmationInput(
+                confirmed=input.assignment_confirmation.confirmed,
+                expected_version=input.assignment_confirmation.expected_version,
+            )
+            await connection.execute(
+                "select set_config('app.source_channel_event_id', %s, true)",
+                (str(action["channel_event_id"]),),
+            )
+            await connection.execute(
+                "select set_config('app.source_proposed_action_id', %s, true)",
+                (str(action_id),),
+            )
+            mutation = await confirm_assignment_mutation(
+                connection,
+                actor,
+                input.assignment_confirmation.assignment_id,
+                assignment_input,
+            )
+        elif action["action_type"] == "assignment_cancellation":
+            if input.assignment_cancellation is None:
+                raise ProblemDetail(
+                    422,
+                    "INVALID_PAYLOAD",
+                    "Invalid payload",
+                    "An assignment cancellation payload is required.",
+                )
+            await connection.execute(
+                "select set_config('app.source_channel_event_id', %s, true)",
+                (str(action["channel_event_id"]),),
+            )
+            await connection.execute(
+                "select set_config('app.source_proposed_action_id', %s, true)",
+                (str(action_id),),
+            )
+            cancellation_input = CancelAssignmentInput(
+                reason_code=input.assignment_cancellation.reason_code,
+                reason_text=input.assignment_cancellation.reason_text,
+                expected_version=input.assignment_cancellation.expected_version,
+            )
+            mutation = await cancel_assignment_mutation(
+                connection,
+                actor,
+                input.assignment_cancellation.assignment_id,
+                cancellation_input,
+            )
+        else:
+            raise ProblemDetail(
+                409,
+                "INVALID_STATE",
+                "Invalid state transition",
+                "This Proposed Action type is not supported by this command.",
+            )
         await connection.execute(
             "update public.proposed_actions set state = 'executed' where id = %s",
             (action_id,),

@@ -167,6 +167,319 @@ paths:
                 title: Response Get Me Api V1 Me Get
       security:
       - HTTPBearer: []
+  /api/v1/labour-requests:
+    post:
+      tags:
+      - Labour requests
+      summary: Create Labour Request
+      operationId: create_labour_request_api_v1_labour_requests_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLabourRequestInput'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/labour-requests/{labour_request_id}:
+    patch:
+      tags:
+      - Labour requests
+      summary: Update Labour Request
+      operationId: update_labour_request_api_v1_labour_requests__labour_request_id__patch
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: labour_request_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Labour Request Id
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLabourRequestInput'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/labour-requests/{labour_request_id}/cancel:
+    post:
+      tags:
+      - Labour requests
+      summary: Cancel Labour Request
+      operationId: cancel_labour_request_api_v1_labour_requests__labour_request_id__cancel_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: labour_request_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Labour Request Id
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelLabourRequestInput'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/labour-requests/{labour_request_id}/assignments:
+    post:
+      tags:
+      - Labour requests
+      summary: Create Assignments
+      operationId: create_assignments_api_v1_labour_requests__labour_request_id__assignments_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: labour_request_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Labour Request Id
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAssignmentsInput'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/assignments/{assignment_id}/offer:
+    post:
+      tags:
+      - Assignments
+      summary: Offer Assignment
+      operationId: offer_assignment_api_v1_assignments__assignment_id__offer_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: assignment_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Assignment Id
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OfferAssignmentInput'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/assignments/{assignment_id}/respond:
+    post:
+      tags:
+      - Assignments
+      summary: Respond To Assignment
+      operationId: respond_to_assignment_api_v1_assignments__assignment_id__respond_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: assignment_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Assignment Id
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RespondToAssignmentInput'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/assignments/{assignment_id}/contractor-confirm:
+    post:
+      tags:
+      - Assignments
+      summary: Confirm Assignment By Contractor
+      operationId: confirm_assignment_by_contractor_api_v1_assignments__assignment_id__contractor_confirm_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: assignment_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Assignment Id
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractorConfirmationInput'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/assignments/{assignment_id}/cancel:
+    post:
+      tags:
+      - Assignments
+      summary: Cancel Assignment
+      operationId: cancel_assignment_api_v1_assignments__assignment_id__cancel_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: assignment_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Assignment Id
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelAssignmentInput'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/onboarding/organisations:
     post:
       tags:
@@ -446,6 +759,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/proposed-actions/{action_id}/confirm:
+    post:
+      tags:
+      - Proposed actions
+      summary: Confirm Labour Request Action
+      operationId: confirm_labour_request_action_api_v1_proposed_actions__action_id__confirm_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: action_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Action Id
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmProposedActionInput'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                title: Response Confirm Labour Request Action Api V1 Proposed Actions  Action
+                  Id  Confirm Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/proposed-actions/{action_id}/approve:
     post:
       tags:
@@ -587,6 +942,223 @@ components:
       - object_path
       - portrait
       title: Body_upload_portrait_api_v1_onboarding_workers__worker_id__portrait_post
+    CancelAssignmentActionInput:
+      properties:
+        assignment_id:
+          type: string
+          format: uuid
+          title: Assignment Id
+        reason_code:
+          type: string
+          enum:
+          - worker_withdrew
+          - contractor_cancelled
+          - job_cancelled
+          - operator_cancelled
+          - other
+          title: Reason Code
+        reason_text:
+          anyOf:
+          - type: string
+            maxLength: 1000
+          - type: 'null'
+          title: Reason Text
+        expected_version:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: Expected Version
+      type: object
+      required:
+      - assignment_id
+      - reason_code
+      title: CancelAssignmentActionInput
+    CancelAssignmentInput:
+      properties:
+        reason_code:
+          type: string
+          enum:
+          - worker_withdrew
+          - contractor_cancelled
+          - job_cancelled
+          - operator_cancelled
+          - other
+          title: Reason Code
+        reason_text:
+          anyOf:
+          - type: string
+            maxLength: 1000
+          - type: 'null'
+          title: Reason Text
+        expected_version:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: Expected Version
+      type: object
+      required:
+      - reason_code
+      title: CancelAssignmentInput
+    CancelLabourRequestInput:
+      properties:
+        reason:
+          type: string
+          maxLength: 1000
+          minLength: 1
+          title: Reason
+        expected_version:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: Expected Version
+      type: object
+      required:
+      - reason
+      title: CancelLabourRequestInput
+    ConfirmAssignmentActionInput:
+      properties:
+        assignment_id:
+          type: string
+          format: uuid
+          title: Assignment Id
+        confirmed:
+          type: boolean
+          title: Confirmed
+          default: true
+        expected_version:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: Expected Version
+      type: object
+      required:
+      - assignment_id
+      title: ConfirmAssignmentActionInput
+    ConfirmProposedActionInput:
+      properties:
+        labour_request:
+          anyOf:
+          - $ref: '#/components/schemas/CreateLabourRequestInput'
+          - type: 'null'
+        assignment_confirmation:
+          anyOf:
+          - $ref: '#/components/schemas/ConfirmAssignmentActionInput'
+          - type: 'null'
+        assignment_cancellation:
+          anyOf:
+          - $ref: '#/components/schemas/CancelAssignmentActionInput'
+          - type: 'null'
+      type: object
+      title: ConfirmProposedActionInput
+    ContractorConfirmationInput:
+      properties:
+        confirmed:
+          type: boolean
+          title: Confirmed
+        expected_version:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: Expected Version
+      type: object
+      required:
+      - confirmed
+      title: ContractorConfirmationInput
+    CreateAssignmentsInput:
+      properties:
+        requirement_id:
+          type: string
+          format: uuid
+          title: Requirement Id
+        worker_ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          minItems: 1
+          title: Worker Ids
+        expected_version:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: Expected Version
+      type: object
+      required:
+      - requirement_id
+      - worker_ids
+      title: CreateAssignmentsInput
+    CreateLabourRequestInput:
+      properties:
+        contractor_organisation_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Contractor Organisation Id
+        contractor_contact_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Contractor Contact Id
+        individual_hirer_person_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Individual Hirer Person Id
+        work_date:
+          type: string
+          format: date
+          title: Work Date
+        start_time:
+          anyOf:
+          - type: string
+            format: time
+          - type: 'null'
+          title: Start Time
+        timezone:
+          type: string
+          maxLength: 64
+          minLength: 1
+          title: Timezone
+        site_area:
+          type: string
+          maxLength: 255
+          minLength: 1
+          title: Site Area
+        site_text:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Site Text
+        pay:
+          $ref: '#/components/schemas/PayInput'
+        notes:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Notes
+        requirements:
+          items:
+            $ref: '#/components/schemas/RequirementInput'
+          type: array
+          minItems: 1
+          title: Requirements
+      type: object
+      required:
+      - work_date
+      - timezone
+      - site_area
+      - pay
+      - requirements
+      title: CreateLabourRequestInput
     DeliveryQueueReceipt:
       properties:
         queued:
@@ -605,6 +1177,16 @@ components:
           title: Detail
       type: object
       title: HTTPValidationError
+    OfferAssignmentInput:
+      properties:
+        expected_version:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: Expected Version
+      type: object
+      title: OfferAssignmentInput
     OrganisationInput:
       properties:
         organisation_name:
@@ -679,6 +1261,35 @@ components:
       - whatsapp_phone
       - record_status
       title: OrganisationUpdateInput
+    PayInput:
+      properties:
+        amount_minor:
+          type: integer
+          minimum: 0.0
+          title: Amount Minor
+        currency:
+          type: string
+          pattern: ^[A-Z]{3}$
+          title: Currency
+        basis:
+          type: string
+          enum:
+          - daily
+          - hourly
+          - fixed
+          - other
+          title: Basis
+        terms_text:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Terms Text
+      type: object
+      required:
+      - amount_minor
+      - currency
+      - basis
+      title: PayInput
     QueueDeliveryInput:
       properties:
         recipient_phone_number:
@@ -727,6 +1338,96 @@ components:
       required:
       - reason
       title: RejectionInput
+    RequirementInput:
+      properties:
+        work_type:
+          type: string
+          maxLength: 120
+          minLength: 1
+          title: Work Type
+        headcount:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: Headcount
+        notes:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Notes
+      type: object
+      required:
+      - work_type
+      - headcount
+      title: RequirementInput
+    RespondToAssignmentInput:
+      properties:
+        response:
+          type: string
+          enum:
+          - accepted
+          - declined
+          - call_me
+          title: Response
+        expected_version:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: Expected Version
+      type: object
+      required:
+      - response
+      title: RespondToAssignmentInput
+    UpdateLabourRequestInput:
+      properties:
+        work_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Work Date
+        start_time:
+          anyOf:
+          - type: string
+            format: time
+          - type: 'null'
+          title: Start Time
+        timezone:
+          anyOf:
+          - type: string
+            maxLength: 64
+            minLength: 1
+          - type: 'null'
+          title: Timezone
+        site_area:
+          anyOf:
+          - type: string
+            maxLength: 255
+            minLength: 1
+          - type: 'null'
+          title: Site Area
+        site_text:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Site Text
+        pay:
+          anyOf:
+          - $ref: '#/components/schemas/PayInput'
+          - type: 'null'
+        notes:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Notes
+        expected_version:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: Expected Version
+      type: object
+      title: UpdateLabourRequestInput
     ValidationError:
       properties:
         loc:

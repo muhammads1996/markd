@@ -181,18 +181,29 @@ def _require_request_actor(
 
 
 def _require_assignment_actor(
-    actor: CurrentActor, assignment: dict[str, Any], allow_worker: bool = False
+    actor: CurrentActor,
+    assignment: dict[str, Any],
+    allow_worker: bool = False,
+    worker_only: bool = False,
 ) -> None:
     if _is_operator(actor):
         return
+    is_worker = (
+        allow_worker
+        and actor.claims.get("participant_person_id") == assignment.get("worker_id")
+    )
+    if worker_only:
+        if is_worker:
+            return
+        raise ProblemDetail(
+            403, "FORBIDDEN", "Forbidden", "Only the assigned worker can respond."
+        )
     organisation_id = assignment.get("organisation_id")
     if organisation_id and UUID(str(organisation_id)) in _contractor_organisations(
         actor
     ):
         return
-    if allow_worker and actor.claims.get("participant_person_id") == assignment.get(
-        "worker_id"
-    ):
+    if is_worker:
         return
     raise ProblemDetail(
         403, "FORBIDDEN", "Forbidden", "Actor cannot manage this assignment."
@@ -324,6 +335,164 @@ async def create_labour_request_mutation(
         "labour_request",
         labour_request_id,
         jsonable_encoder(body),
+    )
+
+
+async def create_assignments_mutation(
+    connection: Any,
+    actor: CurrentActor,
+    labour_request_id: UUID,
+    input: CreateAssignmentsInput,
+    source: str = "api",
+    source_channel_event_id: UUID | None = None,
+    source_proposed_action_id: UUID | None = None,
+) -> MutationResult:
+    request = await _get_request(connection, labour_request_id)
+    _require_request_actor(
+        actor, request["organisation_id"], request["requester_person_id"]
+    )
+    _check_version(request, input.expected_version)
+    if request["lifecycle"] != "active":
+        raise ProblemDetail(
+            409,
+            "INVALID_STATE",
+            "Invalid state transition",
+            "Only active requests can receive assignments.",
+        )
+    requirement_result = await connection.execute(
+        """
+        select id from public.labour_requirements
+        where id = %s and labour_request_id = %s and archived_at is null
+        """,
+        (input.requirement_id, labour_request_id),
+    )
+    if await requirement_result.fetchone() is None:
+        raise ProblemDetail(404, "NOT_FOUND", "Not found", "Requirement was not found.")
+    assignment_ids: list[str] = []
+    for worker_id in dict.fromkeys(input.worker_ids):
+        result = await connection.execute(
+            """
+            insert into public.assignments (
+              labour_request_id, labour_requirement_id, worker_id, organisation_id,
+              hirer_person_id, site_id, starts_on, ends_on, lifecycle,
+              worker_response, contractor_confirmation, source,
+              source_channel_event_id, source_proposed_action_id, version
+            ) select %s, %s, %s, organisation_id, requester_person_id, site_id,
+                     needed_from, needed_to, 'active', 'pending', 'pending', %s,
+                     %s, %s, 1
+              from public.labour_requests where id = %s
+            on conflict (labour_request_id, labour_requirement_id, worker_id)
+              where lifecycle = 'active'
+            do update set worker_id = excluded.worker_id
+            returning id, version
+            """,
+            (
+                labour_request_id,
+                input.requirement_id,
+                worker_id,
+                source,
+                source_channel_event_id,
+                source_proposed_action_id,
+                labour_request_id,
+            ),
+        )
+        assignment = await result.fetchone()
+        assignment_ids.append(str(assignment["id"]))
+    body = _command_body("labour_request", labour_request_id, request["version"])
+    body["assignments"] = assignment_ids
+    return MutationResult(
+        201, body, "assignment.created", "labour_request", labour_request_id, body
+    )
+
+
+async def confirm_assignment_mutation(
+    connection: Any,
+    actor: CurrentActor,
+    assignment_id: UUID,
+    input: ContractorConfirmationInput,
+) -> MutationResult:
+    assignment = await _get_assignment(connection, assignment_id)
+    _require_assignment_actor(actor, assignment)
+    _check_version(assignment, input.expected_version)
+    if assignment["lifecycle"] != "active":
+        raise ProblemDetail(
+            409,
+            "INVALID_STATE",
+            "Invalid state transition",
+            "Only active assignments can be confirmed.",
+        )
+    confirmation = "confirmed" if input.confirmed else "rejected"
+    if assignment["contractor_confirmation"] == confirmation:
+        body = _command_body(
+            "assignment", assignment_id, assignment["version"], "already_applied"
+        )
+        return MutationResult(
+            200,
+            body,
+            "assignment.contractor_confirmed",
+            "assignment",
+            assignment_id,
+            body,
+        )
+    result = await connection.execute(
+        """
+        update public.assignments
+        set contractor_confirmation = %s,
+            contractor_confirmed_at = timezone('utc', now()), version = version + 1
+        where id = %s returning id, version
+        """,
+        (confirmation, assignment_id),
+    )
+    confirmed = await result.fetchone()
+    body = _command_body("assignment", confirmed["id"], confirmed["version"])
+    return MutationResult(
+        200,
+        body,
+        "assignment.contractor_confirmed",
+        "assignment",
+        confirmed["id"],
+        body,
+    )
+
+
+async def cancel_assignment_mutation(
+    connection: Any,
+    actor: CurrentActor,
+    assignment_id: UUID,
+    input: CancelAssignmentInput,
+) -> MutationResult:
+    assignment = await _get_assignment(connection, assignment_id)
+    _require_assignment_actor(actor, assignment, allow_worker=True)
+    _check_version(assignment, input.expected_version)
+    if assignment["lifecycle"] == "cancelled":
+        body = _command_body(
+            "assignment", assignment_id, assignment["version"], "already_applied"
+        )
+        return MutationResult(
+            200, body, "assignment.cancelled", "assignment", assignment_id, body
+        )
+    if assignment["lifecycle"] != "active":
+        raise ProblemDetail(
+            409,
+            "INVALID_STATE",
+            "Invalid state transition",
+            "Assignment cannot be cancelled.",
+        )
+    result = await connection.execute(
+        """
+        update public.assignments
+        set lifecycle = 'cancelled', cancelled_at = timezone('utc', now()),
+            cancellation_reason = %s, cancellation_note = %s,
+            cancelled_after_travel_authorised = travel_authorised_at is not null,
+            version = version + 1
+        where id = %s returning id, version
+        """,
+        (input.reason_code, input.reason_text, assignment_id),
+    )
+    cancelled = await result.fetchone()
+    body = _command_body("assignment", cancelled["id"], cancelled["version"])
+    return MutationResult(
+        200, body, "assignment.cancelled", "assignment", cancelled["id"], body
     )
 
 
@@ -524,54 +693,8 @@ async def create_assignments(
     payload = input.model_dump(mode="json")
 
     async def handler(connection: Any) -> MutationResult:
-        request = await _get_request(connection, labour_request_id)
-        _require_request_actor(
-            actor, request["organisation_id"], request["requester_person_id"]
-        )
-        _check_version(request, input.expected_version)
-        if request["lifecycle"] != "active":
-            raise ProblemDetail(
-                409,
-                "INVALID_STATE",
-                "Invalid state transition",
-                "Only active requests can receive assignments.",
-            )
-        requirement_result = await connection.execute(
-            """
-            select id from public.labour_requirements
-            where id = %s and labour_request_id = %s and archived_at is null
-            """,
-            (input.requirement_id, labour_request_id),
-        )
-        if await requirement_result.fetchone() is None:
-            raise ProblemDetail(
-                404, "NOT_FOUND", "Not found", "Requirement was not found."
-            )
-        assignment_ids: list[str] = []
-        for worker_id in dict.fromkeys(input.worker_ids):
-            result = await connection.execute(
-                """
-                insert into public.assignments (
-                  labour_request_id, labour_requirement_id, worker_id, organisation_id,
-                  hirer_person_id, site_id, starts_on, ends_on, lifecycle,
-                  worker_response, contractor_confirmation, source, version
-                ) select %s, %s, %s, organisation_id, requester_person_id, site_id,
-                         needed_from, needed_to, 'active', 'pending', 'pending',
-                         'api', 1
-                  from public.labour_requests where id = %s
-                on conflict (labour_request_id, labour_requirement_id, worker_id)
-                  where lifecycle = 'active'
-                do update set worker_id = excluded.worker_id
-                returning id, version
-                """,
-                (labour_request_id, input.requirement_id, worker_id, labour_request_id),
-            )
-            assignment = await result.fetchone()
-            assignment_ids.append(str(assignment["id"]))
-        body = _command_body("labour_request", labour_request_id, request["version"])
-        body["assignments"] = assignment_ids
-        return MutationResult(
-            201, body, "assignment.created", "labour_request", labour_request_id, body
+        return await create_assignments_mutation(
+            connection, actor, labour_request_id, input
         )
 
     execution = await execute_command(
@@ -659,7 +782,9 @@ async def respond_to_assignment(
 ) -> JSONResponse:
     async def handler(connection: Any) -> MutationResult:
         assignment = await _get_assignment(connection, assignment_id)
-        _require_assignment_actor(actor, assignment, allow_worker=True)
+        _require_assignment_actor(
+            actor, assignment, allow_worker=True, worker_only=True
+        )
         _check_version(assignment, input.expected_version)
         if assignment["lifecycle"] != "active" or assignment.get("offered_at") is None:
             raise ProblemDetail(
@@ -734,47 +859,8 @@ async def confirm_assignment_by_contractor(
     correlation_id: str = Depends(get_correlation_id),
 ) -> JSONResponse:
     async def handler(connection: Any) -> MutationResult:
-        assignment = await _get_assignment(connection, assignment_id)
-        _require_assignment_actor(actor, assignment)
-        _check_version(assignment, input.expected_version)
-        if assignment["lifecycle"] != "active":
-            raise ProblemDetail(
-                409,
-                "INVALID_STATE",
-                "Invalid state transition",
-                "Only active assignments can be confirmed.",
-            )
-        confirmation = "confirmed" if input.confirmed else "rejected"
-        if assignment["contractor_confirmation"] == confirmation:
-            body = _command_body(
-                "assignment", assignment_id, assignment["version"], "already_applied"
-            )
-            return MutationResult(
-                200,
-                body,
-                "assignment.contractor_confirmed",
-                "assignment",
-                assignment_id,
-                body,
-            )
-        result = await connection.execute(
-            """
-            update public.assignments
-            set contractor_confirmation = %s,
-                contractor_confirmed_at = timezone('utc', now()), version = version + 1
-            where id = %s returning id, version
-            """,
-            (confirmation, assignment_id),
-        )
-        confirmed = await result.fetchone()
-        body = _command_body("assignment", confirmed["id"], confirmed["version"])
-        return MutationResult(
-            200,
-            body,
-            "assignment.contractor_confirmed",
-            "assignment",
-            confirmed["id"],
-            body,
+        return await confirm_assignment_mutation(
+            connection, actor, assignment_id, input
         )
 
     execution = await execute_command(
@@ -803,39 +889,7 @@ async def cancel_assignment(
     correlation_id: str = Depends(get_correlation_id),
 ) -> JSONResponse:
     async def handler(connection: Any) -> MutationResult:
-        assignment = await _get_assignment(connection, assignment_id)
-        _require_assignment_actor(actor, assignment, allow_worker=True)
-        _check_version(assignment, input.expected_version)
-        if assignment["lifecycle"] == "cancelled":
-            body = _command_body(
-                "assignment", assignment_id, assignment["version"], "already_applied"
-            )
-            return MutationResult(
-                200, body, "assignment.cancelled", "assignment", assignment_id, body
-            )
-        if assignment["lifecycle"] != "active":
-            raise ProblemDetail(
-                409,
-                "INVALID_STATE",
-                "Invalid state transition",
-                "Assignment cannot be cancelled.",
-            )
-        result = await connection.execute(
-            """
-            update public.assignments
-            set lifecycle = 'cancelled', cancelled_at = timezone('utc', now()),
-                cancellation_reason = %s, cancellation_note = %s,
-                cancelled_after_travel_authorised = travel_authorised_at is not null,
-                version = version + 1
-            where id = %s returning id, version
-            """,
-            (input.reason_code, input.reason_text, assignment_id),
-        )
-        cancelled = await result.fetchone()
-        body = _command_body("assignment", cancelled["id"], cancelled["version"])
-        return MutationResult(
-            200, body, "assignment.cancelled", "assignment", cancelled["id"], body
-        )
+        return await cancel_assignment_mutation(connection, actor, assignment_id, input)
 
     execution = await execute_command(
         database,

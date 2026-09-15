@@ -23,6 +23,8 @@ alter table public.labour_requests
 update public.labour_requests
 set lifecycle = case when state = 'cancelled' then 'cancelled' else 'active' end;
 
+alter table public.labour_requests drop column state;
+
 alter table public.labour_requirements
   add column work_type text,
   add column version integer not null default 1 check (version > 0);
@@ -62,6 +64,17 @@ alter table public.assignments
   add column version integer not null default 1 check (version > 0),
   add constraint assignments_one_hirer_check
     check (num_nonnulls(organisation_id, hirer_person_id) = 1);
+
+alter table public.audit_events
+  drop constraint audit_events_actor_context_check;
+
+alter table public.audit_events
+  add constraint audit_events_actor_context_check check (
+    (actor_kind in ('operator', 'participant') and actor_id is not null)
+    or (actor_kind = 'operator' and operator_account_id is not null)
+    or (actor_kind in ('system', 'unknown') and actor_id is null
+        and operator_account_id is null)
+  );
 
 update public.assignments
 set lifecycle = case
@@ -213,8 +226,43 @@ language plpgsql
 security definer
 set search_path = pg_catalog, public
 as $$
+declare
+  actor_person_id uuid;
+  actor_account_id uuid;
+  actor_kind_value text;
+  source_row jsonb;
 begin
-  insert into public.audit_events(table_name, record_id, action, changes, actor_kind)
+  actor_account_id := auth.uid();
+  if actor_account_id is not null and exists (
+    select 1 from public.operator_accounts
+    where user_id = actor_account_id and archived_at is null
+  ) then
+    select person_id into actor_person_id
+    from public.operator_accounts
+    where user_id = actor_account_id;
+    actor_kind_value := 'operator';
+  elsif actor_account_id is not null and exists (
+    select 1 from public.participant_accounts
+    where auth_user_id = actor_account_id and status = 'active'
+  ) then
+    select person_id into actor_person_id
+    from public.participant_accounts
+    where auth_user_id = actor_account_id and status = 'active';
+    actor_account_id := null;
+    actor_kind_value := 'participant';
+  else
+    actor_account_id := null;
+    actor_kind_value := case
+      when current_setting('app.actor_kind', true) = 'system' then 'system'
+      else 'unknown'
+    end;
+  end if;
+
+  source_row := case when tg_op = 'DELETE' then to_jsonb(old) else to_jsonb(new) end;
+  insert into public.audit_events(
+    table_name, record_id, action, changes, actor_id, operator_account_id,
+    actor_kind, source_channel_event_id, source_proposed_action_id
+  )
   values (
     tg_table_name,
     case when tg_op = 'DELETE' then old.id else new.id end,
@@ -223,7 +271,17 @@ begin
       'before', case when tg_op = 'INSERT' then null else to_jsonb(old) end,
       'after', case when tg_op = 'DELETE' then null else to_jsonb(new) end
     ),
-    'unknown'
+    actor_person_id,
+    actor_account_id,
+    actor_kind_value,
+    coalesce(
+      nullif(current_setting('app.source_channel_event_id', true), '')::uuid,
+      nullif(source_row ->> 'source_channel_event_id', '')::uuid
+    ),
+    coalesce(
+      nullif(current_setting('app.source_proposed_action_id', true), '')::uuid,
+      nullif(source_row ->> 'source_proposed_action_id', '')::uuid
+    )
   );
   return case when tg_op = 'DELETE' then old else new end;
 end;
