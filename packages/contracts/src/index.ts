@@ -44,7 +44,10 @@ export function validateProposedActionDraft(
 ): string[] {
   const errors: string[] = [];
   if (!draft.channelEventId?.trim()) errors.push("channelEventId is required");
-  if (!draft.payload || !proposedActionTypes.includes(draft.payload.actionType)) {
+  if (
+    !draft.payload ||
+    !proposedActionTypes.includes(draft.payload.actionType)
+  ) {
     errors.push("actionType is unsupported");
   }
   if (!isRecord(draft.payload?.fields)) errors.push("fields must be an object");
@@ -90,6 +93,10 @@ export function canApplyProposedAction(
 export function requiresOperatorConfirmation(
   draft: ProposedActionDraft,
 ): boolean {
-  return validateProposedActionDraft(draft).length > 0 || draft.ambiguity !== "clear" || draft.riskTier !== "informational";
+  return (
+    validateProposedActionDraft(draft).length > 0 ||
+    draft.ambiguity !== "clear" ||
+    draft.riskTier !== "informational"
+  );
 }
 export {};

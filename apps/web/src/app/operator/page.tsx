@@ -33,6 +33,9 @@ export default async function OperatorPage() {
         <p className="status">
           Role: {role === "ops_admin" ? "Ops admin" : "Ops user"}
         </p>
+        <p>
+          <a href="/operator/inbox">Ops Inbox</a>
+        </p>
         <form action="/auth/sign-out" method="post">
           <button type="submit">Sign out</button>
         </form>

@@ -6,7 +6,9 @@ import {
   type ProposedActionDraft,
 } from "@markd/contracts";
 
-const draft = (overrides: Partial<ProposedActionDraft> = {}): ProposedActionDraft => ({
+const draft = (
+  overrides: Partial<ProposedActionDraft> = {},
+): ProposedActionDraft => ({
   channelEventId: "72000000-0000-4000-8000-000000000001",
   payload: {
     actionType: "work_completion",
@@ -46,14 +48,18 @@ describe("ProposedAction policy", () => {
     const malformed = draft({
       payload: { ...draft().payload, entityIds: { workerId: "" } },
     });
-    expect(validateProposedActionDraft(malformed)).toEqual(expect.arrayContaining([
-      "entityIds must contain non-empty identifiers",
-    ]));
+    expect(validateProposedActionDraft(malformed)).toEqual(
+      expect.arrayContaining(["entityIds must contain non-empty identifiers"]),
+    );
     expect(canApplyProposedAction(malformed, true)).toBe(false);
   });
 
   it("keeps even informational drafts behind the application policy boundary", () => {
-    expect(requiresOperatorConfirmation(draft({ riskTier: "informational" }))).toBe(false);
-    expect(requiresOperatorConfirmation(draft({ riskTier: "operational" }))).toBe(true);
+    expect(
+      requiresOperatorConfirmation(draft({ riskTier: "informational" })),
+    ).toBe(false);
+    expect(
+      requiresOperatorConfirmation(draft({ riskTier: "operational" })),
+    ).toBe(true);
   });
 });

@@ -9,6 +9,8 @@
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
+    "@markd/contracts": "workspace:*",
+    "@markd/language": "workspace:*",
     "@markd/messaging": "workspace:*",
     "@supabase/ssr": "0.8.0",
     "@supabase/supabase-js": "2.98.0",

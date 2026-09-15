@@ -55,7 +55,7 @@ export const test = base.extend<Fixtures>({
 
   // Depends on operatorUser for setup/teardown and signs the page in via the
   // real sign-in form, landing on /operator before the test body runs.
-  loggedInAsOperator: async ({ page, operatorUser, signInPage }, use) => {
+  loggedInAsOperator: async ({ operatorUser, signInPage }, use) => {
     await signInPage.goto();
     await signInPage.signInAndWaitForOperatorHome(
       operatorUser.email,
