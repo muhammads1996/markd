@@ -2,13 +2,13 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "MARKD Operator Platform",
+    name: "MARKD Participant",
     short_name: "MARKD",
-    description: "The operator surface for the MARKD Work Graph.",
-    start_url: "/",
+    description: "Confirmed work and a portable Work Card.",
+    start_url: "/participant",
     display: "standalone",
-    background_color: "#11100e",
-    theme_color: "#f2c94c",
+    background_color: "#F2F1EC",
+    theme_color: "#C7F43D",
     icons: [
       {
         src: "/markd-icon.svg",

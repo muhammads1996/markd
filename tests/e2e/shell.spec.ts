@@ -9,9 +9,12 @@ test("serves the responsive MARKD application shell", async ({ page }) => {
 
   await page.goto("/");
 
-  await expect(page).toHaveTitle("MARKD Operator Platform");
-  await expect(page.getByRole("heading", { name: "MARKD" })).toBeVisible();
-  await expect(page.getByText("Repository bootstrap active")).toBeVisible();
+  await expect(page).toHaveTitle("MARKD | Work leaves a mark");
+  await expect(
+    page.getByRole("heading", { name: "Do I have work today?" }),
+  ).toBeVisible();
+  await expect(page.getByText("WORK CONFIRMED")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "worker navigation" })).toBeVisible();
 
   const hasHorizontalOverflow = await page.evaluate(
     () =>
@@ -29,8 +32,10 @@ test("publishes a local web app manifest and icons", async ({ request }) => {
   const manifest = (await manifestResponse.json()) as {
     icons?: Array<{ src: string }>;
     name?: string;
+    start_url?: string;
   };
-  expect(manifest.name).toBe("MARKD Operator Platform");
+  expect(manifest.name).toBe("MARKD Participant");
+  expect(manifest.start_url).toBe("/participant");
   expect(manifest.icons?.length).toBeGreaterThanOrEqual(2);
 
   for (const icon of manifest.icons ?? []) {

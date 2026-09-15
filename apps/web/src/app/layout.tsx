@@ -4,13 +4,13 @@ import type { ReactNode } from "react";
 import "./styles.css";
 
 export const metadata: Metadata = {
-  title: "MARKD Operator Platform",
-  description: "The operator surface for the MARKD Work Graph.",
+  title: "MARKD | Work leaves a mark",
+  description: "A portable work identity and confirmed work surface.",
   applicationName: "MARKD",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f2c94c",
+  themeColor: "#C7F43D",
   width: "device-width",
   initialScale: 1,
 };
