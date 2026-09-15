@@ -73,3 +73,12 @@ class Database:
     ) -> AsyncIterator[AsyncConnection[Any]]:
         async with self.transaction(actor_user_id, correlation_id) as connection:
             yield connection
+
+    @asynccontextmanager
+    async def service_transaction(self) -> AsyncIterator[AsyncConnection[Any]]:
+        """Use the server database connection for provider evidence and job leases."""
+        if self._pool is None:
+            raise RuntimeError("API database is not configured")
+        async with self._pool.connection() as connection:
+            async with connection.transaction():
+                yield connection

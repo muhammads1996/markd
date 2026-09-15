@@ -15,6 +15,7 @@ from app.api.v1.onboarding import (
 )
 from app.api.v1.proposed_actions import router as proposed_actions_router
 from app.api.v1.storage import router as storage_router
+from app.api.whatsapp import router as whatsapp_router
 from app.core.config import Settings, get_settings
 from app.core.correlation import CorrelationMiddleware
 from app.core.problems import (
@@ -67,6 +68,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     application.dependency_overrides[get_settings] = lambda: resolved_settings
     application.include_router(health_router)
+    application.include_router(whatsapp_router)
     application.include_router(me_router, prefix="/api/v1")
     application.include_router(onboarding_router, prefix="/api/v1")
     application.include_router(worker_router, prefix="/api/v1")

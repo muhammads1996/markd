@@ -49,3 +49,27 @@ async def delete_private_object(
     async with httpx.AsyncClient(timeout=30) as client:
         response = await client.delete(url, headers=headers)
     response.raise_for_status()
+
+
+async def download_private_object(
+    settings: Settings,
+    bucket_id: str,
+    object_path: str,
+) -> tuple[bytes, str]:
+    if not settings.supabase_service_role_key:
+        raise RuntimeError("Supabase service role configuration is unavailable")
+    safe_path = str(PurePosixPath(object_path))
+    url = (
+        f"{settings.supabase_url.rstrip('/')}/storage/v1/object/"
+        f"{bucket_id}/{safe_path}"
+    )
+    headers = {
+        "Authorization": f"Bearer {settings.supabase_service_role_key}",
+        "apikey": settings.supabase_service_role_key,
+    }
+    async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.get(url, headers=headers)
+    response.raise_for_status()
+    return response.content, response.headers.get(
+        "content-type", "application/octet-stream"
+    )
