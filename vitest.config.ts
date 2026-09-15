@@ -5,6 +5,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@markd/contracts": resolve("packages/contracts/src/index.ts"),
+      "@markd/i18n": resolve("packages/i18n/src/index.ts"),
       "@markd/language": resolve("packages/language/src/index.ts"),
       "@markd/messaging": resolve("packages/messaging/src/index.ts"),
     },

@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { Client } from "pg";
 
 import type { OperatorUserFixtureData } from "./test-data";
@@ -65,5 +67,74 @@ export async function removeOperatorUser(userId: string): Promise<void> {
       [userId],
     );
     await client.query(`delete from auth.users where id = $1`, [userId]);
+  });
+}
+
+export type PendingInboxItemFixture = {
+  actionId: string;
+  channelEventId: string;
+  originalText: string;
+};
+
+export async function provisionPendingInboxItem(): Promise<PendingInboxItemFixture> {
+  const fixture = {
+    actionId: randomUUID(),
+    channelEventId: randomUUID(),
+    originalText: `Playwright inbox review ${randomUUID()}`,
+  };
+
+  await withClient(async (client) => {
+    await client.query(
+      `insert into public.channel_events(
+        id, channel, provider_event_id, sender_phone_number, event_type,
+        occurred_at, state, payload
+      ) values ($1, 'whatsapp', $2, '+27820000099', 'message', now(), 'processed', $3::jsonb)`,
+      [
+        fixture.channelEventId,
+        `playwright-${fixture.channelEventId}`,
+        JSON.stringify({ synthetic: true }),
+      ],
+    );
+    await client.query(
+      `insert into public.proposed_actions(
+        id, channel_event_id, action_type, risk_tier, payload, state,
+        confidence, ambiguity, interpretation, model_provider, model_name
+      ) values (
+        $1, $2, 'propose_workmark', 'operational', $3::jsonb, 'pending',
+        0.91, 'clear', $4::jsonb, 'playwright', 'fixture'
+      )`,
+      [
+        fixture.actionId,
+        fixture.channelEventId,
+        JSON.stringify({
+          fields: { workDate: "2026-09-20" },
+          entityIds: {},
+        }),
+        JSON.stringify({ originalText: fixture.originalText }),
+      ],
+    );
+  });
+
+  return fixture;
+}
+
+export async function removePendingInboxItem(
+  fixture: PendingInboxItemFixture,
+): Promise<void> {
+  await withClient(async (client) => {
+    await client.query("begin");
+    try {
+      await client.query("set local session_replication_role = 'replica'");
+      await client.query(`delete from public.proposed_actions where id = $1`, [
+        fixture.actionId,
+      ]);
+      await client.query(`delete from public.channel_events where id = $1`, [
+        fixture.channelEventId,
+      ]);
+      await client.query("commit");
+    } catch (error) {
+      await client.query("rollback");
+      throw error;
+    }
   });
 }
