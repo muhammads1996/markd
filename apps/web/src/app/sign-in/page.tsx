@@ -2,12 +2,9 @@
 
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { useRouter } from "next/navigation";
-
 import { createSupabaseBrowserClient } from "../../lib/supabase/browser";
 
 export default function SignInPage() {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -26,8 +23,7 @@ export default function SignInPage() {
         setError("We could not sign you in. Check your operator credentials.");
         return;
       }
-      router.replace("/operator");
-      router.refresh();
+      window.location.replace("/operator");
     } catch {
       setError("Operator sign-in is not configured on this device.");
     } finally {
