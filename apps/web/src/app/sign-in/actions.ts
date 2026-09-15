@@ -38,7 +38,9 @@ export async function signInAction(
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
-    return { error: "We could not sign you in. Check your operator credentials." };
+    return {
+      error: "We could not sign you in. Check your operator credentials.",
+    };
   }
 
   redirect("/operator");
