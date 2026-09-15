@@ -109,7 +109,9 @@ function mapInboxRow(row: Record<string, unknown>): InboxItem {
     transcript: stringField(interpretation.transcript),
     transcriptConfidence: numberField(interpretation.transcriptConfidence),
     detectedLanguageCode: stringField(interpretation.detectedLanguageCode),
-    sourceMediaAssetId: isRecord(mediaAsset) ? stringField(mediaAsset.id) : null,
+    sourceMediaAssetId: isRecord(mediaAsset)
+      ? stringField(mediaAsset.id)
+      : null,
     sourceMediaType: isRecord(mediaAsset)
       ? stringField(mediaAsset.media_type)
       : null,

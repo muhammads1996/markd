@@ -10,15 +10,14 @@ import {
   parseWorkerUpdate,
   type OnboardingFormState,
 } from "./onboarding";
-import { createSupabaseServerClient } from "../../../lib/supabase/server";
+import { createMarkdApiClient } from "../../../lib/markd-api";
 
 export async function submitOnboarding(
   _previousState: OnboardingFormState,
   formData: FormData,
 ): Promise<OnboardingFormState> {
   try {
-    const supabase = await createSupabaseServerClient();
-    const gateway = createOnboardingGateway(supabase);
+    const gateway = createOnboardingGateway(await createMarkdApiClient());
     const requestedWorkerId = formValue(formData, "requestedWorkerId");
     const workerId = formValue(formData, "workerId");
     const organisationId = formValue(formData, "organisationId");

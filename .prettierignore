@@ -1,8 +1,12 @@
 .next
+.pytest_cache
+**/.pytest_cache
+**/.venv
 coverage
 node_modules
 playwright-report
 pnpm-lock.yaml
 packages/db/src/database.types.ts
+docs/openapi.yaml
 supabase/.temp
 test-results

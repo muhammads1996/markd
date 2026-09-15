@@ -34,8 +34,33 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
 
+      - name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.9.17"
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Install API dependencies
+        run: uv sync --project apps/api --locked
+
+      - name: Check API formatting and lint
+        run: pnpm api:lint
+
+      - name: Typecheck API
+        run: pnpm api:typecheck
+
+      - name: Test API
+        run: pnpm api:test
+
+      - name: Check API contract
+        run: pnpm api:openapi:check
 
       - name: Check formatting
         run: pnpm format:check
@@ -57,6 +82,21 @@ jobs:
 
       - name: Reset local database
         run: pnpm db:reset
+
+      - name: Start FastAPI application
+        run: |
+          export SUPABASE_DB_URL="$(pnpm exec supabase status -o env | sed -n 's/^DB_URL=//p' | tr -d '\"')"
+          export SUPABASE_JWT_SECRET="$(pnpm exec supabase status -o env | sed -n 's/^JWT_SECRET=//p' | tr -d '\"')"
+          export SUPABASE_SERVICE_ROLE_KEY="$(pnpm exec supabase status -o env | sed -n 's/^SERVICE_ROLE_KEY=//p' | tr -d '\"')"
+          nohup uv run --project apps/api python apps/api/run.py > api.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8000/health/ready; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat api.log
+          exit 1
 
       - name: Run database integration tests
         run: pnpm test:integration
