@@ -168,7 +168,9 @@ describe("WhatsApp transport boundary", () => {
     await expect(
       provider.sendText({ recipientPhoneNumber: "+27821234567", body: "Test" }),
     ).resolves.toEqual({ providerMessageId: "wamid-outbound-1" });
-    await expect(provider.getMedia({ providerMediaId: "media-1" })).resolves.toMatchObject({
+    await expect(
+      provider.getMedia({ providerMediaId: "media-1" }),
+    ).resolves.toMatchObject({
       mimeType: "audio/ogg",
       bytes: new Uint8Array([1, 2, 3]),
     });

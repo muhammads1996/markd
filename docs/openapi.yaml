@@ -1,0 +1,716 @@
+openapi: 3.1.0
+info:
+  title: MARKD Application API
+  description:
+    The authoritative FastAPI application boundary for MARKD commands and
+    integrations. Supabase remains the canonical data platform.
+  version: 0.1.0
+paths:
+  /health/live:
+    get:
+      tags:
+        - System
+      summary: Get Liveness
+      operationId: getLiveness
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Getliveness
+  /health/ready:
+    get:
+      tags:
+        - System
+      summary: Get Readiness
+      operationId: getReadiness
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/me:
+    get:
+      tags:
+        - Identity
+      summary: Get Me
+      operationId: get_me_api_v1_me_get
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Get Me Api V1 Me Get
+      security:
+        - HTTPBearer: []
+  /api/v1/onboarding/organisations:
+    post:
+      tags:
+        - Onboarding
+      summary: Create Organisation
+      operationId: create_organisation_api_v1_onboarding_organisations_post
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganisationInput"
+      responses:
+        "201":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                title:
+                  Response Create Organisation Api V1 Onboarding Organisations
+                  Post
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+  /api/v1/onboarding/workers/{requested_worker_id}/begin:
+    post:
+      tags:
+        - Onboarding
+      summary: Begin Worker
+      operationId: begin_worker_api_v1_onboarding_workers__requested_worker_id__begin_post
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: requested_worker_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Requested Worker Id
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkerInput"
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkerBeginResponse"
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+  /api/v1/onboarding/workers/{worker_id}/complete:
+    post:
+      tags:
+        - Onboarding
+      summary: Complete Worker
+      operationId: complete_worker_api_v1_onboarding_workers__worker_id__complete_post
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: worker_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Worker Id
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkerCompleteInput"
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                title:
+                  Response Complete Worker Api V1 Onboarding Workers  Worker
+                  Id  Complete Post
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+  /api/v1/onboarding/workers/{worker_id}/cancel:
+    post:
+      tags:
+        - Onboarding
+      summary: Cancel Worker
+      operationId: cancel_worker_api_v1_onboarding_workers__worker_id__cancel_post
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: worker_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Worker Id
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            title: Idempotency-Key
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                title:
+                  Response Cancel Worker Api V1 Onboarding Workers  Worker Id  Cancel
+                  Post
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+  /api/v1/workers/{worker_id}:
+    patch:
+      tags:
+        - Workers
+      summary: Update Worker
+      operationId: update_worker_api_v1_workers__worker_id__patch
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: worker_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Worker Id
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkerInput"
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                title: Response Update Worker Api V1 Workers  Worker Id  Patch
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+  /api/v1/organisations/{organisation_id}:
+    patch:
+      tags:
+        - Organisations
+      summary: Update Organisation
+      operationId: update_organisation_api_v1_organisations__organisation_id__patch
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: organisation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Organisation Id
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganisationUpdateInput"
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                title:
+                  Response Update Organisation Api V1 Organisations  Organisation
+                  Id  Patch
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+  /api/v1/onboarding/workers/{worker_id}/portrait:
+    post:
+      tags:
+        - Onboarding media
+      summary: Upload Portrait
+      operationId: upload_portrait_api_v1_onboarding_workers__worker_id__portrait_post
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: worker_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Worker Id
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/Body_upload_portrait_api_v1_onboarding_workers__worker_id__portrait_post"
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                title:
+                  Response Upload Portrait Api V1 Onboarding Workers  Worker
+                  Id  Portrait Post
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+  /api/v1/proposed-actions/{action_id}/approve:
+    post:
+      tags:
+        - Proposed actions
+      summary: Approve Proposed Action
+      operationId: approve_proposed_action_api_v1_proposed_actions__action_id__approve_post
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: action_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Action Id
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalInput"
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                title:
+                  Response Approve Proposed Action Api V1 Proposed Actions  Action
+                  Id  Approve Post
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+  /api/v1/proposed-actions/{action_id}/reject:
+    post:
+      tags:
+        - Proposed actions
+      summary: Reject Proposed Action
+      operationId: reject_proposed_action_api_v1_proposed_actions__action_id__reject_post
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: action_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Action Id
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectionInput"
+      responses:
+        "200":
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                title:
+                  Response Reject Proposed Action Api V1 Proposed Actions  Action
+                  Id  Reject Post
+        "422":
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+components:
+  schemas:
+    ApprovalInput:
+      properties:
+        action_type:
+          type: string
+          enum:
+            - worker_availability
+            - labour_request
+            - assignment_confirmation
+            - assignment_cancellation
+            - work_completion
+            - payment_issue
+            - historical_work_relationship_claim
+          title: Action Type
+        fields:
+          additionalProperties:
+            anyOf:
+              - type: string
+              - type: integer
+              - type: number
+              - type: boolean
+              - type: "null"
+          type: object
+          title: Fields
+        entity_ids:
+          additionalProperties:
+            type: string
+          type: object
+          title: Entity Ids
+        resolve_ambiguity:
+          type: boolean
+          title: Resolve Ambiguity
+          default: false
+      type: object
+      required:
+        - action_type
+      title: ApprovalInput
+    Body_upload_portrait_api_v1_onboarding_workers__worker_id__portrait_post:
+      properties:
+        asset_id:
+          type: string
+          format: uuid
+          title: Asset Id
+        object_path:
+          type: string
+          title: Object Path
+        portrait:
+          type: string
+          contentMediaType: application/octet-stream
+          title: Portrait
+      type: object
+      required:
+        - asset_id
+        - object_path
+        - portrait
+      title: Body_upload_portrait_api_v1_onboarding_workers__worker_id__portrait_post
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: "#/components/schemas/ValidationError"
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    OrganisationInput:
+      properties:
+        organisation_name:
+          anyOf:
+            - type: string
+            - type: "null"
+          title: Organisation Name
+        contact_name:
+          type: string
+          title: Contact Name
+        whatsapp_phone:
+          type: string
+          title: Whatsapp Phone
+        operating_area_ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          title: Operating Area Ids
+        typical_skill_ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          title: Typical Skill Ids
+        record_status:
+          type: string
+          enum:
+            - active
+            - inactive
+          title: Record Status
+      type: object
+      required:
+        - contact_name
+        - whatsapp_phone
+        - record_status
+      title: OrganisationInput
+    OrganisationUpdateInput:
+      properties:
+        organisation_name:
+          anyOf:
+            - type: string
+            - type: "null"
+          title: Organisation Name
+        contact_name:
+          type: string
+          title: Contact Name
+        whatsapp_phone:
+          type: string
+          title: Whatsapp Phone
+        operating_area_ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          title: Operating Area Ids
+        typical_skill_ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          title: Typical Skill Ids
+        record_status:
+          type: string
+          enum:
+            - active
+            - inactive
+          title: Record Status
+      type: object
+      required:
+        - contact_name
+        - whatsapp_phone
+        - record_status
+      title: OrganisationUpdateInput
+    RejectionInput:
+      properties:
+        reason:
+          type: string
+          title: Reason
+      type: object
+      required:
+        - reason
+      title: RejectionInput
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+        - loc
+        - msg
+        - type
+      title: ValidationError
+    WorkerBeginResponse:
+      properties:
+        worker_id:
+          type: string
+          format: uuid
+          title: Worker Id
+        portrait_asset_id:
+          type: string
+          format: uuid
+          title: Portrait Asset Id
+        bucket_id:
+          type: string
+          title: Bucket Id
+        object_path:
+          type: string
+          title: Object Path
+      type: object
+      required:
+        - worker_id
+        - portrait_asset_id
+        - bucket_id
+        - object_path
+      title: WorkerBeginResponse
+    WorkerCompleteInput:
+      properties:
+        portrait_asset_id:
+          type: string
+          format: uuid
+          title: Portrait Asset Id
+        object_path:
+          type: string
+          title: Object Path
+        target_status:
+          type: string
+          enum:
+            - active
+            - inactive
+          title: Target Status
+      type: object
+      required:
+        - portrait_asset_id
+        - object_path
+        - target_status
+      title: WorkerCompleteInput
+    WorkerInput:
+      properties:
+        display_name:
+          type: string
+          title: Display Name
+        whatsapp_phone:
+          type: string
+          title: Whatsapp Phone
+        preferred_language_id:
+          type: string
+          format: uuid
+          title: Preferred Language Id
+        preferred_communication_mode:
+          type: string
+          enum:
+            - text
+            - voice
+            - call
+          title: Preferred Communication Mode
+        base_area_id:
+          type: string
+          format: uuid
+          title: Base Area Id
+        primary_skill_ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          title: Primary Skill Ids
+        record_status:
+          type: string
+          enum:
+            - active
+            - inactive
+          title: Record Status
+        app_participation:
+          type: string
+          enum:
+            - unknown
+            - whatsapp_only
+            - interested
+            - using
+          title: App Participation
+        read_aloud_enabled:
+          type: boolean
+          title: Read Aloud Enabled
+          default: false
+        familiar_area_ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          title: Familiar Area Ids
+        willing_to_travel_area_ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          title: Willing To Travel Area Ids
+      type: object
+      required:
+        - display_name
+        - whatsapp_phone
+        - preferred_language_id
+        - preferred_communication_mode
+        - base_area_id
+        - primary_skill_ids
+        - record_status
+        - app_participation
+      title: WorkerInput
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer

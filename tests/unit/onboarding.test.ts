@@ -6,10 +6,8 @@ import {
   parseWorkerOnboarding,
   parseWorkerUpdate,
 } from "../../apps/web/src/app/operator/onboard/onboarding.ts";
-import {
-  createOnboardingGateway,
-  type OnboardingRpcClient,
-} from "../../apps/web/src/app/operator/onboard/onboarding-gateway.ts";
+import { createOnboardingGateway } from "../../apps/web/src/app/operator/onboard/onboarding-gateway.ts";
+import type { MarkdApiClient } from "../../apps/web/src/lib/markd-api.ts";
 
 const portrait = new File(["image"], "portrait.jpg", { type: "image/jpeg" });
 
@@ -30,28 +28,25 @@ function workerForm() {
   return form;
 }
 
-function client(
-  responses: Array<{ data: unknown; error: { message: string } | null }>,
-  uploadError: string | null = null,
-) {
-  const calls: Array<{ arguments_: Record<string, unknown>; name: string }> =
-    [];
-  const value: OnboardingRpcClient = {
-    rpc: async (name, arguments_) => {
-      calls.push({ arguments_, name });
-      return (
-        responses.shift() ?? {
-          data: null,
-          error: { message: "missing response" },
-        }
-      );
+function client(responses: unknown[], uploadError: string | null = null) {
+  const calls: Array<{
+    body?: unknown;
+    key?: string | undefined;
+    path: string;
+  }> = [];
+  const value: MarkdApiClient = {
+    json: async (path, options) => {
+      calls.push({
+        body: options?.body ? JSON.parse(String(options.body)) : undefined,
+        key: options?.headers?.["Idempotency-Key"],
+        path,
+      });
+      return (responses.shift() ?? {}) as never;
     },
-    storage: {
-      from: () => ({
-        upload: async () => ({
-          error: uploadError ? { message: uploadError } : null,
-        }),
-      }),
+    upload: async (path, _body, key) => {
+      calls.push({ key, path });
+      if (uploadError) throw new Error(uploadError);
+      return {} as never;
     },
   };
   return { calls, value };
@@ -109,8 +104,8 @@ describe("worker draft gateway", () => {
 
   it("begins, uploads privately, then completes with exact RPC arguments", async () => {
     const fake = client([
-      { data: [draft], error: null },
-      { data: "worker-id", error: null },
+      { ...draft, command_id: "command-id" },
+      { worker_id: "worker-id" },
     ]);
     await expect(
       createOnboardingGateway(fake.value).saveWorker(
@@ -118,31 +113,31 @@ describe("worker draft gateway", () => {
         "requested-id",
       ),
     ).resolves.toEqual({ id: "worker-id" });
-    expect(fake.calls).toEqual([
-      {
-        name: "begin_worker_onboarding",
-        arguments_: {
-          requested_worker_id: "requested-id",
-          payload: expect.objectContaining({
-            display_name: "Themba",
-            preferred_communication_mode: "voice",
-            app_participation: "whatsapp_only",
-          }),
-        },
+    expect(fake.calls[0]).toMatchObject({
+      path: "/api/v1/onboarding/workers/requested-id/begin",
+      body: expect.objectContaining({
+        display_name: "Themba",
+        preferred_communication_mode: "voice",
+        app_participation: "whatsapp_only",
+      }),
+    });
+    expect(fake.calls[1]).toMatchObject({
+      path: "/api/v1/onboarding/workers/worker-id/portrait",
+    });
+    expect(fake.calls[2]).toMatchObject({
+      path: "/api/v1/onboarding/workers/worker-id/complete",
+      body: {
+        object_path: "workers/worker-id/portrait.jpg",
+        portrait_asset_id: "asset-id",
+        target_status: "active",
       },
-      {
-        name: "complete_worker_onboarding",
-        arguments_: {
-          worker_id: "worker-id",
-          portrait_asset_id: "asset-id",
-          object_path: "workers/worker-id/portrait.jpg",
-          target_status: "active",
-        },
-      },
-    ]);
+    });
   });
   it("returns a resumable draft when private upload fails", async () => {
-    const fake = client([{ data: draft, error: null }], "network unavailable");
+    const fake = client(
+      [{ ...draft, command_id: "command-id" }],
+      "network unavailable",
+    );
     await expect(
       createOnboardingGateway(fake.value).saveWorker(
         parseWorkerOnboarding(workerForm()),
@@ -154,21 +149,21 @@ describe("worker draft gateway", () => {
     });
   });
   it("cancels a resumable draft through the command RPC", async () => {
-    const fake = client([{ data: "worker-id", error: null }]);
+    const fake = client([{}]);
     await expect(
       createOnboardingGateway(fake.value).cancelWorker("worker-id"),
     ).resolves.toBeUndefined();
     expect(fake.calls).toEqual([
       {
-        name: "cancel_worker_onboarding",
-        arguments_: { worker_id: "worker-id" },
+        key: "worker-cancel-worker-id",
+        path: "/api/v1/onboarding/workers/worker-id/cancel",
       },
     ]);
   });
   it("uses record update RPCs without direct client table writes", async () => {
     const fake = client([
-      { data: "worker-id", error: null },
-      { data: "organisation-id", error: null },
+      { worker_id: "worker-id" },
+      { organisation_id: "organisation-id" },
     ]);
     const gateway = createOnboardingGateway(fake.value);
     await gateway.updateWorker("worker-id", parseWorkerUpdate(workerForm()));
@@ -182,21 +177,13 @@ describe("worker draft gateway", () => {
       "organisation-id",
       parseOrganisationOnboarding(organisation),
     );
-    expect(fake.calls).toEqual([
-      {
-        name: "update_worker_record",
-        arguments_: {
-          worker_id: "worker-id",
-          payload: expect.objectContaining({ display_name: "Themba" }),
-        },
-      },
-      {
-        name: "update_organisation_record",
-        arguments_: {
-          organisation_id: "organisation-id",
-          payload: expect.objectContaining({ contact_display_name: "Lerato" }),
-        },
-      },
-    ]);
+    expect(fake.calls[0]).toMatchObject({
+      path: "/api/v1/workers/worker-id",
+      body: expect.objectContaining({ display_name: "Themba" }),
+    });
+    expect(fake.calls[1]).toMatchObject({
+      path: "/api/v1/organisations/organisation-id",
+      body: expect.objectContaining({ whatsapp_phone: "+27821234567" }),
+    });
   });
 });

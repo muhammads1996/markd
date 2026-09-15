@@ -44,6 +44,16 @@ async function becomeAuthenticatedOperator(
   await client.query("set local role authenticated");
 }
 
+async function becomeApiOperator(
+  client: Client,
+  userId: string,
+): Promise<void> {
+  await client.query("select set_config('request.jwt.claim.sub', $1, true)", [
+    userId,
+  ]);
+  await client.query("set local role postgres");
+}
+
 const domainTables = [
   "areas",
   "assignments",
@@ -1031,6 +1041,26 @@ describe("local Supabase database", () => {
     await client.query("rollback");
   });
 
+  it("keeps consequential command RPCs behind the API database role", async () => {
+    const client = new Client({ connectionString: localDatabaseUrl });
+    clients.push(client);
+    await client.connect();
+    await client.query("begin");
+    await createOperator(client, operatorUserId, "ops_user");
+    await becomeAuthenticatedOperator(client, operatorUserId);
+
+    await expect(
+      client.query(
+        "select * from public.begin_worker_onboarding($1, $2::jsonb)",
+        [
+          "91000000-0000-4000-8000-000000000099",
+          JSON.stringify({ display_name: "Browser command attempt" }),
+        ],
+      ),
+    ).rejects.toThrow("permission denied");
+    await client.query("rollback");
+  });
+
   it("runs draft-first worker onboarding and refuses activation before portrait upload", async () => {
     const client = new Client({ connectionString: localDatabaseUrl });
     clients.push(client);
@@ -1046,7 +1076,7 @@ describe("local Supabase database", () => {
     const skill = await client.query<{ id: string }>(
       "insert into public.skills(name) values ('Onboarding evidence skill') returning id",
     );
-    await becomeAuthenticatedOperator(client, operatorUserId);
+    await becomeApiOperator(client, operatorUserId);
     const draft = await client.query<{
       worker_id: string;
       portrait_asset_id: string;
@@ -1123,7 +1153,7 @@ describe("local Supabase database", () => {
     const skill = await client.query<{ id: string }>(
       "insert into public.skills(name) values ('Organisation typical skill') returning id",
     );
-    await becomeAuthenticatedOperator(client, operatorUserId);
+    await becomeApiOperator(client, operatorUserId);
     const organisation = await client.query<{ id: string }>(
       `select public.onboard_organisation(
         'Mahlobo Build (Pty) Ltd', 'Mahlobo Build', 'Anele Dlamini',
@@ -1179,7 +1209,7 @@ describe("local Supabase database", () => {
     const replacementSkill = await client.query<{ id: string }>(
       "insert into public.skills(name) values ('Replacement primary skill') returning id",
     );
-    await becomeAuthenticatedOperator(client, operatorUserId);
+    await becomeApiOperator(client, operatorUserId);
     const workerId = "91000000-0000-4000-8000-000000000011";
     const draft = await client.query<{
       bucket_id: string;
@@ -1304,7 +1334,7 @@ describe("local Supabase database", () => {
     await client.connect();
     await client.query("begin");
     await createOperator(client, operatorUserId, "ops_user");
-    await becomeAuthenticatedOperator(client, operatorUserId);
+    await becomeApiOperator(client, operatorUserId);
     const duplicateWorkerId = "91000000-0000-4000-8000-000000000012";
     await client.query("savepoint duplicate_phone");
     await expect(

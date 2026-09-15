@@ -10,6 +10,12 @@
   "packageManager": "pnpm@12.4.1",
   "scripts": {
     "dev": "corepack pnpm --filter @markd/web dev",
+    "api:dev": "uv run --project apps/api python apps/api/run.py",
+    "api:test": "uv run --project apps/api pytest apps/api/tests",
+    "api:lint": "uv run --project apps/api ruff check apps/api/app apps/api/tests apps/api/run.py",
+    "api:typecheck": "uv run --project apps/api mypy apps/api/app apps/api/run.py",
+    "api:openapi": "uv run --project apps/api python apps/api/scripts/export_openapi.py",
+    "api:openapi:check": "corepack pnpm api:openapi && git diff --exit-code -- docs/openapi.yaml",
     "build": "corepack pnpm --filter @markd/web build",
     "start": "corepack pnpm --filter @markd/web start",
     "format": "prettier --write .",

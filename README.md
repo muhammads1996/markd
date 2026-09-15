@@ -18,10 +18,18 @@ corepack enable
 corepack pnpm install --frozen-lockfile
 corepack pnpm db:start
 corepack pnpm env:local
+corepack pnpm api:dev
+# In a second terminal:
 corepack pnpm dev
 ```
 
 Open <http://localhost:3000>. `env:local` creates `apps/web/.env.local` from the running local Supabase stack. It copies only the public API URL and publishable key and refuses to replace an existing file.
+
+The operator web application sends consequential commands to the FastAPI
+application at `http://127.0.0.1:8000`; FastAPI uses Supabase/PostgreSQL as the
+canonical store. Set the server-only variables in `.env` or `apps/api/.env`
+from `.env.example` before starting the API. The browser never receives the
+database URL, JWT secret, or service-role key.
 
 ### Environment files
 
@@ -29,14 +37,18 @@ Open <http://localhost:3000>. `env:local` creates `apps/web/.env.local` from the
 - Production uses `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in the deployment provider's environment settings. For a local production-mode run, place those values in ignored `apps/web/.env.production.local`.
 - `.env.example` documents the variable contract and intentionally contains no environment credentials.
 - WhatsApp and OpenRouter variables are server-only. The credentialed provider
-	smoke sequence is documented in
-	[whatsapp-openrouter-pilot-smoke.md](docs/operations/whatsapp-openrouter-pilot-smoke.md).
+  smoke sequence is documented in
+  [whatsapp-openrouter-pilot-smoke.md](docs/operations/whatsapp-openrouter-pilot-smoke.md).
 
 ## Quality checks
 
 ```powershell
 corepack pnpm format:check
 corepack pnpm lint
+corepack pnpm api:lint
+corepack pnpm api:typecheck
+corepack pnpm api:test
+corepack pnpm api:openapi:check
 corepack pnpm typecheck
 corepack pnpm test:unit
 corepack pnpm db:reset
@@ -75,8 +87,8 @@ The integration suite uses `postgresql://postgres:postgres@127.0.0.1:54322/postg
 - `packages/contracts` — future shared validation contracts.
 - `packages/messaging`, `packages/language`, `packages/i18n`, `packages/observability` — reserved boundaries defined by the architecture; currently empty.
 - `packages/messaging` and `packages/language` contain provider-abstracted
-	WhatsApp/OpenRouter transport and language adapters; provider credentials stay
-	in server-only runtime configuration.
+  WhatsApp/OpenRouter transport and language adapters; provider credentials stay
+  in server-only runtime configuration.
 - `supabase` — local Supabase configuration, future migrations, and future Edge Functions.
 - `tests` — unit, local integration, and Playwright suites.
 

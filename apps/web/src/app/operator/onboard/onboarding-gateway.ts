@@ -4,15 +4,8 @@ import type {
   WorkerOnboardingInput,
   WorkerRecordInput,
 } from "./onboarding";
+import type { MarkdApiClient } from "../../../lib/markd-api";
 
-/**
- * Application boundary for FLO-106. Each mutation goes through an
- * authenticated active-operator command/RPC rather than client table writes.
- *
- * The worker flow is draft-first: an atomic RPC creates/resumes a draft and
- * reserves its private asset path, then completion verifies the uploaded
- * storage object before allowing an active/inactive record.
- */
 export interface OnboardingGateway {
   saveOrganisation(input: OrganisationOnboardingInput): Promise<{ id: string }>;
   saveWorker(
@@ -30,23 +23,13 @@ export interface OnboardingGateway {
   cancelWorker(workerId: string): Promise<void>;
 }
 
-type RpcResult = { data: unknown; error: { message: string } | null };
-
-export interface OnboardingRpcClient {
-  rpc(
-    functionName: string,
-    arguments_: Record<string, unknown>,
-  ): PromiseLike<RpcResult>;
-  storage: {
-    from(bucketId: string): {
-      upload(
-        path: string,
-        body: File,
-        options: { upsert: boolean },
-      ): PromiseLike<{ error: { message: string } | null }>;
-    };
-  };
-}
+type WorkerDraftResponse = {
+  worker_id: string;
+  portrait_asset_id: string;
+  bucket_id: string;
+  object_path: string;
+  command_id: string;
+};
 
 export class WorkerOnboardingDraftError extends Error {
   constructor(
@@ -58,82 +41,92 @@ export class WorkerOnboardingDraftError extends Error {
 }
 
 export function createOnboardingGateway(
-  client: OnboardingRpcClient,
+  client: MarkdApiClient,
 ): OnboardingGateway {
   return {
     async saveOrganisation(input) {
-      const result = await client.rpc("onboard_organisation", {
-        contact_display_name: input.contactName,
-        contact_phone_number: input.whatsappPhone,
-        display_name: input.organisationName ?? input.contactName,
-        legal_name: input.organisationName ?? input.contactName,
-        operating_area_ids: input.operatingAreaIds,
-        record_status: input.recordStatus,
-        typical_skill_ids: input.typicalSkillIds,
-      });
-      if (result.error) throw new Error(result.error.message);
-      if (typeof result.data !== "string") {
-        throw new Error("Onboarding did not return an organisation id.");
-      }
-      return { id: result.data };
+      const response = await client.json<{ organisation_id: string }>(
+        "/api/v1/onboarding/organisations",
+        jsonCommand(organisationPayload(input)),
+      );
+      return { id: response.organisation_id };
     },
     async saveWorker(input, requestedWorkerId) {
-      const begun = await client.rpc("begin_worker_onboarding", {
-        payload: workerPayload(input),
-        requested_worker_id: requestedWorkerId,
-      });
-      if (begun.error) throw new Error(begun.error.message);
-      const draft = readWorkerDraft(begun.data);
-      const upload = await client.storage
-        .from(draft.bucketId)
-        .upload(draft.objectPath, input.portrait, { upsert: true });
-      if (upload.error)
-        throw new WorkerOnboardingDraftError(upload.error.message, draft);
-
-      const completed = await client.rpc("complete_worker_onboarding", {
-        object_path: draft.objectPath,
-        portrait_asset_id: draft.portraitAssetId,
-        target_status: input.recordStatus,
-        worker_id: draft.workerId,
-      });
-      if (completed.error)
-        throw new WorkerOnboardingDraftError(completed.error.message, draft);
-      if (typeof completed.data !== "string") {
+      const draftResponse = await client.json<WorkerDraftResponse>(
+        `/api/v1/onboarding/workers/${requestedWorkerId}/begin`,
+        jsonCommand(workerPayload(input), `worker-begin-${requestedWorkerId}`),
+      );
+      const draft = readWorkerDraft(draftResponse);
+      const upload = new FormData();
+      upload.set("asset_id", draft.portraitAssetId);
+      upload.set("object_path", draft.objectPath);
+      upload.set("portrait", input.portrait);
+      try {
+        await client.upload(
+          `/api/v1/onboarding/workers/${draft.workerId}/portrait`,
+          upload,
+          `worker-portrait-${draft.workerId}`,
+        );
+        const completed = await client.json<{ worker_id: string }>(
+          `/api/v1/onboarding/workers/${draft.workerId}/complete`,
+          jsonCommand(
+            {
+              portrait_asset_id: draft.portraitAssetId,
+              object_path: draft.objectPath,
+              target_status: input.recordStatus,
+            },
+            `worker-complete-${draft.workerId}`,
+          ),
+        );
+        return { id: completed.worker_id };
+      } catch (error) {
         throw new WorkerOnboardingDraftError(
-          "Onboarding did not return a worker id.",
+          error instanceof Error
+            ? error.message
+            : "Unable to complete worker onboarding.",
           draft,
         );
       }
-      return { id: completed.data };
     },
     async updateWorker(workerId, input) {
-      const result = await client.rpc("update_worker_record", {
-        payload: workerPayload(input),
-        worker_id: workerId,
-      });
-      return readSavedId(result, "worker");
+      const response = await client.json<{ worker_id: string }>(
+        `/api/v1/workers/${workerId}`,
+        jsonCommand(workerPayload(input), `worker-update-${workerId}`, "PATCH"),
+      );
+      return { id: response.worker_id };
     },
     async updateOrganisation(organisationId, input) {
-      const result = await client.rpc("update_organisation_record", {
-        organisation_id: organisationId,
-        payload: {
-          contact_display_name: input.contactName,
-          contact_phone_number: input.whatsappPhone,
-          display_name: input.organisationName ?? input.contactName,
-          legal_name: input.organisationName ?? input.contactName,
-          operating_area_ids: input.operatingAreaIds,
-          record_status: input.recordStatus,
-          typical_skill_ids: input.typicalSkillIds,
-        },
-      });
-      return readSavedId(result, "organisation");
+      const response = await client.json<{ organisation_id: string }>(
+        `/api/v1/organisations/${organisationId}`,
+        jsonCommand(
+          organisationPayload(input),
+          `organisation-update-${organisationId}`,
+          "PATCH",
+        ),
+      );
+      return { id: response.organisation_id };
     },
     async cancelWorker(workerId) {
-      const result = await client.rpc("cancel_worker_onboarding", {
-        worker_id: workerId,
+      await client.json(`/api/v1/onboarding/workers/${workerId}/cancel`, {
+        method: "POST",
+        headers: { "Idempotency-Key": `worker-cancel-${workerId}` },
       });
-      if (result.error) throw new Error(result.error.message);
     },
+  };
+}
+
+function jsonCommand(
+  payload: unknown,
+  idempotencyKey = crypto.randomUUID(),
+  method = "POST",
+) {
+  return {
+    body: JSON.stringify(payload),
+    headers: {
+      "Content-Type": "application/json",
+      "Idempotency-Key": idempotencyKey,
+    },
+    method,
   };
 }
 
@@ -143,7 +136,6 @@ function workerPayload(input: WorkerRecordInput): Record<string, unknown> {
     base_area_id: input.baseAreaId,
     display_name: input.displayName,
     familiar_area_ids: input.familiarAreaIds,
-    area_preferences: areaPreferences(input),
     language_ids: [input.preferredLanguageId],
     phone_number: input.whatsappPhone,
     preferred_communication_mode: input.preferredCommunicationMode,
@@ -155,41 +147,33 @@ function workerPayload(input: WorkerRecordInput): Record<string, unknown> {
   };
 }
 
-function areaPreferences(input: WorkerRecordInput) {
-  const familiar = new Set(input.familiarAreaIds);
-  const travel = new Set(input.willingToTravelAreaIds);
-  return [...new Set([...familiar, ...travel])].map((areaId) => ({
-    area_id: areaId,
-    is_familiar: familiar.has(areaId),
-    willing_to_travel: travel.has(areaId),
-  }));
+function organisationPayload(input: OrganisationOnboardingInput) {
+  const name = input.organisationName ?? input.contactName;
+  return {
+    organisation_name: input.organisationName,
+    contact_name: input.contactName,
+    whatsapp_phone: input.whatsappPhone,
+    operating_area_ids: input.operatingAreaIds,
+    typical_skill_ids: input.typicalSkillIds,
+    record_status: input.recordStatus,
+    legal_name: name,
+    display_name: name,
+  };
 }
 
-function readSavedId(result: RpcResult, kind: "worker" | "organisation") {
-  if (result.error) throw new Error(result.error.message);
-  if (typeof result.data !== "string") {
-    throw new Error(`Onboarding did not return a ${kind} id.`);
-  }
-  return { id: result.data };
-}
-
-function readWorkerDraft(data: unknown): WorkerOnboardingDraft {
-  const row = Array.isArray(data) ? data[0] : data;
-  if (!row || typeof row !== "object")
-    throw new Error("Onboarding did not return a worker draft.");
-  const value = row as Record<string, unknown>;
+function readWorkerDraft(data: WorkerDraftResponse): WorkerOnboardingDraft {
   if (
-    typeof value.worker_id !== "string" ||
-    typeof value.portrait_asset_id !== "string" ||
-    typeof value.bucket_id !== "string" ||
-    typeof value.object_path !== "string"
+    typeof data.worker_id !== "string" ||
+    typeof data.portrait_asset_id !== "string" ||
+    typeof data.bucket_id !== "string" ||
+    typeof data.object_path !== "string"
   ) {
     throw new Error("Onboarding returned an invalid worker draft.");
   }
   return {
-    bucketId: value.bucket_id,
-    objectPath: value.object_path,
-    portraitAssetId: value.portrait_asset_id,
-    workerId: value.worker_id,
+    bucketId: data.bucket_id,
+    objectPath: data.object_path,
+    portraitAssetId: data.portrait_asset_id,
+    workerId: data.worker_id,
   };
 }

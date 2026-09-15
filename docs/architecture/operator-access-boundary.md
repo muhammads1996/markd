@@ -13,6 +13,21 @@ roles below:
 There is no worker or contractor login. Public, anonymous, and authenticated
 but unprovisioned users cannot retrieve Work Graph records or Work Cards.
 
+## FastAPI command boundary
+
+FLO-131 makes FastAPI the application execution boundary for consequential
+commands. The Next.js operator application forwards authenticated requests to
+`/api/v1`; it does not invoke mutation RPCs directly. FastAPI verifies the
+Supabase bearer token, requires an active operator account, establishes
+`request.jwt.claim.sub` transaction-locally, and invokes the existing SQL
+domain commands against PostgreSQL.
+
+The mutation RPCs are not executable by the `anon` or `authenticated` database
+roles. This prevents a browser session from bypassing the API's validation,
+idempotency, correlation, domain-event, and outbox handling. PostgreSQL remains
+the canonical store; the private command tables record execution metadata and
+durable follow-up work rather than duplicating domain state.
+
 ## Provisioning and revocation
 
 Operator provisioning is an admin-controlled action. Create an Auth user in
