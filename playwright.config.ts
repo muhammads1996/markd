@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
-  retries: process.env.CI ? 2 : 0,
+  retries: 0,
   reporter: process.env.CI ? [["html", { open: "never" }], ["github"]] : "list",
   use: {
     baseURL: "http://127.0.0.1:3000",
@@ -21,9 +21,12 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "corepack pnpm start",
+    command:
+      process.env.MARKD_PARTICIPANT_FIXTURES === "1"
+        ? "corepack pnpm dev"
+        : "corepack pnpm start",
     url: "http://127.0.0.1:3000",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 });

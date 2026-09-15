@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-test("serves the responsive MARKD application shell", async ({ page }) => {
+test("routes the root entry into participant authentication", async ({
+  page,
+}) => {
   const browserErrors: string[] = [];
   page.on("pageerror", (error) => browserErrors.push(error.message));
   page.on("console", (message) => {
@@ -9,9 +11,8 @@ test("serves the responsive MARKD application shell", async ({ page }) => {
 
   await page.goto("/");
 
-  await expect(page).toHaveTitle("MARKD Operator Platform");
-  await expect(page.getByRole("heading", { name: "MARKD" })).toBeVisible();
-  await expect(page.getByText("Repository bootstrap active")).toBeVisible();
+  await expect(page).toHaveURL(/\/sign-in(?:\?.*)?$/);
+  await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
 
   const hasHorizontalOverflow = await page.evaluate(
     () =>
@@ -29,9 +30,11 @@ test("publishes a local web app manifest and icons", async ({ request }) => {
   const manifest = (await manifestResponse.json()) as {
     icons?: Array<{ src: string }>;
     name?: string;
+    start_url?: string;
   };
-  expect(manifest.name).toBe("MARKD Operator Platform");
-  expect(manifest.icons?.length).toBeGreaterThanOrEqual(2);
+  expect(manifest.name).toBe("MARKD");
+  expect(manifest.start_url).toBe("/participant");
+  expect(manifest.icons?.length).toBeGreaterThanOrEqual(3);
 
   for (const icon of manifest.icons ?? []) {
     const iconResponse = await request.get(icon.src);

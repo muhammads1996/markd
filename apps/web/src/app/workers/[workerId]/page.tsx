@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { OperatorChrome } from "../../../components/operator/OperatorChrome";
 import {
   assertQuerySuccess,
   getOperatorClient,
   provenanceLabel,
 } from "../../../features/work-graph/queries";
-import styles from "./worker.module.css";
+import styles from "../../../components/operator/operator-record.module.css";
 
 export default async function WorkerDetailPage({
   params,
@@ -129,139 +130,150 @@ export default async function WorkerDetailPage({
   );
 
   return (
-    <main className={styles.page}>
-      <nav aria-label="Worker record actions" className={styles.actions}>
-        <Link className={styles.back} href="/search">
-          ← Search
-        </Link>
-        <Link href={`/operator/onboard?workerId=${workerId}`}>Edit worker</Link>
-      </nav>
-      <header className={styles.header}>
-        <p>Worker record</p>
-        <h1>{card.preferred_name || card.display_name}</h1>
-        <span>{card.confirmed_workmark_count ?? 0} confirmed Workmarks</span>
-      </header>
-      <section>
-        <h2>Work history</h2>
-        {workmarks.length === 0 ? (
-          <p className={styles.empty}>No Workmarks have been recorded yet.</p>
-        ) : (
-          <ol className={styles.timeline}>
-            {workmarks.map((workmark) => (
-              <li key={workmark.id}>
-                <strong>
-                  {organisations.get(workmark.organisation_id) ??
-                    "Organisation record"}
-                </strong>
-                <span>
-                  {workmark.work_started_on} to {workmark.work_ended_on}
-                </span>
-                <em
-                  data-provenance={
-                    workmark.assignment_id ? "markd_arranged" : workmark.origin
-                  }
-                >
-                  {provenanceLabel(workmark.origin, workmark.assignment_id)}
-                </em>
-                <small>
-                  {workmark.attendance} attendance · {workmark.completion}{" "}
-                  completion · {workmark.payment} payment
-                </small>
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
-      <section>
-        <h2>Demonstrated skills</h2>
-        {demonstrated.length === 0 ? (
-          <p className={styles.empty}>
-            No skills have been demonstrated through confirmed Workmarks yet.
-          </p>
-        ) : (
-          <ul className={styles.list}>
-            {[
-              ...new Set(demonstrated.map((item) => skills.get(item.skill_id))),
-            ].map((skill) => (
-              <li key={skill ?? "unknown-skill"}>
-                <strong>{skill ?? "Skill"}</strong>
-                <span>Confirmed Workmark evidence from work history</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      <section>
-        <h2>Recorded skill evidence</h2>
-        {evidence.length === 0 ? (
-          <p className={styles.empty}>
-            No skill evidence has been recorded yet.
-          </p>
-        ) : (
-          <ul className={styles.list}>
-            {evidence.map((item) => (
-              <li key={item.id}>
-                <strong>{skills.get(item.skill_id) ?? "Skill"}</strong>
-                <span>
-                  Evidence source: {item.source}
-                  {item.confidence !== null
-                    ? ` · confidence ${item.confidence}`
-                    : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      <section>
-        <h2>Contractor relationships</h2>
-        {relationships.length === 0 ? (
-          <p className={styles.empty}>
-            No contractor relationships have been recorded yet.
-          </p>
-        ) : (
-          <ul className={styles.list}>
-            {relationships.map((relationship) => (
-              <li key={relationship.organisation_id}>
-                <strong>
-                  {organisations.get(relationship.organisation_id) ??
-                    "Organisation record"}
-                </strong>
-                <span>
-                  {relationship.confirmed_workmark_count ?? 0} confirmed
-                  Workmarks
-                  {relationship.is_repeat_relationship
-                    ? " · repeated relationship"
-                    : ""}{" "}
-                  · last worked {relationship.last_worked_on ?? "not recorded"}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      <section>
-        <h2>Crew links</h2>
-        {crewIds.length === 0 ? (
-          <p className={styles.empty}>No crew links have been recorded yet.</p>
-        ) : (
-          <ul className={styles.list}>
-            {crewIds.map((crewId) => {
-              const crewCard = crewCards.get(crewId);
-              return (
-                <li key={crewId}>
-                  <Link href={`/workers/${crewId}`}>
-                    {crewCard?.preferred_name ||
-                      crewCard?.display_name ||
-                      "Worker record"}
-                  </Link>
-                  <span>Known crew connection</span>
+    <OperatorChrome>
+      <main className={styles.page}>
+        <nav aria-label="Worker record actions" className={styles.actions}>
+          <Link className={styles.back} href="/search">
+            ← Search
+          </Link>
+          <Link href={`/operator/onboard?workerId=${workerId}`}>
+            Edit worker
+          </Link>
+        </nav>
+        <header className={styles.header}>
+          <p>Worker record</p>
+          <h1>{card.preferred_name || card.display_name}</h1>
+          <span>{card.confirmed_workmark_count ?? 0} confirmed Workmarks</span>
+        </header>
+        <section>
+          <h2>Work history</h2>
+          {workmarks.length === 0 ? (
+            <p className={styles.empty}>No Workmarks have been recorded yet.</p>
+          ) : (
+            <ol className={styles.timeline}>
+              {workmarks.map((workmark) => (
+                <li key={workmark.id}>
+                  <strong>
+                    {organisations.get(workmark.organisation_id) ??
+                      "Organisation record"}
+                  </strong>
+                  <span>
+                    {workmark.work_started_on} to {workmark.work_ended_on}
+                  </span>
+                  <em
+                    data-provenance={
+                      workmark.assignment_id
+                        ? "markd_arranged"
+                        : workmark.origin
+                    }
+                  >
+                    {provenanceLabel(workmark.origin, workmark.assignment_id)}
+                  </em>
+                  <small>
+                    {workmark.attendance} attendance · {workmark.completion}{" "}
+                    completion · {workmark.payment} payment
+                  </small>
                 </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-    </main>
+              ))}
+            </ol>
+          )}
+        </section>
+        <section>
+          <h2>Demonstrated skills</h2>
+          {demonstrated.length === 0 ? (
+            <p className={styles.empty}>
+              No skills have been demonstrated through confirmed Workmarks yet.
+            </p>
+          ) : (
+            <ul className={styles.list}>
+              {[
+                ...new Set(
+                  demonstrated.map((item) => skills.get(item.skill_id)),
+                ),
+              ].map((skill) => (
+                <li key={skill ?? "unknown-skill"}>
+                  <strong>{skill ?? "Skill"}</strong>
+                  <span>Confirmed Workmark evidence from work history</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+        <section>
+          <h2>Recorded skill evidence</h2>
+          {evidence.length === 0 ? (
+            <p className={styles.empty}>
+              No skill evidence has been recorded yet.
+            </p>
+          ) : (
+            <ul className={styles.list}>
+              {evidence.map((item) => (
+                <li key={item.id}>
+                  <strong>{skills.get(item.skill_id) ?? "Skill"}</strong>
+                  <span>
+                    Evidence source: {item.source}
+                    {item.confidence !== null
+                      ? ` · confidence ${item.confidence}`
+                      : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+        <section>
+          <h2>Contractor relationships</h2>
+          {relationships.length === 0 ? (
+            <p className={styles.empty}>
+              No contractor relationships have been recorded yet.
+            </p>
+          ) : (
+            <ul className={styles.list}>
+              {relationships.map((relationship) => (
+                <li key={relationship.organisation_id}>
+                  <strong>
+                    {organisations.get(relationship.organisation_id) ??
+                      "Organisation record"}
+                  </strong>
+                  <span>
+                    {relationship.confirmed_workmark_count ?? 0} confirmed
+                    Workmarks
+                    {relationship.is_repeat_relationship
+                      ? " · repeated relationship"
+                      : ""}{" "}
+                    · last worked{" "}
+                    {relationship.last_worked_on ?? "not recorded"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+        <section>
+          <h2>Crew links</h2>
+          {crewIds.length === 0 ? (
+            <p className={styles.empty}>
+              No crew links have been recorded yet.
+            </p>
+          ) : (
+            <ul className={styles.list}>
+              {crewIds.map((crewId) => {
+                const crewCard = crewCards.get(crewId);
+                return (
+                  <li key={crewId}>
+                    <Link href={`/workers/${crewId}`}>
+                      {crewCard?.preferred_name ||
+                        crewCard?.display_name ||
+                        "Worker record"}
+                    </Link>
+                    <span>Known crew connection</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      </main>
+    </OperatorChrome>
   );
 }

@@ -44,13 +44,29 @@ export interface OutboundDeliveryInput {
   sourceProposedActionId?: string;
 }
 
+// A plain `!==` on shared-secret tokens leaks timing information proportional
+// to the matching prefix length; every secret comparison in this module goes
+// through this constant-time helper instead.
+export function constantTimeEquals(
+  received: string | null | undefined,
+  expected: string | null | undefined,
+): boolean {
+  if (!received || !expected) return false;
+  const receivedBuffer = Buffer.from(received);
+  const expectedBuffer = Buffer.from(expected);
+  return (
+    receivedBuffer.length === expectedBuffer.length &&
+    timingSafeEqual(receivedBuffer, expectedBuffer)
+  );
+}
+
 export function verifyWebhookToken(
   mode: string | null,
   token: string | null,
   challenge: string | null,
   expectedToken: string | undefined,
 ): string | null {
-  if (mode !== "subscribe" || !expectedToken || token !== expectedToken)
+  if (mode !== "subscribe" || !constantTimeEquals(token, expectedToken))
     return null;
   return challenge;
 }
@@ -63,12 +79,7 @@ export function verifyWebhookSignature(
   if (!signature || !appSecret || !signature.startsWith("sha256="))
     return false;
   const expected = `sha256=${createHmac("sha256", appSecret).update(body).digest("hex")}`;
-  const received = Buffer.from(signature);
-  const calculated = Buffer.from(expected);
-  return (
-    received.length === calculated.length &&
-    timingSafeEqual(received, calculated)
-  );
+  return constantTimeEquals(signature, expected);
 }
 
 export function normalizeInboundMessage(

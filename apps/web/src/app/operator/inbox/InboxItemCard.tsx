@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, Pencil, X } from "lucide-react";
 import { useActionState, useState } from "react";
 
 import type { InboxItem } from "../../../features/ops-inbox/queries";
@@ -21,7 +22,6 @@ const riskTierLabels: Record<InboxItem["riskTier"], string> = {
 };
 
 export function InboxItemCard({ item }: { item: InboxItem }) {
-  const [deferred, setDeferred] = useState(false);
   const [editing, setEditing] = useState(item.ambiguity !== "clear");
   const [confirmState, confirmAction, confirmPending] = useActionState(
     confirmProposedAction,
@@ -31,8 +31,6 @@ export function InboxItemCard({ item }: { item: InboxItem }) {
     rejectProposedAction,
     rejectInitialState,
   );
-
-  if (deferred) return null;
 
   return (
     <article className={styles.card} aria-label={`Proposed ${item.actionType}`}>
@@ -109,10 +107,12 @@ export function InboxItemCard({ item }: { item: InboxItem }) {
           )}
           <div className={styles.actions}>
             <button type="submit" disabled={confirmPending}>
+              <Check aria-hidden="true" size={17} />
               Confirm
             </button>
             {item.ambiguity === "clear" && (
               <button type="button" onClick={() => setEditing(false)}>
+                <X aria-hidden="true" size={17} />
                 Cancel edit
               </button>
             )}
@@ -140,9 +140,11 @@ export function InboxItemCard({ item }: { item: InboxItem }) {
             />
           ))}
           <button type="submit" disabled={confirmPending}>
+            <Check aria-hidden="true" size={17} />
             Confirm
           </button>
           <button type="button" onClick={() => setEditing(true)}>
+            <Pencil aria-hidden="true" size={17} />
             Edit
           </button>
         </form>
@@ -160,6 +162,7 @@ export function InboxItemCard({ item }: { item: InboxItem }) {
           <input name="reason" required />
         </label>
         <button type="submit" disabled={rejectPending}>
+          <X aria-hidden="true" size={17} />
           Reject
         </button>
         {rejectState.error && (
@@ -168,14 +171,6 @@ export function InboxItemCard({ item }: { item: InboxItem }) {
           </p>
         )}
       </form>
-
-      <button
-        type="button"
-        className={styles.deferButton}
-        onClick={() => setDeferred(true)}
-      >
-        Defer for later
-      </button>
     </article>
   );
 }

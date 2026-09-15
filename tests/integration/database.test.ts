@@ -59,6 +59,8 @@ const domainTables = [
   "labour_requirements",
   "languages",
   "operator_accounts",
+  "participant_account_scopes",
+  "participant_accounts",
   "organisation_contacts",
   "organisation_operating_areas",
   "organisation_typical_skills",
