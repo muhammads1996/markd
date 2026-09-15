@@ -8,13 +8,13 @@ Build one canonical work-graph system that can be operated from a phone-first we
 
 The architecture should optimise for:
 
-* correctness and provenance
-* fast product iteration
-* low infrastructure cost
-* operator usability
-* safe AI-assisted parsing
-* easy provider replacement
-* participant contractor/worker surfaces without rewriting the data layer or adding a second frontend framework
+- correctness and provenance
+- fast product iteration
+- low infrastructure cost
+- operator usability
+- safe AI-assisted parsing
+- easy provider replacement
+- participant contractor/worker surfaces without rewriting the data layer or adding a second frontend framework
 
 ---
 
@@ -72,14 +72,14 @@ Use a shared **Next.js + React + TypeScript PWA** product stack for the Ops Desk
 
 Reasons:
 
-* one deployable frontend stack during the pilot
-* phone-first browser deployment for operators, workers and contractors
-* no App Store dependency
-* installable PWA behaviour where platform support allows
-* easy responsive UI and shared MARKD component system
-* public/shareable Work Card routes
-* server-rendered participant/contractor surfaces where useful
-* less duplicated navigation, authentication plumbing and UI code than maintaining React Native in parallel
+- one deployable frontend stack during the pilot
+- phone-first browser deployment for operators, workers and contractors
+- no App Store dependency
+- installable PWA behaviour where platform support allows
+- easy responsive UI and shared MARKD component system
+- public/shareable Work Card routes
+- server-rendered participant/contractor surfaces where useful
+- less duplicated navigation, authentication plumbing and UI code than maintaining React Native in parallel
 
 The participant PWA should use separate route groups/layouts and authorisation policies from Ops even though it lives in the same Next.js application. Worker/contractor identities still map to canonical Person / OrganisationContact records.
 
@@ -95,11 +95,11 @@ React Native/Expo is explicitly deferred. Revisit native only if measured field 
 
 Use:
 
-* PostgreSQL
-* Supabase Auth
-* private Storage
-* Edge Functions
-* Supabase Queues / pgmq
+- PostgreSQL
+- Supabase Auth
+- private Storage
+- Edge Functions
+- Supabase Queues / pgmq
 
 Supabase Edge Functions are well suited to short-lived TypeScript webhook endpoints, while current Supabase guidance recommends moving heavier/long-running processing to background work. Supabase Queues provides a Postgres-native durable queue, which fits the event-processing pipeline without introducing separate message infrastructure during the pilot.
 
@@ -117,10 +117,10 @@ Use provider interfaces rather than embedding one model vendor into domain code.
 
 Interfaces:
 
-* `TranscriptionProvider`
-* `LanguageDetectionProvider`
-* `StructuredIntentProvider`
-* `TranslationProvider`
+- `TranscriptionProvider`
+- `LanguageDetectionProvider`
+- `StructuredIntentProvider`
+- `TranslationProvider`
 
 All model output must pass application schemas and policy before becoming a ProposedAction.
 
@@ -169,22 +169,22 @@ Do **not** introduce a graph database yet.
 
 The work graph is naturally represented by relational entities and edges:
 
-* Person
-* WorkerProfile
-* Organisation
-* OrganisationContact
-* Workmark
-* VerificationClaim
-* LabourRequest
-* LabourRequirement
-* Assignment
-* CrewLink
-* AvailabilitySignal
-* ChannelEvent
-* ProposedAction
-* ExceptionCase
-* PickupPoint
-* AssignmentLogistics / travel-readiness fields
+- Person
+- WorkerProfile
+- Organisation
+- OrganisationContact
+- Workmark
+- VerificationClaim
+- LabourRequest
+- LabourRequirement
+- Assignment
+- CrewLink
+- AvailabilitySignal
+- ChannelEvent
+- ProposedAction
+- ExceptionCase
+- PickupPoint
+- AssignmentLogistics / travel-readiness fields
 
 Graph-style views are produced with joins, views and derived aggregates.
 
@@ -250,12 +250,12 @@ Prefer multiple explicit claims over a single `verified=true` flag.
 
 A fact may be supported by:
 
-* worker statement
-* contractor statement
-* both parties
-* MARKD-arranged assignment
-* operator observation
-* documentary credential verification
+- worker statement
+- contractor statement
+- both parties
+- MARKD-arranged assignment
+- operator observation
+- documentary credential verification
 
 ---
 
@@ -265,22 +265,22 @@ All graph mutation should pass through explicit application commands.
 
 Examples:
 
-* `CreateWorker`
-* `CreateOrganisation`
-* `RecordAvailability`
-* `CreateLabourRequest`
-* `CreateAssignment`
-* `ConfirmAssignment`
-* `CloseAssignment`
-* `RecordHistoricalWorkClaim`
-* `AddVerificationClaim`
-* `OpenExceptionCase`
-* `ResolveExceptionCase`
-* `RecordWorkerTravelPreferences`
-* `SetAssignmentLogistics`
-* `AuthoriseAssignmentTravel`
-* `AcknowledgeAssignmentLogistics`
-* `RecordAssignmentArrival`
+- `CreateWorker`
+- `CreateOrganisation`
+- `RecordAvailability`
+- `CreateLabourRequest`
+- `CreateAssignment`
+- `ConfirmAssignment`
+- `CloseAssignment`
+- `RecordHistoricalWorkClaim`
+- `AddVerificationClaim`
+- `OpenExceptionCase`
+- `ResolveExceptionCase`
+- `RecordWorkerTravelPreferences`
+- `SetAssignmentLogistics`
+- `AuthoriseAssignmentTravel`
+- `AcknowledgeAssignmentLogistics`
+- `RecordAssignmentArrival`
 
 Travel authorisation must be a deterministic application transition, never inferred directly from a worker saying YES to an offer.
 
@@ -294,11 +294,11 @@ A valid participant command should not require an operator merely because early 
 
 Examples:
 
-* authenticated contractor creates a complete Labour Request → deterministic command may execute directly;
-* authenticated/strongly resolved worker accepts or declines an offered Assignment → deterministic response transition may execute directly;
-* contractor explicitly confirms selected workers and logistics → authorised contractor command may execute directly;
-* deterministic `AuthoriseAssignmentTravel` evaluates required state/facts; no model may infer travel readiness;
-* ambiguous free-form WhatsApp, unresolved identity, conflicting facts, trust/economic negatives, disputes or unsafe transitions → ProposedAction/Ops review.
+- authenticated contractor creates a complete Labour Request → deterministic command may execute directly;
+- authenticated/strongly resolved worker accepts or declines an offered Assignment → deterministic response transition may execute directly;
+- contractor explicitly confirms selected workers and logistics → authorised contractor command may execute directly;
+- deterministic `AuthoriseAssignmentTravel` evaluates required state/facts; no model may infer travel readiness;
+- ambiguous free-form WhatsApp, unresolved identity, conflicting facts, trust/economic negatives, disputes or unsafe transitions → ProposedAction/Ops review.
 
 Keep **operator confirmation** distinct from **authorised human confirmation**. The authorised human may be the participant whose action is being recorded. This removes unnecessary Ops touches without introducing opaque automated employment decisions.
 
@@ -333,21 +333,21 @@ Processing jobs must be safe to retry.
 
 Use a durable queue for:
 
-* media retrieval
-* transcription
-* language detection
-* structured intent extraction
-* entity resolution
-* ProposedAction creation
-* outbound send jobs where useful
+- media retrieval
+- transcription
+- language detection
+- structured intent extraction
+- entity resolution
+- ProposedAction creation
+- outbound send jobs where useful
 
 The queue consumer should implement:
 
-* visibility timeout
-* retry count
-* dead-letter/failure handling strategy
-* structured logging
-* deterministic idempotency key
+- visibility timeout
+- retry count
+- dead-letter/failure handling strategy
+- structured logging
+- deterministic idempotency key
 
 ---
 
@@ -371,12 +371,12 @@ Example:
 
 The application validates:
 
-* schema
-* referenced entity existence
-* allowed state transition
-* actor/source permission
-* risk tier
-* need for confirmation
+- schema
+- referenced entity existence
+- allowed state transition
+- actor/source permission
+- risk tier
+- need for confirmation
 
 Only then can an application command execute.
 
@@ -404,11 +404,11 @@ Initially require confirmation where parsing ambiguity exists.
 
 Examples:
 
-* no-show
-* non-payment
-* negative reuse preference
-* completed Workmark
-* dispute outcome
+- no-show
+- non-payment
+- negative reuse preference
+- completed Workmark
+- dispute outcome
 
 Require authorised deterministic confirmation/evidence policy.
 
@@ -426,15 +426,15 @@ Store structured values plus source ChannelEvent.
 
 Capture:
 
-* preferred language
-* additional languages
-* preferred mode: text / voice / call
+- preferred language
+- additional languages
+- preferred mode: text / voice / call
 
 ### Initial language set
 
-* English
-* Afrikaans
-* isiXhosa
+- English
+- Afrikaans
+- isiXhosa
 
 The language model must be extensible by table/config rather than a fixed three-value database enum.
 
@@ -444,20 +444,20 @@ Maintain versioned message templates per language for high-consequence communica
 
 Template keys may include:
 
-* assignment_offer
-* assignment_confirmed
-* no_work_confirmed
-* contractor_roster_confirmed
-* cancellation
-* payment_followup
+- assignment_offer
+- assignment_confirmed
+- no_work_confirmed
+- contractor_roster_confirmed
+- cancellation
+- payment_followup
 
 Split worker-facing assignment communication into explicit semantic states:
 
-* `assignment_offer_do_not_travel`
-* `assignment_travel_ready`
-* `assignment_changed`
-* `assignment_cancelled`
-* `pickup_reminder`
+- `assignment_offer_do_not_travel`
+- `assignment_travel_ready`
+- `assignment_changed`
+- `assignment_cancelled`
+- `pickup_reminder`
 
 The rendered message must place the travel state before descriptive detail. A worker should not have to interpret whether an offer is final.
 
@@ -473,11 +473,11 @@ Voice support is not only an AI-ingestion convenience. It is an accessibility re
 
 The channel adapter should support:
 
-* inbound voice notes
-* short deterministic outbound text in preferred language
-* audio/voice follow-up where policy/provider constraints allow it
-* operator-call fallback
-* a communication-preference flag so operators know when not to rely on text alone
+- inbound voice notes
+- short deterministic outbound text in preferred language
+- audio/voice follow-up where policy/provider constraints allow it
+- operator-call fallback
+- a communication-preference flag so operators know when not to rely on text alone
 
 Do not assume that a translated paragraph is accessible merely because it is in the correct language.
 
@@ -504,15 +504,15 @@ The operator PWA should make the distinction between **offered**, **worker accep
 
 For each next-day assignment show:
 
-* worker
-* job/site area
-* rate/terms status
-* reporting mode
-* pickup/reporting point and time
-* contractor confirmation state
-* travel-authorised state
-* worker acknowledgement state
-* cancellation/exception state
+- worker
+- job/site area
+- rate/terms status
+- reporting mode
+- pickup/reporting point and time
+- contractor confirmation state
+- travel-authorised state
+- worker acknowledgement state
+- cancellation/exception state
 
 The Tomorrow screen should support grouped views by PickupPoint so an operator can coordinate a contractor collecting several confirmed workers from one place.
 
@@ -520,21 +520,21 @@ The Tomorrow screen should support grouped views by PickupPoint so an operator c
 
 Primary:
 
-* Inbox
-* Tomorrow
-* Search
-* Work Book
-* Exceptions
+- Inbox
+- Tomorrow
+- Search
+- Work Book
+- Exceptions
 
 ### Entity routes
 
 Examples:
 
-* `/workers/[id]`
-* `/organisations/[id]`
-* `/requests/[id]`
-* `/workmarks/[id]`
-* `/inbox/[id]`
+- `/workers/[id]`
+- `/organisations/[id]`
+- `/requests/[id]`
+- `/workmarks/[id]`
+- `/inbox/[id]`
 
 ### Creation
 
@@ -564,11 +564,11 @@ WhatsApp Cloud API supports interactive reply/list messages, location messages a
 
 A travel-ready confirmation should be able to send:
 
-* plain-language area / landmark
-* pickup or reporting time
-* map location pin when useful
-* contractor/site contact
-* explicit self-travel vs pickup instruction
+- plain-language area / landmark
+- pickup or reporting time
+- map location pin when useful
+- contractor/site contact
+- explicit self-travel vs pickup instruction
 
 Do not require live worker tracking. Coarse worker base area and known PickupPoints are sufficient for the pilot unless field evidence proves otherwise.
 
@@ -578,27 +578,27 @@ Prefer structured, queryable fields rather than opaque notes:
 
 `WorkerProfile`
 
-* `base_area_id` or area text
-* `travel_mode_preference`
-* `pickup_needed_default`
-* `travel_notes`
+- `base_area_id` or area text
+- `travel_mode_preference`
+- `pickup_needed_default`
+- `travel_notes`
 
 Related tables where needed:
 
-* `worker_work_areas(worker_id, area_id, preference_state)`
-* `worker_pickup_points(worker_id, pickup_point_id, preference_state)`
-* `pickup_points(id, name, area, landmark, latitude?, longitude?, type, active)`
+- `worker_work_areas(worker_id, area_id, preference_state)`
+- `worker_pickup_points(worker_id, pickup_point_id, preference_state)`
+- `pickup_points(id, name, area, landmark, latitude?, longitude?, type, active)`
 
 `LabourRequest / AssignmentLogistics`
 
-* `reporting_mode`
-* `pickup_point_id?`
-* `report_at`
-* `transport_provided`
-* `transport_contribution_amount?`
-* `confirmation_cutoff_at?`
-* `travel_authorised_at?`
-* `worker_acknowledged_at?`
+- `reporting_mode`
+- `pickup_point_id?`
+- `report_at`
+- `transport_provided`
+- `transport_contribution_amount?`
+- `confirmation_cutoff_at?`
+- `travel_authorised_at?`
+- `worker_acknowledged_at?`
 
 Do not store exact home coordinates unless a later use case can justify that privacy cost.
 
@@ -626,8 +626,8 @@ Do not expose raw worker table rows to a public route.
 
 Pilot roles:
 
-* `ops_admin`
-* `ops_user`
+- `ops_admin`
+- `ops_user`
 
 Use RLS and server-side policy for sensitive data.
 
@@ -643,10 +643,10 @@ Service-role keys stay server-side only.
 
 Separate logical buckets/paths for:
 
-* worker portraits
-* verification media
-* WhatsApp media/transient processing
-* future public/shareable derived assets
+- worker portraits
+- verification media
+- WhatsApp media/transient processing
+- future public/shareable derived assets
 
 Default sensitive storage to private.
 
@@ -682,19 +682,19 @@ Define explicit expiry/deletion policy after transcription/resolution where feas
 
 Minimum production observability:
 
-* webhook request logs
-* queue depth/age
-* processing failures/retries
-* provider latency/errors
-* ProposedAction confirmation/rejection rate
-* travel-ready confirmations sent
-* worker logistics acknowledgement rate
-* late cancellation after travel authorisation
-* failed/unclear pickup exceptions
-* unknown-sender events
-* outbound send failures
-* database errors
-* frontend error monitoring
+- webhook request logs
+- queue depth/age
+- processing failures/retries
+- provider latency/errors
+- ProposedAction confirmation/rejection rate
+- travel-ready confirmations sent
+- worker logistics acknowledgement rate
+- late cancellation after travel authorisation
+- failed/unclear pickup exceptions
+- unknown-sender events
+- outbound send failures
+- database errors
+- frontend error monitoring
 
 Prefer structured logs with correlation IDs from ChannelEvent through command execution.
 
@@ -720,21 +720,21 @@ Provider adapters mocked by contract.
 
 Playwright phone-sized flows:
 
-* create worker
-* create contractor
-* historical Workmark
-* Labour Request
-* assignment
-* Tomorrow gap
-* offer explicitly says do not travel
-* worker accepts offer without travel authorisation
-* contractor confirmation + logistics creates travel-ready state
-* worker receives/acknowledges pickup instructions
-* grouped PickupPoint dispatch
-* close work
-* Workmark appears
-* unpaid exception
-* Inbox ProposedAction review
+- create worker
+- create contractor
+- historical Workmark
+- Labour Request
+- assignment
+- Tomorrow gap
+- offer explicitly says do not travel
+- worker accepts offer without travel authorisation
+- contractor confirmation + logistics creates travel-ready state
+- worker receives/acknowledges pickup instructions
+- grouped PickupPoint dispatch
+- close work
+- Workmark appears
+- unpaid exception
+- Inbox ProposedAction review
 
 ### Field test
 
@@ -746,12 +746,12 @@ Real devices, mobile data, sunlight, one-handed use, slow connectivity.
 
 Pilot can remain operationally simple:
 
-* hosted Next.js deployment
-* managed Supabase project
-* Supabase Edge Functions
-* WhatsApp Business Platform
-* CI migrations/tests on pull requests
-* separate local/dev and production configuration
+- hosted Next.js deployment
+- managed Supabase project
+- Supabase Edge Functions
+- WhatsApp Business Platform
+- CI migrations/tests on pull requests
+- separate local/dev and production configuration
 
 A separate microservice/container platform is unnecessary until workload or provider constraints justify it.
 
@@ -761,16 +761,16 @@ A separate microservice/container platform is unnecessary until workload or prov
 
 Do not add yet:
 
-* graph database
-* Kubernetes
-* event-stream platform such as Kafka
-* native mobile apps
-* complex offline-first replication
-* vector database/RAG over worker records
-* automatic matching model
-* biometric identification
-* platform payment wallet
-* microservices split
+- graph database
+- Kubernetes
+- event-stream platform such as Kafka
+- native mobile apps
+- complex offline-first replication
+- vector database/RAG over worker records
+- automatic matching model
+- biometric identification
+- platform payment wallet
+- microservices split
 
 These solve scale we do not have.
 
@@ -780,15 +780,15 @@ These solve scale we do not have.
 
 These should survive implementation changes:
 
- 1. One canonical work graph.
- 2. WhatsApp is a channel, not a second source of truth.
- 3. Workmark is backed by a canonical Workmark.
- 4. Trust evidence preserves provenance.
- 5. AI proposes structured actions; application policy mutates state.
- 6. High-consequence claims are never accepted silently from uncertain model output.
- 7. Private and shareable worker data are separate projections.
- 8. No automatic worker ranking or universal score.
- 9. Language supports communication, not suitability ranking.
+1.  One canonical work graph.
+2.  WhatsApp is a channel, not a second source of truth.
+3.  Workmark is backed by a canonical Workmark.
+4.  Trust evidence preserves provenance.
+5.  AI proposes structured actions; application policy mutates state.
+6.  High-consequence claims are never accepted silently from uncertain model output.
+7.  Private and shareable worker data are separate projections.
+8.  No automatic worker ranking or universal score.
+9.  Language supports communication, not suitability ranking.
 10. Infrastructure remains boring until actual scale proves otherwise.
 11. Worker acceptance is not travel authorisation.
 12. Core worker flows remain usable through WhatsApp/voice/call without a MARKD app.
@@ -798,15 +798,15 @@ These should survive implementation changes:
 
 ## 25. Implementation order
 
- 1. schema + migrations + audit primitives
- 2. operator auth/RLS/storage
- 3. worker/organisation onboarding
- 4. work history/search
- 5. WhatsApp webhook + ChannelEvent
- 6. queue + ProposedAction processing
- 7. Ops Inbox
- 8. Labour Request + Assignment
- 9. Tomorrow
+1.  schema + migrations + audit primitives
+2.  operator auth/RLS/storage
+3.  worker/organisation onboarding
+4.  work history/search
+5.  WhatsApp webhook + ChannelEvent
+6.  queue + ProposedAction processing
+7.  Ops Inbox
+8.  Labour Request + Assignment
+9.  Tomorrow
 10. closeout → Workmark/Stamp
 11. Exceptions
 12. accessible worker offer + travel-ready WhatsApp flow
@@ -829,12 +829,12 @@ The canonical Assignment may preserve granular timestamps and states, but the no
 
 Rules:
 
-* no mandatory post-confirmation acknowledgement
-* no WhatsApp Flow or form in the core journey
-* no route planner, fleet subsystem, live worker tracking or home-coordinate capture for the pilot
-* pickup/reporting location may be plain text; a reusable PickupPoint is an optimisation, not a required entity for every assignment
-* voice note and call remain valid fallbacks
-* richer internal states exist only to make the simple external promise safe
+- no mandatory post-confirmation acknowledgement
+- no WhatsApp Flow or form in the core journey
+- no route planner, fleet subsystem, live worker tracking or home-coordinate capture for the pilot
+- pickup/reporting location may be plain text; a reusable PickupPoint is an optimisation, not a required entity for every assignment
+- voice note and call remain valid fallbacks
+- richer internal states exist only to make the simple external promise safe
 
 Architecture should prefer the smallest data model and workflow that can reliably prevent speculative travel.
 
@@ -852,14 +852,14 @@ All consequential actions execute the same application command layer used by Ops
 
 Examples:
 
-* `RespondToAssignmentOffer`
-* `AuthoriseAssignmentTravel`
-* `AcknowledgeAssignmentLogistics`
-* `CreateLabourRequest`
-* `SelectWorkerForRequirement`
-* `CloseAssignment`
-* `CreateOrUpdateWorkmark`
-* `SetAvailability`
+- `RespondToAssignmentOffer`
+- `AuthoriseAssignmentTravel`
+- `AcknowledgeAssignmentLogistics`
+- `CreateLabourRequest`
+- `SelectWorkerForRequirement`
+- `CloseAssignment`
+- `CreateOrUpdateWorkmark`
+- `SetAvailability`
 
 The command layer returns canonical state; each surface renders a projection of that state.
 
@@ -879,14 +879,14 @@ Create policy-controlled read models rather than exposing raw tables directly to
 
 Suggested projections:
 
-* `worker_home_projection`
-* `worker_work_projection`
-* `worker_work_card_projection`
-* `worker_profile_preferences_projection`
-* `contractor_home_projection`
-* `contractor_labour_book_projection`
-* `contractor_request_projection`
-* `contractor_worker_candidate_projection`
+- `worker_home_projection`
+- `worker_work_projection`
+- `worker_work_card_projection`
+- `worker_profile_preferences_projection`
+- `contractor_home_projection`
+- `contractor_labour_book_projection`
+- `contractor_request_projection`
+- `contractor_worker_candidate_projection`
 
 These projections must respect privacy, verification provenance and role-specific visibility.
 
@@ -896,11 +896,11 @@ Consequential command execution should emit a durable domain/outbox event.
 
 Consumers may then:
 
-* refresh relevant app projections
-* update Ops views
-* enqueue WhatsApp confirmation/mirroring
-* enqueue push notification where configured
-* record analytics/observability events
+- refresh relevant app projections
+- update Ops views
+- enqueue WhatsApp confirmation/mirroring
+- enqueue push notification where configured
+- record analytics/observability events
 
 The UI must never directly send a WhatsApp message as the source of truth for a state transition.
 
@@ -924,12 +924,12 @@ When useful, WhatsApp messages may include deep links into the mobile app for us
 
 Maintain brand/design tokens in a framework-neutral package where practical:
 
-* colours
-* spacing scale
-* radius scale
-* typography roles
-* status semantics
-* icon meaning
+- colours
+- spacing scale
+- radius scale
+- typography roles
+- status semantics
+- icon meaning
 
 Do not attempt to share every React component between web and React Native. Share tokens, contracts and semantics first.
 
@@ -952,13 +952,13 @@ The mobile app must expose work-offer and confirmed-job text to device accessibi
 
 Add cross-channel contract tests proving:
 
-* accepting via app appears in WhatsApp/Ops state
-* accepting via WhatsApp appears in app state
-* duplicate responses are idempotent
-* `accepted` cannot render as travel-ready
-* travel-ready confirmation is impossible without the deterministic authorisation transition
-* critical message/template variables equal app-visible rate/date/time/location values
-* participant read models cannot expose private operator fields
+- accepting via app appears in WhatsApp/Ops state
+- accepting via WhatsApp appears in app state
+- duplicate responses are idempotent
+- `accepted` cannot render as travel-ready
+- travel-ready confirmation is impossible without the deterministic authorisation transition
+- critical message/template variables equal app-visible rate/date/time/location values
+- participant read models cannot expose private operator fields
 
 ### Implementation sequence
 
@@ -981,11 +981,11 @@ The architecture remains valid, but current `main` should be read with the follo
 
 **Not yet proven as live pilot-ready:**
 
-* deterministic green operator E2E on CI — [FLO-127](https://linear.app/flowtation/issue/FLO-127/stabilise-main-verification-and-eliminate-operator-work-graph-e2e)
-* independent security review of the current merged auth/RLS/storage surface — [FLO-128](https://linear.app/flowtation/issue/FLO-128/complete-independent-security-review-of-operator-auth-rls-and-private)
-* live Meta Cloud API + media + outbound provider execution, concrete OpenRouter StructuredIntentProvider and concrete transcription provider — [FLO-129](https://linear.app/flowtation/issue/FLO-129/complete-live-whatsapp-transcription-and-openrouter-provider)
-* participant-PWA ↔ WhatsApp command/state mirroring and cross-channel idempotency — [FLO-130](https://linear.app/flowtation/issue/FLO-130/wire-participant-pwa-commands-to-canonical-state-and-whatsapp)
-* P3 LabourRequest/Assignment/travel-ready/completion flows — [FLO-112](https://linear.app/flowtation/issue/FLO-112/build-labour-request-and-assignment-workflow) through [FLO-115](https://linear.app/flowtation/issue/FLO-115/build-exceptions-workflow-for-unpaid-disputed-and-failed-work), [FLO-124](https://linear.app/flowtation/issue/FLO-124/build-accessible-worker-offer-and-confirmation-messaging) and [FLO-125](https://linear.app/flowtation/issue/FLO-125/build-travel-ready-assignment-and-pickup-coordination-flow)
+- deterministic green operator E2E on CI — [FLO-127](https://linear.app/flowtation/issue/FLO-127/stabilise-main-verification-and-eliminate-operator-work-graph-e2e)
+- independent security review of the current merged auth/RLS/storage surface — [FLO-128](https://linear.app/flowtation/issue/FLO-128/complete-independent-security-review-of-operator-auth-rls-and-private)
+- live Meta Cloud API + media + outbound provider execution, concrete OpenRouter StructuredIntentProvider and concrete transcription provider — [FLO-129](https://linear.app/flowtation/issue/FLO-129/complete-live-whatsapp-transcription-and-openrouter-provider)
+- participant-PWA ↔ WhatsApp command/state mirroring and cross-channel idempotency — [FLO-130](https://linear.app/flowtation/issue/FLO-130/wire-participant-pwa-commands-to-canonical-state-and-whatsapp)
+- P3 LabourRequest/Assignment/travel-ready/completion flows — [FLO-112](https://linear.app/flowtation/issue/FLO-112/build-labour-request-and-assignment-workflow) through [FLO-115](https://linear.app/flowtation/issue/FLO-115/build-exceptions-workflow-for-unpaid-disputed-and-failed-work), [FLO-124](https://linear.app/flowtation/issue/FLO-124/build-accessible-worker-offer-and-confirmation-messaging) and [FLO-125](https://linear.app/flowtation/issue/FLO-125/build-travel-ready-assignment-and-pickup-coordination-flow)
 
 A provider interface or schema is not evidence that a live provider path has been exercised. Likewise, a later participant-PWA amendment on a completed P2 issue does not retroactively mean that participant flow is already implemented.
 

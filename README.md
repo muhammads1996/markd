@@ -44,7 +44,7 @@ corepack pnpm exec playwright install chromium
 corepack pnpm test:e2e
 ```
 
-`pnpm test` runs both unit and integration tests, so the local Supabase stack must be running. Playwright starts the already-built production application automatically.
+`pnpm test` runs both unit and integration tests, so the local Supabase stack must be running. Playwright starts the already-built production application automatically, with retries disabled. It never reuses a running local server: stop `pnpm dev` before running E2E. This keeps Windows local verification on the same fresh production-server path as Linux CI and avoids testing a stale development build.
 
 ## Local Supabase workflow
 

@@ -7,9 +7,14 @@ import {
 } from "../../components/participant";
 import { requireParticipantSession } from "../../lib/participant/auth";
 
-export default async function ParticipantPage() {
+export default async function ParticipantPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reason?: string }>;
+}) {
   const session = await requireParticipantSession();
-  if (session.scopes.length === 1) {
+  const { reason } = await searchParams;
+  if (session.scopes.length === 1 && reason !== "scope") {
     redirect(`/participant/${session.scopes[0]?.kind}`);
   }
 

@@ -28,13 +28,13 @@ The app should feel premium, credible and dignified. Accessibility must simplify
 
 ### Non-negotiable UX rules
 
-* **Confirmation is sacred.** `WORK CONFIRMED` is the only worker-facing state that authorises travel.
-* **Offer ≠ job.** Accepting an offer does not mean the worker should travel.
-* **Evidence over ratings.** Workmarks, repeat relationships and contextual attendance evidence outrank opaque scores.
-* **One graph, many interfaces.** App, WhatsApp and Ops must display and mutate the same canonical state.
-* **No app lock-in.** No critical worker action may exist only in the app.
-* **Low-literacy friendly.** Short copy, large touch targets, audio playback, familiar places and simple choices are first-class design requirements.
-* **Relationship-first fulfilment.** Contractors see known/repeat workers before unknown supply.
+- **Confirmation is sacred.** `WORK CONFIRMED` is the only worker-facing state that authorises travel.
+- **Offer ≠ job.** Accepting an offer does not mean the worker should travel.
+- **Evidence over ratings.** Workmarks, repeat relationships and contextual attendance evidence outrank opaque scores.
+- **One graph, many interfaces.** App, WhatsApp and Ops must display and mutate the same canonical state.
+- **No app lock-in.** No critical worker action may exist only in the app.
+- **Low-literacy friendly.** Short copy, large touch targets, audio playback, familiar places and simple choices are first-class design requirements.
+- **Relationship-first fulfilment.** Contractors see known/repeat workers before unknown supply.
 
 ---
 
@@ -46,28 +46,28 @@ Industrial editorial rather than generic gig-economy UI.
 
 The interface should feel:
 
-* sturdy
-* modern
-* human
-* high contrast
-* professional
-* built for real work
+- sturdy
+- modern
+- human
+- high contrast
+- professional
+- built for real work
 
 Avoid visual tropes that make MARKD look like a fintech wallet, delivery app, HR portal or public job board.
 
 ### Core palette
 
-| Token | Value | Use |
-| -- | -- | -- |
+| Token          | Value     | Use                                              |
+| -------------- | --------- | ------------------------------------------------ |
 | Obsidian / Ink | `#111315` | primary dark surfaces, premium cards, app chrome |
-| Ink 2 | `#171A1D` | elevated dark surfaces |
-| Ink 3 | `#202428` | secondary dark surfaces |
-| Signal Lime | `#C7F43D` | confirmed / verified / primary action / progress |
-| Lime Soft | `#E8FF9F` | low-emphasis positive chips |
-| Concrete | `#F2F1EC` | light background |
-| Steel | `#687078` | secondary text / structure |
-| White | `#FFFFFF` | cards / high contrast text |
-| Danger | `#FF685F` | destructive or failure state only |
+| Ink 2          | `#171A1D` | elevated dark surfaces                           |
+| Ink 3          | `#202428` | secondary dark surfaces                          |
+| Signal Lime    | `#C7F43D` | confirmed / verified / primary action / progress |
+| Lime Soft      | `#E8FF9F` | low-emphasis positive chips                      |
+| Concrete       | `#F2F1EC` | light background                                 |
+| Steel          | `#687078` | secondary text / structure                       |
+| White          | `#FFFFFF` | cards / high contrast text                       |
+| Danger         | `#FF685F` | destructive or failure state only                |
 
 Signal Lime should be intentionally scarce. It is reserved mainly for **confirmed, verified, actionable or successfully completed** states so that the colour itself develops product meaning.
 
@@ -75,19 +75,19 @@ Signal Lime should be intentionally scarce. It is reserved mainly for **confirme
 
 Use **Sora** as the preferred display/UI family, with a robust system fallback. Typography should favour heavy, compact headings and very clear numeric information.
 
-* large state headings
-* strong numeric hierarchy for pay, time and counts
-* short labels in uppercase where useful
-* avoid dense paragraphs inside operational flows
+- large state headings
+- strong numeric hierarchy for pay, time and counts
+- short labels in uppercase where useful
+- avoid dense paragraphs inside operational flows
 
 ### Shape and density
 
-* rounded but sturdy surfaces, generally 12–28 px radius depending on component size
-* dense factual cards rather than decorative whitespace
-* high-contrast primary buttons
-* minimal gradients
-* subtle technical/grid motifs are acceptable
-* motion should communicate state change rather than decorate
+- rounded but sturdy surfaces, generally 12–28 px radius depending on component size
+- dense factual cards rather than decorative whitespace
+- high-contrast primary buttons
+- minimal gradients
+- subtle technical/grid motifs are acceptable
+- motion should communicate state change rather than decorate
 
 ---
 
@@ -129,17 +129,17 @@ If travel-ready work exists, the confirmed assignment dominates the screen.
 
 Confirmed card must show at minimum:
 
-* `WORK CONFIRMED`
-* work type
-* contractor
-* date / start time
-* agreed rate/terms where known
-* area / reporting point
-* distance or travel context where useful
-* pickup/self-travel instruction
-* `I'M ON MY WAY` / logistics acknowledgement action
-* `LISTEN`
-* `DIRECTIONS` when a pin/link is available
+- `WORK CONFIRMED`
+- work type
+- contractor
+- date / start time
+- agreed rate/terms where known
+- area / reporting point
+- distance or travel context where useful
+- pickup/self-travel instruction
+- `I'M ON MY WAY` / logistics acknowledgement action
+- `LISTEN`
+- `DIRECTIONS` when a pin/link is available
 
 The next opportunity and Work Card summary can appear below the confirmed job.
 
@@ -147,10 +147,10 @@ The next opportunity and Work Card summary can appear below the confirmed job.
 
 Contains:
 
-* current offers
-* accepted/waiting assignments
-* upcoming confirmed work
-* recent completed work
+- current offers
+- accepted/waiting assignments
+- upcoming confirmed work
+- recent completed work
 
 Offer cards should be glanceable: work type, contractor, pay, date/time, area and travel context.
 
@@ -162,12 +162,12 @@ Portable proof-of-work surface generated from the Work Graph.
 
 Contains only worker-relevant settings and preferences such as:
 
-* preferred language
-* audio/read-aloud preference
-* availability
-* familiar work areas / travel preference
-* WhatsApp mirroring preference where configurable
-* contact/account details
+- preferred language
+- audio/read-aloud preference
+- availability
+- familiar work areas / travel preference
+- WhatsApp mirroring preference where configurable
+- contact/account details
 
 ---
 
@@ -179,10 +179,10 @@ The mobile UI and WhatsApp copy must map to the same canonical states.
 
 Worker sees essential job facts and one primary decision:
 
-* `TAKE JOB`
-* `CAN'T GO`
-* `LISTEN`
-* call/voice-note fallback through WhatsApp
+- `TAKE JOB`
+- `CAN'T GO`
+- `LISTEN`
+- call/voice-note fallback through WhatsApp
 
 The UI must explicitly say that accepting does **not** authorise travel.
 
@@ -190,10 +190,10 @@ The UI must explicitly say that accepting does **not** authorise travel.
 
 After the worker accepts:
 
-* show accepted state immediately
-* disable duplicate acceptance
-* show **DO NOT TRAVEL YET** prominently
-* reflect the same state in WhatsApp if mirroring is active
+- show accepted state immediately
+- disable duplicate acceptance
+- show **DO NOT TRAVEL YET** prominently
+- reflect the same state in WhatsApp if mirroring is active
 
 ### 3. WORK CONFIRMED — TRAVEL READY
 
@@ -227,13 +227,13 @@ Primary navigation:
 
 A next-day crew dashboard:
 
-* site/date/start time
-* total confirmed vs required
-* counts per work type
-* open positions
-* urgent gaps
-* direct action to fill missing positions
-* trusted workers recently used
+- site/date/start time
+- total confirmed vs required
+- counts per work type
+- open positions
+- urgent gaps
+- direct action to fill missing positions
+- trusted workers recently used
 
 ### Hire
 
@@ -256,12 +256,12 @@ The contractor's reusable labour book.
 
 Show:
 
-* workers used before
-* number of jobs/Workmarks together
-* most recent work
-* demonstrated work types
-* contextual attendance evidence where statistically meaningful
-* `HIRE AGAIN` / `REHIRE`
+- workers used before
+- number of jobs/Workmarks together
+- most recent work
+- demonstrated work types
+- contextual attendance evidence where statistically meaningful
+- `HIRE AGAIN` / `REHIRE`
 
 ### Jobs
 
@@ -275,36 +275,36 @@ The Work Card should use the information density and recognisability of a sports
 
 ### Front-face information
 
-* portrait
-* display name
-* main demonstrated work categories
-* broad area
-* safe verification markers
-* confirmed Workmark count
-* completed job count where semantically distinct
-* repeat contractor count
-* number of contractor relationships
-* recent work
-* attendance/show-up evidence only after the minimum denominator and policy threshold is met
+- portrait
+- display name
+- main demonstrated work categories
+- broad area
+- safe verification markers
+- confirmed Workmark count
+- completed job count where semantically distinct
+- repeat contractor count
+- number of contractor relationships
+- recent work
+- attendance/show-up evidence only after the minimum denominator and policy threshold is met
 
 ### Evidence layers
 
 The detailed card may expose:
 
-* chronological Workmarks
-* demonstrated skills and evidence counts
-* repeat contractors
-* recent activity
-* verification provenance
-* crews / frequent working relationships where appropriate
+- chronological Workmarks
+- demonstrated skills and evidence counts
+- repeat contractors
+- recent activity
+- verification provenance
+- crews / frequent working relationships where appropriate
 
 ### Sharing
 
 Support:
 
-* revocable share link
-* QR code
-* share to WhatsApp
+- revocable share link
+- QR code
+- share to WhatsApp
 
 Private phone numbers, identity documents, home addresses, private notes and unresolved allegations are excluded by default.
 
@@ -316,28 +316,28 @@ WhatsApp is not merely a notification channel.
 
 ### Essential worker flows that must work without the app
 
-* enrol / update basic details
-* communicate availability
-* receive a work offer
-* accept / decline / request a call
-* receive `DO NOT TRAVEL YET` acknowledgement
-* receive `WORK CONFIRMED` travel-ready instructions
-* receive pickup/reporting details and location pin where useful
-* acknowledge logistics / say on the way where needed
-* report cancellation/problem
-* confirm completion/payment outcome
-* provide a voice note instead of typing
-* receive/share a Work Card link when available
+- enrol / update basic details
+- communicate availability
+- receive a work offer
+- accept / decline / request a call
+- receive `DO NOT TRAVEL YET` acknowledgement
+- receive `WORK CONFIRMED` travel-ready instructions
+- receive pickup/reporting details and location pin where useful
+- acknowledge logistics / say on the way where needed
+- report cancellation/problem
+- confirm completion/payment outcome
+- provide a voice note instead of typing
+- receive/share a Work Card link when available
 
 ### Essential contractor flows that must work without the app
 
-* request labour
-* confirm requirements
-* receive candidate/known-worker options where appropriate
-* confirm selected workers
-* receive crew status
-* handle cancellation/replacement
-* close out completed work / Stamp outcomes
+- request labour
+- confirm requirements
+- receive candidate/known-worker options where appropriate
+- confirm selected workers
+- receive crew status
+- handle cancellation/replacement
+- close out completed work / Stamp outcomes
 
 ### Mirroring behaviour
 
@@ -353,23 +353,23 @@ When both channels are used, copy and status semantics must be identical enough 
 
 Initial worker languages:
 
-* English
-* Afrikaans
-* isiXhosa
+- English
+- Afrikaans
+- isiXhosa
 
 The app must remain extensible beyond these languages.
 
 ### Low-literacy interaction rules
 
-* one decision per screen/message where practical
-* minimum 44×44 px touch targets; prefer larger for primary actions
-* icon + text, not icon-only for consequential actions
-* put pay/date/time/location into discrete visual fields
-* provide `LISTEN` on work offers and confirmed jobs
-* never hide critical travel state in supporting copy
-* avoid jargon such as “assignment lifecycle” in worker-facing text
-* allow voice-note/call fallback from WhatsApp
-* use familiar areas, taxi ranks, labour stands and landmarks rather than requiring exact addresses or kilometre-radius configuration
+- one decision per screen/message where practical
+- minimum 44×44 px touch targets; prefer larger for primary actions
+- icon + text, not icon-only for consequential actions
+- put pay/date/time/location into discrete visual fields
+- provide `LISTEN` on work offers and confirmed jobs
+- never hide critical travel state in supporting copy
+- avoid jargon such as “assignment lifecycle” in worker-facing text
+- allow voice-note/call fallback from WhatsApp
+- use familiar areas, taxi ranks, labour stands and landmarks rather than requiring exact addresses or kilometre-radius configuration
 
 ### Sunlight and field conditions
 
@@ -381,24 +381,24 @@ Use high contrast, bold text and strong state separation. Avoid light grey-on-wh
 
 The initial shared component system should include:
 
-* MARKD app bar / wordmark treatment
-* state/status pill
-* confirmed-job hero card
-* work-offer card
-* metric cell
-* primary / secondary / dark-ghost buttons
-* bottom navigation
-* bottom sheet
-* worker mini-card
-* Work Card
-* verification badge
-* factual chip
-* staffing progress row
-* filter chips
-* language/audio settings row
-* confirmation / Stamp animation
-* toast / transient feedback
-* empty and degraded-connectivity states
+- MARKD app bar / wordmark treatment
+- state/status pill
+- confirmed-job hero card
+- work-offer card
+- metric cell
+- primary / secondary / dark-ghost buttons
+- bottom navigation
+- bottom sheet
+- worker mini-card
+- Work Card
+- verification badge
+- factual chip
+- staffing progress row
+- filter chips
+- language/audio settings row
+- confirmation / Stamp animation
+- toast / transient feedback
+- empty and degraded-connectivity states
 
 Components should use shared design tokens across Ops, public and participant PWA surfaces, preserving framework-neutral tokens so a future native client could reuse them if ever justified.
 
@@ -408,21 +408,21 @@ Components should use shared design tokens across Ops, public and participant PW
 
 Prefer direct worker language:
 
-* `WORK OFFER`
-* `DO NOT TRAVEL YET`
-* `TAKE JOB`
-* `WORK CONFIRMED`
-* `I'M ON MY WAY`
-* `CAN'T GO`
-* `LISTEN`
+- `WORK OFFER`
+- `DO NOT TRAVEL YET`
+- `TAKE JOB`
+- `WORK CONFIRMED`
+- `I'M ON MY WAY`
+- `CAN'T GO`
+- `LISTEN`
 
 Avoid weak or ambiguous labels such as:
 
-* Pending
-* Processing
-* Reserved
-* Accepted (without travel guidance)
-* Active
+- Pending
+- Processing
+- Reserved
+- Accepted (without travel guidance)
+- Active
 
 Contractor copy can be denser but should still prioritise crew gaps and next actions.
 
@@ -432,10 +432,10 @@ Contractor copy can be denser but should still prioritise crew gaps and next act
 
 Preferred technical direction is a **single shared Next.js + React + TypeScript product stack**:
 
-* Ops, public/shareable and participant surfaces live in `/apps/web`
-* participant experiences are mobile-first route groups/layouts with distinct authentication and authorisation boundaries from Ops
-* the participant surface is installable as a PWA but remains fully usable in the browser
-* shared domain contracts, state-machine semantics, i18n message keys and design tokens remain in workspace packages
+- Ops, public/shareable and participant surfaces live in `/apps/web`
+- participant experiences are mobile-first route groups/layouts with distinct authentication and authorisation boundaries from Ops
+- the participant surface is installable as a PWA but remains fully usable in the browser
+- shared domain contracts, state-machine semantics, i18n message keys and design tokens remain in workspace packages
 
 Do not create `/apps/mobile`, Expo or React Native for the current phase.
 
@@ -451,18 +451,18 @@ Measure behaviour rather than vanity app metrics.
 
 Useful events:
 
-* offer delivered by channel
-* offer listened to
-* offer accepted / declined / call requested
-* time from offer to response
-* confirmation delivered
-* confirmation acknowledged
-* channel used for response
-* WhatsApp-to-app and app-to-WhatsApp continuation
-* on-my-way acknowledgement
-* late cancellation after travel authorisation
-* Work Card viewed/shared
-* repeat hire initiated
+- offer delivered by channel
+- offer listened to
+- offer accepted / declined / call requested
+- time from offer to response
+- confirmation delivered
+- confirmation acknowledged
+- channel used for response
+- WhatsApp-to-app and app-to-WhatsApp continuation
+- on-my-way acknowledgement
+- late cancellation after travel authorisation
+- Work Card viewed/shared
+- repeat hire initiated
 
 Do not optimise for app installs if workers are successfully completing work through WhatsApp.
 

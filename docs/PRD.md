@@ -18,31 +18,31 @@ The system is not primarily a job board.
 
 Create one canonical system that can answer:
 
-* Who is this person?
-* What work have they actually done?
-* Who have they worked for?
-* Which skills have been demonstrated in real work?
-* Which contractors use them again?
-* Who do they commonly work with?
-* Who is available?
-* What labour does a contractor need?
-* Which known relationships can fulfil that need?
-* What happened after the work?
-* How trustworthy is each fact and where did it come from?
+- Who is this person?
+- What work have they actually done?
+- Who have they worked for?
+- Which skills have been demonstrated in real work?
+- Which contractors use them again?
+- Who do they commonly work with?
+- Who is available?
+- What labour does a contractor need?
+- Which known relationships can fulfil that need?
+- What happened after the work?
+- How trustworthy is each fact and where did it come from?
 
 ---
 
 ## 3. Product principles
 
- 1. **One graph, many interfaces.** The participant PWA, Ops, WhatsApp and future clients use the same underlying data.
- 2. **Provenance before automation.** Every consequential fact can be traced to its source.
- 3. **Human judgment before algorithmic matching.** Software helps operators remember and filter; it does not make opaque labour decisions.
- 4. **Relationship-first fulfilment.** Existing worker-contractor history is the first search space.
- 5. **Conversation can be messy; data must be structured.** Voice notes, mixed language and shorthand are valid inputs.
- 6. **No universal worker score.** Expose contextual facts and repeat economic relationships.
- 7. **Workers do not need to install an app or PWA.** The platform must be useful through WhatsApp/calls and the participant web experience must work in-browser without installation.
- 8. **Phone-first operations.** Core operator workflows must work one-handed and quickly in the field.
- 9. **Minimal sensitive data.** Collect only what is operationally or legally justified.
+1.  **One graph, many interfaces.** The participant PWA, Ops, WhatsApp and future clients use the same underlying data.
+2.  **Provenance before automation.** Every consequential fact can be traced to its source.
+3.  **Human judgment before algorithmic matching.** Software helps operators remember and filter; it does not make opaque labour decisions.
+4.  **Relationship-first fulfilment.** Existing worker-contractor history is the first search space.
+5.  **Conversation can be messy; data must be structured.** Voice notes, mixed language and shorthand are valid inputs.
+6.  **No universal worker score.** Expose contextual facts and repeat economic relationships.
+7.  **Workers do not need to install an app or PWA.** The platform must be useful through WhatsApp/calls and the participant web experience must work in-browser without installation.
+8.  **Phone-first operations.** Core operator workflows must work one-handed and quickly in the field.
+9.  **Minimal sensitive data.** Collect only what is operationally or legally justified.
 10. **Software should remove clerical work before it removes operator judgment.**
 11. **No worker should travel on ambiguity.** A work opportunity, worker acceptance and a travel-ready confirmed assignment are different states. MARKD must explicitly tell a worker when they should **not travel yet** and when work/pickup is sufficiently confirmed to travel.
 12. **Accessibility is core product behaviour.** Worker journeys must work for people with low literacy, limited digital confidence, mixed-language communication and constrained data/transport budgets. Voice, calls, simple choices and human fallback are first-class interfaces.
@@ -57,14 +57,14 @@ Internal MARKD user.
 
 Can:
 
-* create and edit records
-* review WhatsApp-derived drafts
-* capture relationships
-* create labour requests
-* manage assignments
-* record work outcomes
-* manage exceptions
-* view private verification information
+- create and edit records
+- review WhatsApp-derived drafts
+- capture relationships
+- create labour requests
+- manage assignments
+- record work outcomes
+- manage exceptions
+- view private verification information
 
 ### Worker
 
@@ -74,12 +74,12 @@ Does not require an application login to participate.
 
 May interact through:
 
-* optional MARKD mobile-first PWA (browser or installed)
-* WhatsApp text
-* WhatsApp voice notes
-* phone calls
-* physical onboarding
-* portable/shareable Work Card
+- optional MARKD mobile-first PWA (browser or installed)
+- WhatsApp text
+- WhatsApp voice notes
+- phone calls
+- physical onboarding
+- portable/shareable Work Card
 
 The worker must be able to move between the participant PWA and WhatsApp without creating duplicate or contradictory Assignment state.
 
@@ -117,16 +117,16 @@ Canonical human identity.
 
 Fields include:
 
-* id
-* legal/display name where known
-* preferred name
-* phone numbers
-* preferred language
-* secondary languages
-* preferred communication mode
-* profile photo
-* status
-* created/updated metadata
+- id
+- legal/display name where known
+- preferred name
+- phone numbers
+- preferred language
+- secondary languages
+- preferred communication mode
+- profile photo
+- status
+- created/updated metadata
 
 A Person may have multiple roles over time.
 
@@ -136,17 +136,17 @@ Worker-specific attributes attached to a Person.
 
 Includes:
 
-* home/base area
-* labour stands used
-* current operating status
-* private ops notes
-* identity-verification state
-* work-eligibility/document state where justified
-* worker-specific preferences
-* usual pickup / meeting points
-* worker-stated work areas or travel zones
-* self-travel vs pickup-needed preference
-* practical travel constraints such as earliest departure, number of taxi legs or areas that are not viable
+- home/base area
+- labour stands used
+- current operating status
+- private ops notes
+- identity-verification state
+- work-eligibility/document state where justified
+- worker-specific preferences
+- usual pickup / meeting points
+- worker-stated work areas or travel zones
+- self-travel vs pickup-needed preference
+- practical travel constraints such as earliest departure, number of taxi legs or areas that are not viable
 
 Do not require workers to understand kilometre radii or provide a precise home address. Prefer familiar areas, stands, taxi ranks, landmarks and routes.
 
@@ -156,14 +156,14 @@ Represents a contractor, company or other employing/hiring entity.
 
 Includes:
 
-* legal/trading name where known
-* organisation type
-* operating areas
-* typical work categories
-* usual payment method
-* usual pickup/site patterns
-* status
-* private ops notes
+- legal/trading name where known
+- organisation type
+- operating areas
+- typical work categories
+- usual payment method
+- usual pickup/site patterns
+- status
+- private ops notes
 
 Sole traders can still be represented as organisations connected to a Person.
 
@@ -171,11 +171,11 @@ Sole traders can still be represented as organisations connected to a Person.
 
 Links Person ↔ Organisation with a role such as:
 
-* owner
-* foreman
-* site supervisor
-* office/admin
-* buyer
+- owner
+- foreman
+- site supervisor
+- office/admin
+- buyer
 
 ### Site
 
@@ -189,21 +189,21 @@ A reusable, worker-understandable meeting or pickup location.
 
 Examples:
 
-* labour stand
-* taxi rank
-* building-supply store
-* known landmark
-* contractor yard
-* site gate
+- labour stand
+- taxi rank
+- building-supply store
+- known landmark
+- contractor yard
+- site gate
 
 Fields may include:
 
-* human-readable name
-* area
-* landmark/instructions
-* optional map coordinates/location pin
-* point type
-* active/inactive state
+- human-readable name
+- area
+- landmark/instructions
+- optional map coordinates/location pin
+- point type
+- active/inactive state
 
 A PickupPoint is not a worker home address and must not be used to build unnecessary precise location history.
 
@@ -213,17 +213,17 @@ The travel/reporting instructions attached to a LabourRequest or Assignment.
 
 May include:
 
-* reporting mode: `site` / `pickup_point` / `contractor_transport` / `other`
-* pickup/reporting point
-* pickup or report time
-* site area / destination
-* contractor transport provided: yes/no/unknown
-* transport contribution where explicitly offered
-* contact person
-* landmark / plain-language instructions
-* confirmation cutoff
-* travel-authorised timestamp
-* worker acknowledgement timestamp
+- reporting mode: `site` / `pickup_point` / `contractor_transport` / `other`
+- pickup/reporting point
+- pickup or report time
+- site area / destination
+- contractor transport provided: yes/no/unknown
+- transport contribution where explicitly offered
+- contact person
+- landmark / plain-language instructions
+- confirmation cutoff
+- travel-authorised timestamp
+- worker acknowledgement timestamp
 
 The logistics model exists to create certainty before a worker spends money or time travelling.
 
@@ -233,21 +233,21 @@ Controlled taxonomy of work capabilities.
 
 Examples:
 
-* general labour
-* painting
-* tiling
-* brickwork
-* plastering
-* carpentry assistance
-* steel/rebar
-* paving
+- general labour
+- painting
+- tiling
+- brickwork
+- plastering
+- carpentry assistance
+- steel/rebar
+- paving
 
 Skills may be:
 
-* self-declared
-* operator observed
-* contractor confirmed
-* demonstrated through Workmarks
+- self-declared
+- operator observed
+- contractor confirmed
+- demonstrated through Workmarks
 
 Do not collapse these evidence types.
 
@@ -257,14 +257,14 @@ A contractor demand event.
 
 Includes:
 
-* requesting organisation/contact
-* date
-* site/area
-* start/pickup time
-* rate/terms where known
-* status
-* source channel
-* notes
+- requesting organisation/contact
+- date
+- site/area
+- start/pickup time
+- rate/terms where known
+- status
+- source channel
+- notes
 
 ### LabourRequirement
 
@@ -272,15 +272,15 @@ Structured demand inside a LabourRequest.
 
 Examples:
 
-* 3 × general labour
-* 1 × painter
+- 3 × general labour
+- 1 × painter
 
 Fields:
 
-* skill/work type
-* headcount
-* filled count derived from assignments
-* optional requirement notes
+- skill/work type
+- headcount
+- filled count derived from assignments
+- optional requirement notes
 
 ### Assignment
 
@@ -288,16 +288,16 @@ Links a WorkerProfile to a LabourRequest.
 
 Lifecycle may include:
 
-* proposed
-* contacted / offered
-* worker interested / accepted
-* contractor confirmed
-* travel ready / authorised
-* worker acknowledged logistics
-* arrived / started where captured
-* cancelled
-* no-show
-* completed
+- proposed
+- contacted / offered
+- worker interested / accepted
+- contractor confirmed
+- travel ready / authorised
+- worker acknowledged logistics
+- arrived / started where captured
+- cancelled
+- no-show
+- completed
 
 `worker accepted` must never be presented as permission to travel unless the assignment is also travel-ready. A late contractor cancellation after travel authorisation is a distinct operational exception, not an ordinary cancellation.
 
@@ -307,27 +307,27 @@ The canonical record that real work occurred or was expected to occur between a 
 
 A Workmark may originate from:
 
-* a MARKD Assignment
-* a verified historical relationship
-* direct operator observation
-* later imported evidence
+- a MARKD Assignment
+- a verified historical relationship
+- direct operator observation
+- later imported evidence
 
 Fields include:
 
-* worker
-* organisation
-* contact where relevant
-* date/date range
-* site
-* skill/work categories
-* attendance state
-* completion state
-* payment state
-* amount/method where known
-* worker reuse preference
-* contractor reuse preference
-* provenance state
-* source references
+- worker
+- organisation
+- contact where relevant
+- date/date range
+- site
+- skill/work categories
+- attendance state
+- completion state
+- payment state
+- amount/method where known
+- worker reuse preference
+- contractor reuse preference
+- provenance state
+- source references
 
 ### Stamp
 
@@ -341,11 +341,11 @@ A derived or explicit edge between WorkerProfile and Organisation.
 
 Contains contextual facts such as:
 
-* first/last confirmed work date
-* confirmed Workmark count
-* repeat usage
-* most common skills used
-* latest bilateral reuse preference
+- first/last confirmed work date
+- confirmed Workmark count
+- repeat usage
+- most common skills used
+- latest bilateral reuse preference
 
 Avoid a global numeric rating.
 
@@ -361,12 +361,12 @@ Records availability for a time window.
 
 Fields:
 
-* worker
-* available date/window
-* availability state
-* source
-* captured at
-* expires at where appropriate
+- worker
+- available date/window
+- availability state
+- source
+- captured at
+- expires at where appropriate
 
 Availability is ephemeral evidence, not a permanent worker attribute.
 
@@ -376,22 +376,22 @@ Immutable-ish record of an external interaction relevant to the graph.
 
 Examples:
 
-* WhatsApp text
-* WhatsApp voice note
-* WhatsApp image/document
-* phone-call outcome entered by operator
-* operator command
+- WhatsApp text
+- WhatsApp voice note
+- WhatsApp image/document
+- phone-call outcome entered by operator
+- operator command
 
 Fields:
 
-* provider/channel
-* external message id
-* sender/recipient
-* timestamp
-* content/media reference
-* original language
-* transcript if generated
-* processing state
+- provider/channel
+- external message id
+- sender/recipient
+- timestamp
+- content/media reference
+- original language
+- transcript if generated
+- processing state
 
 ### ProposedAction
 
@@ -399,22 +399,22 @@ Structured interpretation of a ChannelEvent.
 
 Examples:
 
-* mark worker available
-* create LabourRequest
-* confirm assignment
-* propose Workmark outcome
-* open payment exception
-* link historical relationship
+- mark worker available
+- create LabourRequest
+- confirm assignment
+- propose Workmark outcome
+- open payment exception
+- link historical relationship
 
 Fields include:
 
-* action type
-* extracted entities
-* confidence
-* validation errors
-* risk tier
-* review state
-* operator confirmation
+- action type
+- extracted entities
+- confidence
+- validation errors
+- risk tier
+- review state
+- operator confirmation
 
 High-trust mutations require explicit confirmation.
 
@@ -424,11 +424,11 @@ Represents evidence supporting a fact.
 
 Examples:
 
-* worker claims prior employment
-* contractor confirms prior work
-* operator inspected document
-* assignment arranged by MARKD
-* both parties confirmed completed work
+- worker claims prior employment
+- contractor confirms prior work
+- operator inspected document
+- assignment arranged by MARKD
+- both parties confirmed completed work
 
 Verification must be additive and traceable rather than represented by one magic `verified=true` flag.
 
@@ -438,12 +438,12 @@ Operational issue requiring follow-up.
 
 Initial types:
 
-* unpaid
-* disputed
-* no-show
-* contractor cancellation
-* identity/document concern
-* ambiguous WhatsApp action
+- unpaid
+- disputed
+- no-show
+- contractor cancellation
+- identity/document concern
+- ambiguous WhatsApp action
 
 ---
 
@@ -451,18 +451,18 @@ Initial types:
 
 Preferred product language:
 
-| Internal/domain concept | Product language |
-| -- | -- |
-| WorkerProfile | Worker |
-| Organisation | Contractor / Company |
-| Workmark | Workmark |
-| Collection of Workmarks | Work history |
-| Portable profile | Work Card |
-| LabourRequest | Labour Request |
-| LabourRequirement | Labour Need / Positions |
-| Assignment | Assignment |
-| Worker↔Organisation edge | Work Relationship |
-| ExceptionCase | Exception / Follow-up |
+| Internal/domain concept  | Product language        |
+| ------------------------ | ----------------------- |
+| WorkerProfile            | Worker                  |
+| Organisation             | Contractor / Company    |
+| Workmark                 | Workmark                |
+| Collection of Workmarks  | Work history            |
+| Portable profile         | Work Card               |
+| LabourRequest            | Labour Request          |
+| LabourRequirement        | Labour Need / Positions |
+| Assignment               | Assignment              |
+| Worker↔Organisation edge | Work Relationship       |
+| ExceptionCase            | Exception / Follow-up   |
 
 Avoid “builder” as the canonical domain term because the network may include subcontractors, facilities firms, supervisors and larger employers.
 
@@ -476,13 +476,13 @@ Purpose: turn messy incoming communications into structured graph actions.
 
 Shows:
 
-* unprocessed WhatsApp events
-* ProposedActions awaiting review
-* ambiguous entity matches
-* contractor requests needing confirmation
-* worker availability messages
-* completion/payment messages
-* voice-note transcripts
+- unprocessed WhatsApp events
+- ProposedActions awaiting review
+- ambiguous entity matches
+- contractor requests needing confirmation
+- worker availability messages
+- completion/payment messages
+- voice-note transcripts
 
 Primary interaction:
 
@@ -494,14 +494,14 @@ Purpose: operational command centre for the next work day.
 
 Shows:
 
-* open Labour Requests
-* total positions required
-* confirmed assignments
-* unfilled positions
-* workers marked available
-* workers contacted but awaiting reply
-* contractor confirmations outstanding
-* likely no-show/replacement risks when manually flagged
+- open Labour Requests
+- total positions required
+- confirmed assignments
+- unfilled positions
+- workers marked available
+- workers contacted but awaiting reply
+- contractor confirmations outstanding
+- likely no-show/replacement risks when manually flagged
 
 The screen should optimise for closing gaps, not analytics.
 
@@ -509,13 +509,13 @@ The screen should optimise for closing gaps, not analytics.
 
 Global search across:
 
-* people
-* phone numbers
-* workers
-* contractors/organisations
-* sites
-* skills
-* Work Stamps
+- people
+- phone numbers
+- workers
+- contractors/organisations
+- sites
+- skills
+- Work Stamps
 
 Phone-number search must be excellent because WhatsApp identity frequently begins with a number.
 
@@ -525,22 +525,22 @@ Graph/history surface.
 
 Supports:
 
-* chronological Workmarks
-* relationship exploration
-* worker ↔ contractor history
-* crew connections
-* skill evidence
-* historical vs MARKD-arranged provenance
+- chronological Workmarks
+- relationship exploration
+- worker ↔ contractor history
+- crew connections
+- skill evidence
+- historical vs MARKD-arranged provenance
 
 ### E. Exceptions
 
 Queues:
 
-* unpaid
-* disputed
-* no-show follow-up
-* ambiguous records
-* verification problems
+- unpaid
+- disputed
+- no-show follow-up
+- ambiguous records
+- verification problems
 
 Exceptions should never disappear into private notes.
 
@@ -552,18 +552,18 @@ Exceptions should never disappear into private notes.
 
 Operator sees:
 
-* portrait
-* name / preferred name
-* contact details
-* language and communication preference
-* current availability
-* skills and evidence types
-* Work Record
-* contractor relationships
-* crew links
-* identity/document verification state
-* private ops notes
-* exceptions
+- portrait
+- name / preferred name
+- contact details
+- language and communication preference
+- current availability
+- skills and evidence types
+- Work Record
+- contractor relationships
+- crew links
+- identity/document verification state
+- private ops notes
+- exceptions
 
 ### Portable Work Card
 
@@ -571,25 +571,25 @@ The Work Card should borrow the **rapid visual comprehension** of sports player 
 
 Professional visual hierarchy:
 
-* portrait
-* preferred/display name
-* primary demonstrated work categories
-* base area where appropriate
-* identity/credential verification markers where safe
-* confirmed Workmark count
-* repeat contractor count
-* recent activity
-* demonstrated skills with evidence counts
-* optional attendance evidence only with sufficient sample size
+- portrait
+- preferred/display name
+- primary demonstrated work categories
+- base area where appropriate
+- identity/credential verification markers where safe
+- confirmed Workmark count
+- repeat contractor count
+- recent activity
+- demonstrated skills with evidence counts
+- optional attendance evidence only with sufficient sample size
 
 Never show:
 
-* overall rating
-* “OVR 87” type score
-* private notes
-* ID number/document
-* unreviewed disputes
-* private home address
+- overall rating
+- “OVR 87” type score
+- private notes
+- ID number/document
+- unreviewed disputes
+- private home address
 
 A future shareable Work Card may use a revocable link or QR code.
 
@@ -599,17 +599,17 @@ A future shareable Work Card may use a revocable link or QR code.
 
 Internal Contractor view should display:
 
-* organisation details
-* contacts
-* operating areas
-* common work types
-* sites
-* recent Labour Requests
-* workers previously used
-* preferred/repeat workers
-* open assignments
-* payment/dispute exceptions
-* private ops notes
+- organisation details
+- contacts
+- operating areas
+- common work types
+- sites
+- recent Labour Requests
+- workers previously used
+- preferred/repeat workers
+- open assignments
+- payment/dispute exceptions
+- private ops notes
 
 The most important section should be **their known labour network**, not a public rating.
 
@@ -659,10 +659,10 @@ Require structured confirmation until confidence is proven.
 
 Examples:
 
-* worker did not show
-* contractor did not pay
-* contractor would not use worker again
-* completed Work Stamp
+- worker did not show
+- contractor did not pay
+- contractor would not use worker again
+- completed Work Stamp
 
 Require authorised confirmation and provenance.
 
@@ -702,17 +702,17 @@ Provider abstraction should allow testing different speech models for South Afri
 
 Initial field languages:
 
-* English
-* Afrikaans
-* isiXhosa
+- English
+- Afrikaans
+- isiXhosa
 
 Data model must support additional languages without schema redesign.
 
 For each Person capture:
 
-* preferred language
-* additional languages
-* preferred communication mode: text / voice / call
+- preferred language
+- additional languages
+- preferred communication mode: text / voice / call
 
 ### Language-neutral domain state
 
@@ -722,9 +722,9 @@ Example:
 
 Inbound isiXhosa message expressing tomorrow availability becomes:
 
-* worker_id
-* date
-* `available`
+- worker_id
+- date
+- `available`
 
 with original message/language retained in ChannelEvent provenance.
 
@@ -732,28 +732,28 @@ with original message/language retained in ChannelEvent provenance.
 
 Use curated/approved templates for high-consequence messages:
 
-* work confirmation
-* rate
-* date/time
-* site/pickup instructions
-* cancellations
-* payment follow-up
-* safety instructions
+- work confirmation
+- rate
+- date/time
+- site/pickup instructions
+- cancellations
+- payment follow-up
+- safety instructions
 
 ### Low-literacy and low-friction worker messaging
 
 For worker-facing operational messages:
 
-* keep one decision per message where practical
-* put the most important state first: **OFFER — DO NOT TRAVEL YET** vs **CONFIRMED — TRAVEL / GO TO PICKUP**
-* use short familiar words in the worker's preferred language
-* keep dates, times and Rand amounts visually prominent
-* use reply buttons or simple numeric/text responses such as `1 YES`, `2 NO`, `3 CALL ME` where supported
-* accept voice notes as equivalent input, not as an edge case
-* provide a call/human fallback for workers who struggle with text
-* use a location pin **plus** a familiar landmark/plain-language description; never require map literacy
-* avoid relying on icons alone unless tested with the actual worker population
-* repeat critical dynamic facts back before travel: day, time, pay/rate, pickup/reporting point and who to contact
+- keep one decision per message where practical
+- put the most important state first: **OFFER — DO NOT TRAVEL YET** vs **CONFIRMED — TRAVEL / GO TO PICKUP**
+- use short familiar words in the worker's preferred language
+- keep dates, times and Rand amounts visually prominent
+- use reply buttons or simple numeric/text responses such as `1 YES`, `2 NO`, `3 CALL ME` where supported
+- accept voice notes as equivalent input, not as an edge case
+- provide a call/human fallback for workers who struggle with text
+- use a location pin **plus** a familiar landmark/plain-language description; never require map literacy
+- avoid relying on icons alone unless tested with the actual worker population
+- repeat critical dynamic facts back before travel: day, time, pay/rate, pickup/reporting point and who to contact
 
 For workers who prefer voice, MARKD should be able to provide a short audio explanation or operator call in addition to the structured written confirmation.
 
@@ -767,23 +767,23 @@ Target: a field operator can create a useful worker record in approximately two 
 
 ### Minimum viable capture
 
-* photo
-* preferred/display name
-* WhatsApp phone
-* preferred language
-* base area
-* primary skills
-* status
+- photo
+- preferred/display name
+- WhatsApp phone
+- preferred language
+- base area
+- primary skills
+- status
 
 ### Progressive enrichment
 
-* additional languages
-* labour stands
-* identity/document inspection
-* credentials
-* people commonly worked with
-* previous contractors
-* historical Workmark claims
+- additional languages
+- labour stands
+- identity/document inspection
+- credentials
+- people commonly worked with
+- previous contractors
+- historical Workmark claims
 
 Do not make enrichment block initial capture.
 
@@ -795,12 +795,12 @@ Target: create a usable contractor record while on a call or sitting with them.
 
 Minimum:
 
-* person/contact name
-* phone
-* organisation/trading name where applicable
-* operating areas
-* typical work
-* status
+- person/contact name
+- phone
+- organisation/trading name where applicable
+- operating areas
+- typical work
+- status
 
 High-value onboarding question:
 
@@ -824,13 +824,13 @@ Flow:
 
 Suggested provenance labels:
 
-* worker claimed
-* contractor claimed
-* worker confirmed
-* contractor confirmed
-* both confirmed
-* MARKD arranged
-* operator observed
+- worker claimed
+- contractor claimed
+- worker confirmed
+- contractor confirmed
+- both confirmed
+- MARKD arranged
+- operator observed
 
 Do not flatten these into a single verified checkbox.
 
@@ -846,11 +846,11 @@ A core worker-side outcome is to reduce speculative travel to labour stands, pic
 
 Request may originate from:
 
-* operator app
-* WhatsApp text
-* WhatsApp voice note
-* phone call captured by operator
-* future contractor portal
+- operator app
+- WhatsApp text
+- WhatsApp voice note
+- phone call captured by operator
+- future contractor portal
 
 ### Selection order
 
@@ -882,9 +882,9 @@ The pilot should support contractor pickup and grouped pickup without becoming a
 
 Examples:
 
-* "Meet at Bellville taxi rank, 05:45. Johan's bakkie collects confirmed workers at 06:00."
-* "Report directly to the site gate at 07:00."
-* "Meet at the labour stand only if MARKD sent the confirmed message."
+- "Meet at Bellville taxi rank, 05:45. Johan's bakkie collects confirmed workers at 06:00."
+- "Report directly to the site gate at 07:00."
+- "Meet at the labour stand only if MARKD sent the confirmed message."
 
 Reusable PickupPoints allow MARKD to learn practical labour corridors and reduce instruction errors. MARKD records the plan; the contractor or agreed transport provider remains responsible for the actual transport unless a future commercial model deliberately changes that boundary.
 
@@ -900,8 +900,8 @@ No automatic ranking score or employment recommendation is produced.
 
 Track separately:
 
-* worker acceptance
-* contractor confirmation
+- worker acceptance
+- contractor confirmation
 
 Do not assume assignment merely because an operator contacted a worker.
 
@@ -917,12 +917,12 @@ Every MARKD-arranged assignment must end in an explicit outcome.
 
 Minimum closure questions:
 
-* Did the worker attend?
-* Was work completed / was the worker released early?
-* Would contractor use the worker again?
-* Would worker work with contractor again?
-* Was payment made?
-* Amount/method if known?
+- Did the worker attend?
+- Was work completed / was the worker released early?
+- Would contractor use the worker again?
+- Would worker work with contractor again?
+- Was payment made?
+- Amount/method if known?
 
 These responses create/update Workmark evidence.
 
@@ -936,11 +936,11 @@ Unanswered outcomes remain visible as follow-up work rather than silently becomi
 
 Capture:
 
-* amount expected where known
-* due/expected payment timing
-* worker claim
-* contractor response
-* resolution
+- amount expected where known
+- due/expected payment timing
+- worker claim
+- contractor response
+- resolution
 
 ### Disputed
 
@@ -948,20 +948,20 @@ Do not encode one side's allegation as objective truth.
 
 Store:
 
-* claims
-* counterclaims
-* evidence
-* operator notes
-* resolution state
+- claims
+- counterclaims
+- evidence
+- operator notes
+- resolution state
 
 ### No-show
 
 Preserve context:
 
-* assignment confirmation state
-* cancellation timing
-* communication attempts
-* worker explanation where provided
+- assignment confirmation state
+- cancellation timing
+- communication attempts
+- worker explanation where provided
 
 Trust surfaces must distinguish allegation from confirmed outcome.
 
@@ -977,10 +977,10 @@ Use explicit relational tables and derived views/materialised aggregates where n
 
 Graph relationships should be queryable through conventional joins:
 
-* Worker → Workmarks → Organisation
-* Organisation → Workmarks → Worker
-* Worker → CrewLinks → Worker
-* LabourRequest → Assignments → Worker
+- Worker → Workmarks → Organisation
+- Organisation → Workmarks → Worker
+- Worker → CrewLinks → Worker
+- LabourRequest → Assignments → Worker
 
 Only revisit graph-specific storage if actual query complexity or scale demands it.
 
@@ -990,15 +990,15 @@ Only revisit graph-specific storage if actual query complexity or scale demands 
 
 Preferred initial stack:
 
-* TypeScript
-* Next.js/React PWA
-* PostgreSQL via Supabase
-* Supabase Auth for operators
-* Supabase private Storage
-* Supabase Edge Functions or small TypeScript service for webhooks
-* durable queue for WhatsApp/event processing
-* official WhatsApp Business Platform / Cloud API
-* provider abstraction for transcription and language processing
+- TypeScript
+- Next.js/React PWA
+- PostgreSQL via Supabase
+- Supabase Auth for operators
+- Supabase private Storage
+- Supabase Edge Functions or small TypeScript service for webhooks
+- durable queue for WhatsApp/event processing
+- official WhatsApp Business Platform / Cloud API
+- provider abstraction for transcription and language processing
 
 ### Architecture rule
 
@@ -1012,16 +1012,16 @@ They may return structured proposals validated by deterministic schemas and appl
 
 Pilot roles:
 
-* `ops_admin`
-* `ops_user`
+- `ops_admin`
+- `ops_user`
 
 Sensitive capabilities requiring explicit permission:
 
-* identity/document access
-* private notes
-* dispute details
-* deletion/anonymisation
-* exported worker data
+- identity/document access
+- private notes
+- dispute details
+- deletion/anonymisation
+- exported worker data
 
 Future contractor/worker auth must be designed separately rather than reusing operator privileges.
 
@@ -1029,16 +1029,16 @@ Future contractor/worker auth must be designed separately rather than reusing op
 
 ## 22. Privacy/security requirements
 
-* private storage bucket for sensitive documents
-* signed/time-limited media access
-* row-level access controls
-* no direct public document URLs
-* audit metadata on trust-relevant edits
-* phone numbers normalised and unique-aware
-* minimise retention of raw identity documents
-* separate externally shareable fields from internal/private fields
-* define correction/anonymisation workflow
-* database backups and restore testing before real field usage
+- private storage bucket for sensitive documents
+- signed/time-limited media access
+- row-level access controls
+- no direct public document URLs
+- audit metadata on trust-relevant edits
+- phone numbers normalised and unique-aware
+- minimise retention of raw identity documents
+- separate externally shareable fields from internal/private fields
+- define correction/anonymisation workflow
+- database backups and restore testing before real field usage
 
 ---
 
@@ -1048,22 +1048,22 @@ Trust-relevant facts should not be destructively overwritten without history.
 
 At minimum preserve:
 
-* actor
-* action
-* timestamp
-* source channel
-* previous value where appropriate
-* resulting value
-* source ChannelEvent/VerificationClaim
+- actor
+- action
+- timestamp
+- source channel
+- previous value where appropriate
+- resulting value
+- source ChannelEvent/VerificationClaim
 
 This is especially important for:
 
-* payment
-* attendance
-* reuse preference
-* identity verification
-* Workmark verification
-* dispute resolution
+- payment
+- attendance
+- reuse preference
+- identity verification
+- Workmark verification
+- dispute resolution
 
 ---
 
@@ -1071,21 +1071,21 @@ This is especially important for:
 
 The system must make it possible to calculate:
 
-* Labour Requests received
-* requested worker positions
-* fulfilled positions
-* completed worker-days
-* time to first candidate
-* time to confirmed fulfilment
-* no-show rate
-* repeat contractor usage
-* repeat worker-contractor pairings
-* share fulfilled from known relationships
-* worker response rate
-* payment confirmation rate
-* disputes
-* operator touches/minutes per fulfilment
-* revenue per completed worker-day once charging begins
+- Labour Requests received
+- requested worker positions
+- fulfilled positions
+- completed worker-days
+- time to first candidate
+- time to confirmed fulfilment
+- no-show rate
+- repeat contractor usage
+- repeat worker-contractor pairings
+- share fulfilled from known relationships
+- worker response rate
+- payment confirmation rate
+- disputes
+- operator touches/minutes per fulfilment
+- revenue per completed worker-day once charging begins
 
 Metrics should be generated from operational events, not manually maintained dashboard counters.
 
@@ -1114,20 +1114,20 @@ This is intentionally different from a CRUD menu such as “New Worker / New Con
 
 Do not build yet:
 
-* worker native app
-* contractor native app
-* public marketplace browse
-* automatic AI worker ranking
-* universal worker score
-* live GPS tracking
-* platform payroll
-* holding worker funds
-* detailed project management
-* timesheets for large employers
-* invoicing suite
-* automatic disciplinary/blacklist logic
-* multi-city architecture beyond normal location extensibility
-* complicated BI dashboards
+- worker native app
+- contractor native app
+- public marketplace browse
+- automatic AI worker ranking
+- universal worker score
+- live GPS tracking
+- platform payroll
+- holding worker funds
+- detailed project management
+- timesheets for large employers
+- invoicing suite
+- automatic disciplinary/blacklist logic
+- multi-city architecture beyond normal location extensibility
+- complicated BI dashboards
 
 ---
 
@@ -1163,15 +1163,15 @@ Automate specific proven repetitive decisions, not theoretical ones.
 
 MARKD is field-pilot ready when two operators can, from their phones:
 
- 1. create/find a worker quickly
- 2. create/find a contractor quickly
- 3. capture an existing work relationship
- 4. receive/capture a Labour Request
- 5. identify known and available workers
- 6. assign and confirm workers
- 7. see tomorrow's gaps
- 8. close completed work into Work Stamps
- 9. preserve verification provenance
+1.  create/find a worker quickly
+2.  create/find a contractor quickly
+3.  capture an existing work relationship
+4.  receive/capture a Labour Request
+5.  identify known and available workers
+6.  assign and confirm workers
+7.  see tomorrow's gaps
+8.  close completed work into Work Stamps
+9.  preserve verification provenance
 10. manage unpaid/disputed/no-show exceptions
 11. ingest at least basic WhatsApp events into the Inbox
 12. operate without exposing private worker information to contractors
@@ -1184,16 +1184,16 @@ The test of success is not feature completeness. It is whether the product makes
 
 In addition to fulfilment and graph metrics, measure:
 
-* offers sent vs workers expressing interest
-* assignments reaching travel-ready confirmation
-* time between travel-ready confirmation and report/pickup time
-* worker acknowledgement rate
-* self-travel vs pickup-point vs contractor-transport assignments
-* late contractor cancellations after travel authorisation
-* worker-reported unnecessary trips avoided
-* worker-reported transport spend avoided where practical to capture
-* show-up rate by reporting/transport mode
-* failed pickups / unclear-location exceptions
+- offers sent vs workers expressing interest
+- assignments reaching travel-ready confirmation
+- time between travel-ready confirmation and report/pickup time
+- worker acknowledgement rate
+- self-travel vs pickup-point vs contractor-transport assignments
+- late contractor cancellations after travel authorisation
+- worker-reported unnecessary trips avoided
+- worker-reported transport spend avoided where practical to capture
+- show-up rate by reporting/transport mode
+- failed pickups / unclear-location exceptions
 
 Do not infer saved transport costs from GPS tracking. Prefer explicit worker feedback and operational event data.
 
@@ -1239,19 +1239,19 @@ The implementation must preserve this hierarchy:
 
 The initial worker app uses four primary destinations:
 
-* **Home** — answers “Do I have work today?” and gives travel-ready instructions first
-* **Work** — offers, accepted/waiting assignments, confirmed work and recent work
-* **My Card** — portable proof of verified work history and Work Graph evidence
-* **Profile** — language, audio/read-aloud, availability, travel preferences and channel preferences
+- **Home** — answers “Do I have work today?” and gives travel-ready instructions first
+- **Work** — offers, accepted/waiting assignments, confirmed work and recent work
+- **My Card** — portable proof of verified work history and Work Graph evidence
+- **Profile** — language, audio/read-aloud, availability, travel preferences and channel preferences
 
 ### Contractor / Builder mobile navigation
 
 The initial contractor-facing app mode uses:
 
-* **Home** — next-day crew readiness, gaps and known-worker shortcuts
-* **Hire** — fill a specific requirement, relationship-first
-* **Workers** — reusable labour book / known worker network
-* **Jobs** — active and upcoming Labour Requests and staffing state
+- **Home** — next-day crew readiness, gaps and known-worker shortcuts
+- **Hire** — fill a specific requirement, relationship-first
+- **Workers** — reusable labour book / known worker network
+- **Jobs** — active and upcoming Labour Requests and staffing state
 
 “Builder” may be used conversationally in a tested UI, but the canonical domain remains Organisation / Contractor.
 

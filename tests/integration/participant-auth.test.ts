@@ -95,9 +95,13 @@ describe("participant account mappings", () => {
       [operatorOnly],
     );
     await client.query("set local role anon");
+    await client.query("savepoint anonymous_participant_account_read");
     await expect(
       client.query("select * from public.participant_accounts"),
     ).rejects.toThrow("permission denied");
+    await client.query(
+      "rollback to savepoint anonymous_participant_account_read",
+    );
     await client.query("set local role postgres");
     await becomeAuthenticated(client, operatorOnly);
     const accounts = await client.query(

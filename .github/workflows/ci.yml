@@ -71,7 +71,7 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run browser smoke tests
-        run: pnpm test:e2e
+        run: pnpm test:e2e -- --retries=0
 
       - name: Stop local Supabase
         if: always()
