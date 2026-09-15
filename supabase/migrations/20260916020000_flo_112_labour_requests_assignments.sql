@@ -66,9 +66,12 @@ alter table public.assignments
     check (num_nonnulls(organisation_id, hirer_person_id) = 1);
 
 alter table public.audit_events
+  drop constraint audit_events_actor_kind_check,
   drop constraint audit_events_actor_context_check;
 
 alter table public.audit_events
+  add constraint audit_events_actor_kind_check
+    check (actor_kind in ('operator', 'participant', 'system', 'unknown')),
   add constraint audit_events_actor_context_check check (
     (actor_kind in ('operator', 'participant') and actor_id is not null)
     or (actor_kind = 'operator' and operator_account_id is not null)
