@@ -50,5 +50,5 @@ if __name__ == "__main__":
             return asyncio.SelectorEventLoop
 
     uvicorn.Server(
-        MarkdConfig("app.main:app", host="0.0.0.0", port=8000)
+        MarkdConfig("app.main:app", host="0.0.0.0", port=8000, access_log=False)
     ).run()

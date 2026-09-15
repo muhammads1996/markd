@@ -8,9 +8,16 @@ import pytest
 from httpx import ASGITransport, AsyncClient, MockTransport, Request, Response
 
 from app.core.config import Settings
-from app.integrations.language import OpenRouterProvider
+from app.integrations.language import (
+    ExtractedIntent,
+    OpenRouterProvider,
+    ProviderEvidence,
+    Transcription,
+    extract_intent,
+)
 from app.integrations.whatsapp import MetaWhatsAppCloudProvider, WhatsAppProviderError
 from app.main import create_app
+from app.workers import whatsapp as whatsapp_worker
 from app.workers.whatsapp import _process_message_job, run_delivery_jobs
 
 pytestmark = pytest.mark.asyncio
@@ -167,6 +174,11 @@ async def test_webhook_persists_replayed_messages_and_read_status_as_evidence() 
         for query, params in connection.calls
         if "record_channel_delivery_status" in query
     ]
+    status_event_inserts = [
+        params
+        for query, params in connection.calls
+        if "insert into public.channel_events" in query and "'status'" in query
+    ]
     assert len(status_calls) == 2
     assert all(
         status_call is not None
@@ -174,6 +186,11 @@ async def test_webhook_persists_replayed_messages_and_read_status_as_evidence() 
         and status_call[1] == "delivered"
         and status_call[3] is None
         for status_call in status_calls
+    )
+    assert len(status_event_inserts) == 2
+    assert all(
+        event_insert is not None and event_insert[3] == "wamid-outbound-1"
+        for event_insert in status_event_inserts
     )
 
 
@@ -195,7 +212,12 @@ async def test_webhook_preserves_unknown_valid_events_without_enqueuing_provider
         )
 
     assert response.status_code == 200
-    assert any("'unsupported'" in query for query, _ in connection.calls)
+    unsupported_insert = next(
+        (query for query, _ in connection.calls if "'unsupported'" in query),
+        None,
+    )
+    assert unsupported_insert is not None
+    assert "on conflict (channel, provider_event_id) do nothing" in unsupported_insert
 
 
 class ProcessingConnection:
@@ -236,6 +258,79 @@ class ProcessingConnection:
         return FakeResult()
 
 
+class AudioProcessingConnection(ProcessingConnection):
+    def __init__(self) -> None:
+        super().__init__()
+        self.event["payload"] = {
+            "entry": [
+                {
+                    "changes": [
+                        {
+                            "value": {
+                                "messages": [
+                                    {
+                                        "id": "wamid-inbound-1",
+                                        "audio": {
+                                            "id": "media-1",
+                                            "mime_type": "audio/ogg",
+                                        },
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+        self.media = {
+            "id": "22222222-2222-4222-8222-222222222222",
+            "provider_media_id": "media-1",
+            "media_type": "audio",
+            "mime_type": "audio/ogg",
+            "retrieval_state": "pending",
+            "storage_bucket": None,
+            "storage_path": None,
+        }
+
+    async def execute(
+        self, query: str, params: tuple[Any, ...] | None = None
+    ) -> FakeResult:
+        self.calls.append((query, params))
+        if "from public.channel_events" in query:
+            return FakeResult(self.event)
+        if "from public.channel_media_assets" in query:
+            return FakeResult(self.media)
+        return FakeResult()
+
+
+class FakeLanguageProvider:
+    async def transcribe(self, media_bytes: bytes, mime_type: str) -> Transcription:
+        assert media_bytes == b"voice-note"
+        assert mime_type == "audio/ogg"
+        return Transcription(
+            "Ndiyakwazi ukusebenza ngomso",
+            "xh",
+            0.65,
+            ProviderEvidence("openrouter", "transcription-model", 42, 0.002, False),
+        )
+
+    async def extract_intent(
+        self, text: str, language_code: str | None
+    ) -> ExtractedIntent:
+        assert text == "Ndiyakwazi ukusebenza ngomso"
+        assert language_code == "xh"
+        return ExtractedIntent(
+            "worker_availability",
+            {"availability": "tomorrow"},
+            0.82,
+            "clear",
+            ProviderEvidence("openrouter", "intent-model", 23, 0.001, False),
+        )
+
+    async def aclose(self) -> None:
+        return None
+
+
 async def test_message_processing_creates_only_a_proposed_action_draft() -> None:
     connection = ProcessingConnection()
     outcome = await _process_message_job(
@@ -256,6 +351,79 @@ async def test_message_processing_creates_only_a_proposed_action_draft() -> None
         for query, _ in connection.calls
         for table in ("workmarks", "assignments", "worker_availability")
     )
+
+
+async def test_audio_processing_persists_transcription_evidence_as_ambiguous_draft(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connection = AudioProcessingConnection()
+
+    async def retrieve_audio(
+        connection: Any, media: Any, channel_event_id: str, settings: Settings
+    ) -> tuple[bytes, str]:
+        assert media["provider_media_id"] == "media-1"
+        assert channel_event_id == "11111111-1111-4111-8111-111111111111"
+        assert settings.openrouter_api_key == "test-key"
+        return b"voice-note", "audio/ogg"
+
+    monkeypatch.setattr(whatsapp_worker, "_retrieve_audio", retrieve_audio)
+    monkeypatch.setattr(
+        whatsapp_worker,
+        "_openrouter_provider",
+        lambda _: FakeLanguageProvider(),
+    )
+
+    outcome = await whatsapp_worker._process_message_job(
+        connection,
+        "11111111-1111-4111-8111-111111111111",
+        Settings(openrouter_api_key="test-key"),
+    )
+
+    transcript_update = next(
+        (
+            params
+            for query, params in connection.calls
+            if "set transcript = %s" in query
+        ),
+        None,
+    )
+    action_insert = next(
+        (params for query, params in connection.calls if "proposed_actions" in query),
+        None,
+    )
+    assert outcome == "created"
+    assert transcript_update is not None
+    assert transcript_update[:6] == (
+        "Ndiyakwazi ukusebenza ngomso",
+        0.65,
+        "xh",
+        "openrouter",
+        "transcription-model",
+        42,
+    )
+    assert action_insert is not None
+    assert action_insert[1] == "worker_availability"
+    assert action_insert[2] == "ambiguous"
+    assert action_insert[6:8] == ("openrouter", "intent-model")
+    assert all(
+        table not in query
+        for query, _ in connection.calls
+        for table in ("workmarks", "assignments", "worker_availability")
+    )
+
+
+async def test_language_rules_cover_afrikaans_isixhosa_and_code_switched_uncertainty(
+) -> None:
+    afrikaans = extract_intent("Ek is beskikbaar more", "af")
+    isixhosa = extract_intent("Ndiyakwazi ukusebenza ngomso", "xh")
+    code_switched = extract_intent("I am beskikbaar after work", None)
+
+    assert afrikaans is not None
+    assert afrikaans.fields == {"availability": "tomorrow"}
+    assert isixhosa is not None
+    assert isixhosa.fields == {"availability": "tomorrow"}
+    assert code_switched is not None
+    assert code_switched.ambiguity == "ambiguous"
 
 
 async def test_interactive_reply_is_usable_as_message_evidence() -> None:

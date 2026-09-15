@@ -113,7 +113,7 @@ async def receive_whatsapp_webhook(
                         delivery_status.occurred_at,
                         Jsonb(delivery_status.raw_payload),
                         delivery_status.provider_event_id,
-                        delivery_status.provider_event_id,
+                        delivery_status.provider_message_id,
                     ),
                 )
                 await connection.execute(
@@ -202,7 +202,8 @@ async def _persist_inbound_event(connection: Any, inbound: InboundMessage) -> No
           channel, event_type, occurred_at, payload, provider_event_id,
           provider_message_id, sender_phone_number, media
         ) values ('whatsapp', 'message', %s, %s, %s, %s, %s, %s)
-        on conflict (channel, provider_message_id) where provider_message_id is not null
+        on conflict (channel, provider_message_id)
+        where event_type = 'message' and provider_message_id is not null
         do nothing returning id
         """,
         (
@@ -264,8 +265,7 @@ async def _persist_unsupported_event(
         insert into public.channel_events (
           channel, event_type, payload, provider_event_id, provider_message_id, media
         ) values ('whatsapp', 'unsupported', %s, %s, %s, '[]'::jsonb)
-        on conflict (channel, provider_message_id) where provider_message_id is not null
-        do nothing
+                on conflict (channel, provider_event_id) do nothing
         """,
         (Jsonb(payload), event_key, f"unsupported:{event_key}"),
     )

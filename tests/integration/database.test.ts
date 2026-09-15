@@ -693,6 +693,75 @@ describe("local Supabase database", () => {
     });
     expect(delivered.rows[0]?.delivered_at).not.toBeNull();
 
+    await expect(
+      client.query(
+        `insert into public.channel_events(
+          channel, event_type, provider_event_id, provider_message_id, payload
+        ) values (
+          'whatsapp', 'status', 'wamid.flo-129:sent:2026-09-16T00:00:00Z',
+          'wamid.flo-129', '{}'
+        )`,
+      ),
+    ).resolves.toBeDefined();
+    await expect(
+      client.query(
+        `insert into public.channel_events(
+          channel, event_type, provider_event_id, provider_message_id, payload
+        ) values (
+          'whatsapp', 'status', 'wamid.flo-129:delivered:2026-09-16T00:01:00Z',
+          'wamid.flo-129', '{}'
+        )`,
+      ),
+    ).resolves.toBeDefined();
+    const statusEvidence = await client.query<{ count: string }>(
+      `select count(*)::text as count from public.channel_events
+       where event_type = 'status' and provider_message_id = 'wamid.flo-129'`,
+    );
+    expect(statusEvidence.rows[0]?.count).toBe("2");
+
+    const unsupportedEvent = `
+      insert into public.channel_events(
+        channel, event_type, provider_event_id, provider_message_id, payload
+      ) values (
+        'whatsapp', 'unsupported', 'flo-129-unsupported-event',
+        'unsupported:flo-129-unsupported-event', '{}'
+      ) on conflict (channel, provider_event_id) do nothing
+    `;
+    await expect(client.query(unsupportedEvent)).resolves.toBeDefined();
+    await expect(client.query(unsupportedEvent)).resolves.toBeDefined();
+    const unsupportedEvents = await client.query<{ count: string }>(
+      `select count(*)::text as count from public.channel_events
+       where provider_event_id = 'flo-129-unsupported-event'`,
+    );
+    expect(unsupportedEvents.rows[0]?.count).toBe("1");
+
+    const expiredDelivery = await client.query<{ id: string }>(
+      `insert into public.channel_deliveries(
+        channel, recipient_phone_number, message_kind, body, idempotency_key
+      ) values (
+        'whatsapp', '+27821110002', 'provider_test', 'test message',
+        'flo-129-expired-delivery'
+      ) returning id`,
+    );
+    const expiredClaim = await client.query<{ id: string }>(
+      "select id from public.claim_channel_deliveries(100)",
+    );
+    expect(expiredClaim.rows.map(({ id }) => id)).toContain(
+      expiredDelivery.rows[0]?.id,
+    );
+    await client.query(
+      "update public.channel_deliveries set leased_until = now() - interval '1 minute' where id = $1",
+      [expiredDelivery.rows[0]?.id],
+    );
+    await expect(
+      client.query("select public.requeue_expired_channel_deliveries()"),
+    ).resolves.toBeDefined();
+    const recoveredDelivery = await client.query<{ state: string }>(
+      "select state::text from public.channel_deliveries where id = $1",
+      [expiredDelivery.rows[0]?.id],
+    );
+    expect(recoveredDelivery.rows[0]?.state).toBe("queued");
+
     await client.query(
       "update public.channel_processing_jobs set state = 'leased', leased_until = now() - interval '1 minute' where id = $1",
       [processingJob.rows[0]?.id],
