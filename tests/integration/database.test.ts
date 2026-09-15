@@ -44,6 +44,16 @@ async function becomeAuthenticatedOperator(
   await client.query("set local role authenticated");
 }
 
+async function becomeApiOperator(
+  client: Client,
+  userId: string,
+): Promise<void> {
+  await client.query("select set_config('request.jwt.claim.sub', $1, true)", [
+    userId,
+  ]);
+  await client.query("set local role postgres");
+}
+
 const domainTables = [
   "areas",
   "assignments",
@@ -532,6 +542,258 @@ describe("local Supabase database", () => {
     await client.query("rollback");
   });
 
+  it("keeps provider evidence idempotent, private, and recoverable", async () => {
+    const client = new Client({ connectionString: localDatabaseUrl });
+    clients.push(client);
+    await client.connect();
+    await client.query("begin");
+
+    const messageEvent = await client.query<{ id: string }>(
+      `insert into public.channel_events(
+        channel, event_type, provider_event_id, provider_message_id, payload
+      ) values (
+        'whatsapp', 'message', 'flo-129-inbound-event', 'flo-129-inbound-message', '{}'
+      ) returning id`,
+    );
+    const channelEventId = messageEvent.rows[0]?.id;
+    const inboundReplay = await client.query<{ id: string }>(
+      `insert into public.channel_events(
+        channel, event_type, provider_event_id, provider_message_id, payload
+      ) values (
+        'whatsapp', 'message', 'flo-129-replay-event', 'flo-129-inbound-message', '{}'
+      ) on conflict (channel, provider_message_id)
+        where event_type = 'message' and provider_message_id is not null
+        do nothing returning id`,
+    );
+    expect(inboundReplay.rows).toEqual([]);
+    const processingJob = await client.query<{ id: string }>(
+      "select id from public.channel_processing_jobs where channel_event_id = $1",
+      [channelEventId],
+    );
+    expect(processingJob.rows).toHaveLength(1);
+
+    await client.query("savepoint duplicate_channel_event");
+    await expect(
+      client.query(
+        `insert into public.channel_events(
+          channel, event_type, provider_event_id, provider_message_id, payload
+        ) values (
+          'whatsapp', 'message', 'flo-129-replay-event', 'flo-129-inbound-message', '{}'
+        )`,
+      ),
+    ).rejects.toThrow();
+    await client.query("rollback to savepoint duplicate_channel_event");
+
+    await client.query(
+      `insert into public.proposed_actions(
+        channel_event_id, action_type, payload, risk_tier, ambiguity,
+        entity_resolution, interpretation
+      ) values (
+        $1, 'labour_request', '{"actionType":"labour_request","fields":{},"entityIds":{}}',
+        'operational', 'clear', '{}', '{}'
+      )`,
+      [channelEventId],
+    );
+    await client.query("savepoint duplicate_proposed_action");
+    await expect(
+      client.query(
+        `insert into public.proposed_actions(
+          channel_event_id, action_type, payload, risk_tier, ambiguity,
+          entity_resolution, interpretation
+        ) values (
+          $1, 'labour_request', '{"actionType":"labour_request","fields":{},"entityIds":{}}',
+          'operational', 'clear', '{}', '{}'
+        )`,
+        [channelEventId],
+      ),
+    ).rejects.toThrow();
+    await client.query("rollback to savepoint duplicate_proposed_action");
+
+    const statusEvent = await client.query<{ id: string }>(
+      `insert into public.channel_events(
+        channel, event_type, provider_event_id, provider_message_id, payload
+      ) values (
+        'whatsapp', 'status', 'flo-129-status-event', 'flo-129-inbound-message', '{}'
+      ) returning id`,
+    );
+    const statusJob = await client.query(
+      "select id from public.channel_processing_jobs where channel_event_id = $1",
+      [statusEvent.rows[0]?.id],
+    );
+    expect(statusJob.rows).toHaveLength(0);
+    const sharedMessageIdEvents = await client.query<{ count: string }>(
+      `select count(*)::text as count from public.channel_events
+       where provider_message_id = 'flo-129-inbound-message'`,
+    );
+    expect(sharedMessageIdEvents.rows[0]?.count).toBe("2");
+
+    const media = await client.query<{ id: string }>(
+      `insert into public.channel_media_assets(
+        channel_event_id, provider_media_id, media_type, storage_bucket,
+        storage_path, retrieval_state
+      ) values (
+        $1, 'flo-129-media', 'audio', 'whatsapp-media',
+        'channel-events/flo-129/audio.ogg', 'retrieved'
+      ) returning id`,
+      [channelEventId],
+    );
+    const mediaId = media.rows[0]?.id;
+    await createOperator(client, operatorUserId, "ops_user");
+    await becomeAuthenticatedOperator(client, operatorUserId);
+    const authorisedMedia = await client.query<{
+      bucket_id: string;
+      object_path: string;
+    }>("select * from public.authorize_channel_media_read($1, 300)", [mediaId]);
+    expect(authorisedMedia.rows).toEqual([
+      {
+        bucket_id: "whatsapp-media",
+        object_path: "channel-events/flo-129/audio.ogg",
+      },
+    ]);
+    await client.query("set local role postgres");
+    await becomeAuthenticatedOperator(client, unprovisionedUserId);
+    const deniedMedia = await client.query(
+      "select * from public.authorize_channel_media_read($1, 300)",
+      [mediaId],
+    );
+    expect(deniedMedia.rows).toEqual([]);
+
+    await client.query("set local role postgres");
+    const retryDelivery = await client.query<{ id: string }>(
+      `insert into public.channel_deliveries(
+        channel, recipient_phone_number, message_kind, body, idempotency_key
+      ) values (
+        'whatsapp', '+27821110000', 'provider_test', 'test message',
+        'flo-129-retry-delivery'
+      ) returning id`,
+    );
+    const claimedDeliveries = await client.query<{ id: string }>(
+      "select id from public.claim_channel_deliveries(100)",
+    );
+    expect(claimedDeliveries.rows.map(({ id }) => id)).toContain(
+      retryDelivery.rows[0]?.id,
+    );
+    const retried = await client.query<{ state: string; attempts: number }>(
+      "select state::text, attempts from public.complete_channel_delivery($1, false, null, 'synthetic network failure', true)",
+      [retryDelivery.rows[0]?.id],
+    );
+    expect(retried.rows[0]).toEqual({ state: "queued", attempts: 1 });
+
+    const successfulDelivery = await client.query<{ id: string }>(
+      `insert into public.channel_deliveries(
+        channel, recipient_phone_number, message_kind, body, idempotency_key
+      ) values (
+        'whatsapp', '+27821110001', 'provider_test', 'test message',
+        'flo-129-success-delivery'
+      ) returning id`,
+    );
+    const successfulClaim = await client.query<{ id: string }>(
+      "select id from public.claim_channel_deliveries(100)",
+    );
+    expect(successfulClaim.rows.map(({ id }) => id)).toContain(
+      successfulDelivery.rows[0]?.id,
+    );
+    await client.query(
+      "select public.complete_channel_delivery($1, true, 'wamid.flo-129', null, false)",
+      [successfulDelivery.rows[0]?.id],
+    );
+    const delivered = await client.query<{
+      state: string;
+      provider_message_id: string;
+      delivered_at: string | null;
+    }>(
+      "select state::text, provider_message_id, delivered_at from public.record_channel_delivery_status('wamid.flo-129', 'delivered', now(), null)",
+    );
+    expect(delivered.rows[0]).toMatchObject({
+      state: "delivered",
+      provider_message_id: "wamid.flo-129",
+    });
+    expect(delivered.rows[0]?.delivered_at).not.toBeNull();
+
+    await expect(
+      client.query(
+        `insert into public.channel_events(
+          channel, event_type, provider_event_id, provider_message_id, payload
+        ) values (
+          'whatsapp', 'status', 'wamid.flo-129:sent:2026-09-16T00:00:00Z',
+          'wamid.flo-129', '{}'
+        )`,
+      ),
+    ).resolves.toBeDefined();
+    await expect(
+      client.query(
+        `insert into public.channel_events(
+          channel, event_type, provider_event_id, provider_message_id, payload
+        ) values (
+          'whatsapp', 'status', 'wamid.flo-129:delivered:2026-09-16T00:01:00Z',
+          'wamid.flo-129', '{}'
+        )`,
+      ),
+    ).resolves.toBeDefined();
+    const statusEvidence = await client.query<{ count: string }>(
+      `select count(*)::text as count from public.channel_events
+       where event_type = 'status' and provider_message_id = 'wamid.flo-129'`,
+    );
+    expect(statusEvidence.rows[0]?.count).toBe("2");
+
+    const unsupportedEvent = `
+      insert into public.channel_events(
+        channel, event_type, provider_event_id, provider_message_id, payload
+      ) values (
+        'whatsapp', 'unsupported', 'flo-129-unsupported-event',
+        'unsupported:flo-129-unsupported-event', '{}'
+      ) on conflict (channel, provider_event_id) do nothing
+    `;
+    await expect(client.query(unsupportedEvent)).resolves.toBeDefined();
+    await expect(client.query(unsupportedEvent)).resolves.toBeDefined();
+    const unsupportedEvents = await client.query<{ count: string }>(
+      `select count(*)::text as count from public.channel_events
+       where provider_event_id = 'flo-129-unsupported-event'`,
+    );
+    expect(unsupportedEvents.rows[0]?.count).toBe("1");
+
+    const expiredDelivery = await client.query<{ id: string }>(
+      `insert into public.channel_deliveries(
+        channel, recipient_phone_number, message_kind, body, idempotency_key
+      ) values (
+        'whatsapp', '+27821110002', 'provider_test', 'test message',
+        'flo-129-expired-delivery'
+      ) returning id`,
+    );
+    const expiredClaim = await client.query<{ id: string }>(
+      "select id from public.claim_channel_deliveries(100)",
+    );
+    expect(expiredClaim.rows.map(({ id }) => id)).toContain(
+      expiredDelivery.rows[0]?.id,
+    );
+    await client.query(
+      "update public.channel_deliveries set leased_until = now() - interval '1 minute' where id = $1",
+      [expiredDelivery.rows[0]?.id],
+    );
+    await expect(
+      client.query("select public.requeue_expired_channel_deliveries()"),
+    ).resolves.toBeDefined();
+    const recoveredDelivery = await client.query<{ state: string }>(
+      "select state::text from public.channel_deliveries where id = $1",
+      [expiredDelivery.rows[0]?.id],
+    );
+    expect(recoveredDelivery.rows[0]?.state).toBe("queued");
+
+    await client.query(
+      "update public.channel_processing_jobs set state = 'leased', leased_until = now() - interval '1 minute' where id = $1",
+      [processingJob.rows[0]?.id],
+    );
+    await expect(
+      client.query("select public.requeue_expired_channel_processing_jobs()"),
+    ).resolves.toBeDefined();
+    const recovered = await client.query<{ state: string }>(
+      "select state from public.channel_processing_jobs where id = $1",
+      [processingJob.rows[0]?.id],
+    );
+    expect(recovered.rows[0]?.state).toBe("queued");
+    await client.query("rollback");
+  });
+
   it("exposes only confirmed work through relationship views and denies anonymous reads", async () => {
     const client = new Client({ connectionString: localDatabaseUrl });
     clients.push(client);
@@ -865,6 +1127,26 @@ describe("local Supabase database", () => {
     await client.query("rollback");
   });
 
+  it("keeps consequential command RPCs behind the API database role", async () => {
+    const client = new Client({ connectionString: localDatabaseUrl });
+    clients.push(client);
+    await client.connect();
+    await client.query("begin");
+    await createOperator(client, operatorUserId, "ops_user");
+    await becomeAuthenticatedOperator(client, operatorUserId);
+
+    await expect(
+      client.query(
+        "select * from public.begin_worker_onboarding($1, $2::jsonb)",
+        [
+          "91000000-0000-4000-8000-000000000099",
+          JSON.stringify({ display_name: "Browser command attempt" }),
+        ],
+      ),
+    ).rejects.toThrow("permission denied");
+    await client.query("rollback");
+  });
+
   it("runs draft-first worker onboarding and refuses activation before portrait upload", async () => {
     const client = new Client({ connectionString: localDatabaseUrl });
     clients.push(client);
@@ -880,7 +1162,7 @@ describe("local Supabase database", () => {
     const skill = await client.query<{ id: string }>(
       "insert into public.skills(name) values ('Onboarding evidence skill') returning id",
     );
-    await becomeAuthenticatedOperator(client, operatorUserId);
+    await becomeApiOperator(client, operatorUserId);
     const draft = await client.query<{
       worker_id: string;
       portrait_asset_id: string;
@@ -957,7 +1239,7 @@ describe("local Supabase database", () => {
     const skill = await client.query<{ id: string }>(
       "insert into public.skills(name) values ('Organisation typical skill') returning id",
     );
-    await becomeAuthenticatedOperator(client, operatorUserId);
+    await becomeApiOperator(client, operatorUserId);
     const organisation = await client.query<{ id: string }>(
       `select public.onboard_organisation(
         'Mahlobo Build (Pty) Ltd', 'Mahlobo Build', 'Anele Dlamini',
@@ -1013,7 +1295,7 @@ describe("local Supabase database", () => {
     const replacementSkill = await client.query<{ id: string }>(
       "insert into public.skills(name) values ('Replacement primary skill') returning id",
     );
-    await becomeAuthenticatedOperator(client, operatorUserId);
+    await becomeApiOperator(client, operatorUserId);
     const workerId = "91000000-0000-4000-8000-000000000011";
     const draft = await client.query<{
       bucket_id: string;
@@ -1138,7 +1420,7 @@ describe("local Supabase database", () => {
     await client.connect();
     await client.query("begin");
     await createOperator(client, operatorUserId, "ops_user");
-    await becomeAuthenticatedOperator(client, operatorUserId);
+    await becomeApiOperator(client, operatorUserId);
     const duplicateWorkerId = "91000000-0000-4000-8000-000000000012";
     await client.query("savepoint duplicate_phone");
     await expect(

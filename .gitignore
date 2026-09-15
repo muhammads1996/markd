@@ -30,6 +30,9 @@ Thumbs.db
 
 # Logs
 *.log
+*.pyc
+__pycache__/
+
 
 # Dependencies and package-manager state
 node_modules/

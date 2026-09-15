@@ -330,6 +330,8 @@ export type Database = {
       }
       channel_deliveries: {
         Row: {
+          attempts: number
+          available_at: string
           body: string
           channel: string
           created_at: string
@@ -337,6 +339,8 @@ export type Database = {
           failure_reason: string | null
           id: string
           idempotency_key: string
+          last_error: string | null
+          leased_until: string | null
           message_kind: string
           provider_message_id: string | null
           recipient_phone_number: string
@@ -348,6 +352,8 @@ export type Database = {
           state: Database["public"]["Enums"]["channel_delivery_state"]
         }
         Insert: {
+          attempts?: number
+          available_at?: string
           body: string
           channel: string
           created_at?: string
@@ -355,6 +361,8 @@ export type Database = {
           failure_reason?: string | null
           id?: string
           idempotency_key: string
+          last_error?: string | null
+          leased_until?: string | null
           message_kind: string
           provider_message_id?: string | null
           recipient_phone_number: string
@@ -366,6 +374,8 @@ export type Database = {
           state?: Database["public"]["Enums"]["channel_delivery_state"]
         }
         Update: {
+          attempts?: number
+          available_at?: string
           body?: string
           channel?: string
           created_at?: string
@@ -373,6 +383,8 @@ export type Database = {
           failure_reason?: string | null
           id?: string
           idempotency_key?: string
+          last_error?: string | null
+          leased_until?: string | null
           message_kind?: string
           provider_message_id?: string | null
           recipient_phone_number?: string
@@ -470,6 +482,10 @@ export type Database = {
           storage_path: string | null
           transcript: string | null
           transcript_confidence: number | null
+          transcription_latency_ms: number | null
+          transcription_metadata: Json
+          transcription_model: string | null
+          transcription_provider: string | null
           updated_at: string
         }
         Insert: {
@@ -487,6 +503,10 @@ export type Database = {
           storage_path?: string | null
           transcript?: string | null
           transcript_confidence?: number | null
+          transcription_latency_ms?: number | null
+          transcription_metadata?: Json
+          transcription_model?: string | null
+          transcription_provider?: string | null
           updated_at?: string
         }
         Update: {
@@ -504,6 +524,10 @@ export type Database = {
           storage_path?: string | null
           transcript?: string | null
           transcript_confidence?: number | null
+          transcription_latency_ms?: number | null
+          transcription_metadata?: Json
+          transcription_model?: string | null
+          transcription_provider?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2928,6 +2952,13 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      authorize_channel_media_read: {
+        Args: { requested_asset_id: string; requested_expires_in: number }
+        Returns: {
+          bucket_id: string
+          object_path: string
+        }[]
+      }
       authorize_worker_media_read: {
         Args: { requested_asset_id: string; requested_expires_in: number }
         Returns: {
@@ -2945,6 +2976,37 @@ export type Database = {
         }[]
       }
       cancel_worker_onboarding: { Args: { worker_id: string }; Returns: string }
+      claim_channel_deliveries: {
+        Args: { batch_size?: number }
+        Returns: {
+          attempts: number
+          available_at: string
+          body: string
+          channel: string
+          created_at: string
+          delivered_at: string | null
+          failure_reason: string | null
+          id: string
+          idempotency_key: string
+          last_error: string | null
+          leased_until: string | null
+          message_kind: string
+          provider_message_id: string | null
+          recipient_phone_number: string
+          sent_at: string | null
+          source_channel_event_id: string | null
+          source_proposed_action_id: string | null
+          source_record_id: string | null
+          source_table: string | null
+          state: Database["public"]["Enums"]["channel_delivery_state"]
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "channel_deliveries"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_channel_processing_jobs: {
         Args: { batch_size?: number }
         Returns: {
@@ -2965,8 +3027,50 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      complete_channel_delivery: {
+        Args: {
+          delivery_id: string
+          error_message?: string
+          reported_provider_message_id?: string
+          retryable?: boolean
+          succeeded: boolean
+        }
+        Returns: {
+          attempts: number
+          available_at: string
+          body: string
+          channel: string
+          created_at: string
+          delivered_at: string | null
+          failure_reason: string | null
+          id: string
+          idempotency_key: string
+          last_error: string | null
+          leased_until: string | null
+          message_kind: string
+          provider_message_id: string | null
+          recipient_phone_number: string
+          sent_at: string | null
+          source_channel_event_id: string | null
+          source_proposed_action_id: string | null
+          source_record_id: string | null
+          source_table: string | null
+          state: Database["public"]["Enums"]["channel_delivery_state"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "channel_deliveries"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       complete_channel_processing_job: {
-        Args: { error_message?: string; job_id: string; succeeded: boolean }
+        Args: {
+          error_message?: string
+          job_id: string
+          retryable?: boolean
+          succeeded: boolean
+        }
         Returns: {
           attempts: number
           available_at: string
@@ -3013,6 +3117,42 @@ export type Database = {
         }
         Returns: string
       }
+      record_channel_delivery_status: {
+        Args: {
+          reported_at?: string
+          reported_failure_reason?: string
+          reported_state: Database["public"]["Enums"]["channel_delivery_state"]
+          target_provider_message_id: string
+        }
+        Returns: {
+          attempts: number
+          available_at: string
+          body: string
+          channel: string
+          created_at: string
+          delivered_at: string | null
+          failure_reason: string | null
+          id: string
+          idempotency_key: string
+          last_error: string | null
+          leased_until: string | null
+          message_kind: string
+          provider_message_id: string | null
+          recipient_phone_number: string
+          sent_at: string | null
+          source_channel_event_id: string | null
+          source_proposed_action_id: string | null
+          source_record_id: string | null
+          source_table: string | null
+          state: Database["public"]["Enums"]["channel_delivery_state"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "channel_deliveries"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       reject_proposed_action: {
         Args: { action_id: string; reason: string }
         Returns: {
@@ -3042,6 +3182,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      requeue_expired_channel_deliveries: { Args: never; Returns: number }
       requeue_expired_channel_processing_jobs: { Args: never; Returns: number }
       search_work_graph: {
         Args: { max_results?: number; search_term: string }
@@ -3071,7 +3212,12 @@ export type Database = {
         | "no_show"
         | "completed"
       attendance_outcome: "unknown" | "attended" | "no_show" | "partial"
-      channel_delivery_state: "queued" | "sent" | "delivered" | "failed"
+      channel_delivery_state:
+        | "queued"
+        | "leased"
+        | "sent"
+        | "delivered"
+        | "failed"
       channel_event_state:
         | "received"
         | "queued"
@@ -3246,7 +3392,13 @@ export const Constants = {
         "completed",
       ],
       attendance_outcome: ["unknown", "attended", "no_show", "partial"],
-      channel_delivery_state: ["queued", "sent", "delivered", "failed"],
+      channel_delivery_state: [
+        "queued",
+        "leased",
+        "sent",
+        "delivered",
+        "failed",
+      ],
       channel_event_state: [
         "received",
         "queued",
