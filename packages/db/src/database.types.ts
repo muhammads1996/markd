@@ -1149,6 +1149,77 @@ export type Database = {
         }
         Relationships: []
       }
+      participant_account_scopes: {
+        Row: {
+          auth_user_id: string
+          created_at: string
+          id: string
+          organisation_contact_id: string | null
+          scope_kind: Database["public"]["Enums"]["participant_scope_kind"]
+        }
+        Insert: {
+          auth_user_id: string
+          created_at?: string
+          id?: string
+          organisation_contact_id?: string | null
+          scope_kind: Database["public"]["Enums"]["participant_scope_kind"]
+        }
+        Update: {
+          auth_user_id?: string
+          created_at?: string
+          id?: string
+          organisation_contact_id?: string | null
+          scope_kind?: Database["public"]["Enums"]["participant_scope_kind"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participant_account_scopes_auth_user_id_fkey"
+            columns: ["auth_user_id"]
+            isOneToOne: false
+            referencedRelation: "participant_accounts"
+            referencedColumns: ["auth_user_id"]
+          },
+          {
+            foreignKeyName: "participant_account_scopes_organisation_contact_id_fkey"
+            columns: ["organisation_contact_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      participant_accounts: {
+        Row: {
+          auth_user_id: string
+          created_at: string
+          person_id: string
+          status: Database["public"]["Enums"]["participant_account_status"]
+          updated_at: string
+        }
+        Insert: {
+          auth_user_id: string
+          created_at?: string
+          person_id: string
+          status?: Database["public"]["Enums"]["participant_account_status"]
+          updated_at?: string
+        }
+        Update: {
+          auth_user_id?: string
+          created_at?: string
+          person_id?: string
+          status?: Database["public"]["Enums"]["participant_account_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participant_accounts_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people: {
         Row: {
           archived_at: string | null
@@ -3162,6 +3233,8 @@ export type Database = {
       completion_outcome: "unknown" | "completed" | "incomplete" | "disputed"
       exception_state: "open" | "investigating" | "resolved" | "dismissed"
       operator_role: "ops_admin" | "ops_user"
+      participant_account_status: "active" | "disabled"
+      participant_scope_kind: "worker" | "contractor"
       payment_state: "unknown" | "unpaid" | "paid" | "disputed"
       proposed_action_ambiguity_state: "clear" | "ambiguous" | "unresolved"
       proposed_action_risk_tier:
@@ -3343,6 +3416,8 @@ export const Constants = {
       completion_outcome: ["unknown", "completed", "incomplete", "disputed"],
       exception_state: ["open", "investigating", "resolved", "dismissed"],
       operator_role: ["ops_admin", "ops_user"],
+      participant_account_status: ["active", "disabled"],
+      participant_scope_kind: ["worker", "contractor"],
       payment_state: ["unknown", "unpaid", "paid", "disputed"],
       proposed_action_ambiguity_state: ["clear", "ambiguous", "unresolved"],
       proposed_action_risk_tier: [

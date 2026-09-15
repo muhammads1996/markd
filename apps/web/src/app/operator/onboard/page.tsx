@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
+import { OperatorChrome } from "../../../components/operator/OperatorChrome";
 import { createSupabaseServerClient } from "../../../lib/supabase/server";
 import {
   OnboardingForm,
@@ -57,22 +58,24 @@ export default async function OnboardPage({ searchParams }: PageProps) {
       : undefined;
 
   return (
-    <main className={styles.shell}>
-      <header>
-        <p className={styles.eyebrow}>Operator onboarding</p>
-        <h1>{initial ? "Update MARKD record" : "Add someone to MARKD"}</h1>
-        <p>
-          Capture a useful record in the field, then enrich it when you have
-          time.
-        </p>
-      </header>
-      <OnboardingForm
-        areas={toReferences(areasResult.data)}
-        {...(initial ? { initial } : {})}
-        languages={toReferences(languagesResult.data)}
-        skills={toReferences(skillsResult.data)}
-      />
-    </main>
+    <OperatorChrome>
+      <main className={styles.shell}>
+        <header className={styles.pageHeader}>
+          <p className={styles.eyebrow}>Operator onboarding</p>
+          <h1>{initial ? "Update MARKD record" : "Add someone to MARKD"}</h1>
+          <p>
+            Capture a useful record in the field, then enrich it when you have
+            time.
+          </p>
+        </header>
+        <OnboardingForm
+          areas={toReferences(areasResult.data)}
+          {...(initial ? { initial } : {})}
+          languages={toReferences(languagesResult.data)}
+          skills={toReferences(skillsResult.data)}
+        />
+      </main>
+    </OperatorChrome>
   );
 }
 

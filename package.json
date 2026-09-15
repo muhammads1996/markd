@@ -29,6 +29,7 @@
     "test:integration": "vitest run tests/integration",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:operator-stability": "playwright test tests/e2e/operator-work-graph.spec.ts --retries=0 --repeat-each=3",
     "env:local": "node scripts/env-local.ts",
     "db:start": "supabase start",
     "db:stop": "supabase stop",

@@ -1,0 +1,434 @@
+:root {
+  --obsidian: #111315;
+  --lime: #c7f43d;
+  --lime-soft: #e8ff9f;
+  --concrete: #f2f1ec;
+  --steel: #687078;
+  --white: #fff;
+  --danger: #ff685f;
+}
+.app {
+  min-height: 100svh;
+  background: var(--concrete);
+  color: var(--obsidian);
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+}
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 74rem;
+  margin: auto;
+  padding: 1.1rem 1.25rem;
+  background: var(--obsidian);
+  color: var(--white);
+}
+.wordmark {
+  color: var(--white);
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+}
+.wordmark span {
+  color: var(--lime);
+}
+.connection {
+  color: #b8c0c4;
+  font-size: 0.75rem;
+}
+.connection i {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.35rem;
+  border-radius: 50%;
+  background: var(--lime);
+}
+.content {
+  width: min(100%, 74rem);
+  margin: auto;
+  padding: 1.5rem 1.25rem 7rem;
+}
+.greeting {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0 1.5rem;
+}
+.eyebrow {
+  margin: 0 0 0.5rem;
+  color: #4c565c;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+.avatar,
+.largeAvatar {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--lime);
+  color: var(--obsidian);
+  font-weight: 900;
+}
+.avatar {
+  width: 2.9rem;
+  height: 2.9rem;
+}
+.largeAvatar {
+  width: 3.25rem;
+  height: 3.25rem;
+}
+.confirmedHero,
+.readinessCard {
+  padding: 1.25rem;
+  border-radius: 1.15rem;
+  background: var(--obsidian);
+  color: var(--white);
+  box-shadow: 0 1rem 2.5rem rgb(17 19 21 / 18%);
+}
+.confirmedHero h2,
+.readinessCard h2 {
+  margin-top: 1.1rem;
+  color: var(--white);
+  font-size: 1.75rem;
+}
+.heroTopline,
+.cardRow,
+.sectionHeading,
+.heroDetails,
+.heroActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.heroDate {
+  color: #bcc3c6;
+  font-size: 0.8rem;
+}
+.statusPill {
+  display: inline-flex;
+  width: fit-content;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.35rem;
+  background: var(--lime);
+  color: var(--obsidian);
+  font-size: 0.63rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+.heroPlace {
+  color: var(--lime-soft);
+}
+.heroDetails {
+  justify-content: flex-start;
+  padding: 0.9rem 0;
+  border-top: 1px solid rgb(255 255 255 / 15%);
+  border-bottom: 1px solid rgb(255 255 255 / 15%);
+  color: #aeb7bb;
+  font-size: 0.8rem;
+}
+.heroDetails strong {
+  display: block;
+  color: var(--white);
+  font-size: 0.95rem;
+}
+.heroActions {
+  justify-content: flex-start;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+.primaryButton,
+.secondaryButton,
+.listenButton,
+.textLink,
+.settings button {
+  min-height: 2.8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0.5rem;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-decoration: none;
+  cursor: pointer;
+}
+.primaryButton {
+  background: var(--lime);
+  color: var(--obsidian);
+}
+.secondaryButton {
+  background: var(--obsidian);
+  color: var(--white);
+  border: 1px solid #c3c9cb;
+}
+.listenButton {
+  background: transparent;
+  color: var(--lime);
+  padding-inline: 0.25rem;
+}
+.listenButton span {
+  margin-right: 0.35rem;
+  font-size: 0.65rem;
+}
+.travelNote {
+  margin: 1rem 0 0;
+  color: var(--lime-soft);
+  font-size: 0.78rem;
+}
+.section {
+  padding-top: 2rem;
+}
+.sectionHeading {
+  align-items: end;
+  margin-bottom: 0.8rem;
+}
+.sectionHeading .eyebrow {
+  margin-bottom: 0.35rem;
+}
+.count {
+  display: grid;
+  width: 1.8rem;
+  height: 1.8rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--obsidian);
+  color: var(--lime);
+  font-weight: 900;
+}
+.offerCard,
+.workCard,
+.workerMiniCard,
+.jobRow {
+  border: 1px solid #d7d8d3;
+  border-radius: 0.9rem;
+  background: var(--white);
+}
+.offerCard,
+.workCard {
+  padding: 1rem;
+}
+.offerCard h3 {
+  margin-top: 0.7rem;
+}
+.offerCard p,
+.workerMiniCard p,
+.jobRow span {
+  margin-bottom: 0;
+  font-size: 0.8rem;
+}
+.offerWarning {
+  margin: 1rem 0;
+  padding: 0.65rem;
+  border-left: 3px solid var(--danger);
+  background: #fff3f1;
+  color: #7d3a35;
+  font-size: 0.75rem !important;
+}
+.textLink {
+  min-height: 2rem;
+  padding-inline: 0;
+  color: #3c4e55;
+}
+.cardIdentity {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.cardIdentity h3 {
+  margin-bottom: 0.2rem;
+}
+.cardIdentity p {
+  margin-bottom: 0;
+  font-size: 0.78rem;
+}
+.verified {
+  display: inline-grid;
+  width: 1.35rem;
+  height: 1.35rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--lime);
+  color: var(--obsidian);
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid #e0e1dc;
+}
+.metrics div {
+  display: grid;
+  gap: 0.2rem;
+}
+.metrics strong {
+  font-size: 1.3rem;
+}
+.metrics span {
+  color: var(--steel);
+  font-size: 0.65rem;
+  line-height: 1.2;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.85rem;
+}
+.chips span {
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.35rem;
+  background: var(--lime-soft);
+  color: #344000;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+.readinessCard > p {
+  max-width: 36rem;
+  color: #c2c9cb;
+}
+.readinessNumber {
+  color: var(--lime);
+  font-size: 1.5rem;
+  font-weight: 900;
+}
+.progress {
+  height: 0.55rem;
+  margin: 1.25rem 0;
+  overflow: hidden;
+  border-radius: 1rem;
+  background: #394044;
+}
+.progress span {
+  display: block;
+  width: 80%;
+  height: 100%;
+  background: var(--lime);
+}
+.workerList {
+  display: grid;
+  gap: 0.7rem;
+}
+.workerMiniCard {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.85rem;
+}
+.workerMiniCard h3 {
+  margin-bottom: 0.25rem;
+}
+.workerMiniCard .verified {
+  width: 1rem;
+  height: 1rem;
+  font-size: 0.55rem;
+  vertical-align: middle;
+}
+.jobRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  margin-top: 0.65rem;
+}
+.jobRow div {
+  display: grid;
+  gap: 0.2rem;
+}
+.jobRow .statusPill {
+  background: #dce7b1;
+}
+.settings {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding: 1rem 0;
+  border-top: 1px solid #d0d1cc;
+  color: var(--steel);
+  font-size: 0.75rem;
+}
+.settings button {
+  min-height: 2rem;
+  padding: 0;
+  background: transparent;
+  color: var(--obsidian);
+}
+.bottomNav {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  width: min(100%, 74rem);
+  margin: auto;
+  padding: 0.45rem 0.75rem calc(0.45rem + env(safe-area-inset-bottom));
+  background: rgb(17 19 21 / 96%);
+  box-shadow: 0 -0.5rem 1.5rem rgb(17 19 21 / 12%);
+}
+.bottomNav button {
+  display: grid;
+  gap: 0.22rem;
+  place-items: center;
+  min-height: 3.4rem;
+  border: 0;
+  background: transparent;
+  color: #98a1a5;
+  font-size: 0.66rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.bottomNav button span {
+  font-size: 1.1rem;
+}
+.bottomNav .navActive {
+  color: var(--lime);
+}
+@media (min-width: 700px) {
+  .topBar {
+    padding-inline: 2rem;
+  }
+  .content {
+    padding: 2.5rem 2rem 4rem;
+  }
+  .content > :not(.settings) {
+    max-width: 48rem;
+  }
+  .bottomNav {
+    position: sticky;
+    bottom: 0;
+    border-radius: 0;
+  }
+  .confirmedHero,
+  .readinessCard {
+    padding: 1.75rem;
+  }
+  .workerList {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 380px) {
+  .content {
+    padding-inline: 1rem;
+  }
+  .heroDetails {
+    gap: 0.5rem;
+  }
+  .settings {
+    display: grid;
+  }
+}

@@ -2,10 +2,14 @@ import { expect, test } from "./support/fixtures";
 
 const protectedRoutes = [
   "/operator",
+  "/operator/inbox",
   "/operator/onboard",
   "/search",
   "/workers/10000000-0000-4000-8000-000000000001",
   "/contractors/20000000-0000-4000-8000-000000000001",
+  "/participant",
+  "/participant/worker",
+  "/participant/contractor",
 ];
 
 test.describe("operator access boundary", () => {
@@ -16,9 +20,7 @@ test.describe("operator access boundary", () => {
     }) => {
       await page.goto(route);
 
-      await expect(page).toHaveURL(
-        /\/sign-in(?:\?reason=(?:configuration|not-authorised))?$/,
-      );
+      await expect(page).toHaveURL(/\/sign-in(?:\?.*)?$/);
       await expect(signInPage.heading).toBeVisible();
     });
   }

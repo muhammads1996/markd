@@ -1,0 +1,313 @@
+.page {
+  display: grid;
+  min-height: 100svh;
+  overflow: hidden;
+  background: var(--markd-color-concrete);
+  color: var(--markd-color-obsidian);
+  font-family: var(--markd-font-family);
+}
+
+.brandPanel {
+  position: relative;
+  display: flex;
+  min-height: 12.5rem;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: 1.25rem;
+  background-color: var(--markd-color-obsidian);
+  background-image:
+    linear-gradient(rgb(255 255 255 / 5%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 5%) 1px, transparent 1px);
+  background-size: 2rem 2rem;
+  color: var(--markd-color-white);
+}
+
+.brandPanel::after {
+  position: absolute;
+  right: -4rem;
+  bottom: -7rem;
+  width: 15rem;
+  height: 15rem;
+  border: 2.5rem solid var(--markd-color-signal-lime);
+  border-radius: 50%;
+  content: "";
+  opacity: 0.92;
+}
+
+.wordmark {
+  position: relative;
+  z-index: 1;
+  width: fit-content;
+  color: var(--markd-color-white);
+  font-size: 1.5rem;
+  font-weight: var(--markd-font-weight-heavy);
+  letter-spacing: 0;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.wordmark span {
+  color: var(--markd-color-signal-lime);
+}
+
+.brandMessage {
+  position: relative;
+  z-index: 1;
+  max-width: 19rem;
+}
+
+.brandKicker,
+.brandFoot {
+  margin: 0;
+  color: rgb(255 255 255 / 65%);
+  font-size: var(--markd-font-size-xs);
+  font-weight: var(--markd-font-weight-strong);
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.brandStatement {
+  margin: 0.4rem 0 0;
+  font-size: clamp(1.65rem, 8vw, 2.4rem);
+  font-weight: var(--markd-font-weight-heavy);
+  letter-spacing: 0;
+  line-height: var(--markd-line-height-tight);
+}
+
+.brandFoot {
+  position: relative;
+  z-index: 1;
+  display: none;
+}
+
+.accessPanel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(1.5rem, 7vw, 3rem) 1.25rem
+    max(1.25rem, env(safe-area-inset-bottom));
+}
+
+.formFrame {
+  width: min(100%, 28rem);
+  margin: auto;
+}
+
+.headingGroup {
+  margin-bottom: 2rem;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 0.8rem;
+  color: var(--markd-color-steel);
+  font-size: var(--markd-font-size-xs);
+  font-weight: var(--markd-font-weight-heavy);
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.eyebrow span {
+  width: 1.75rem;
+  height: 0.25rem;
+  background: var(--markd-color-signal-lime);
+}
+
+.headingGroup h1 {
+  margin: 0;
+  color: var(--markd-color-obsidian);
+  font-size: clamp(2.5rem, 14vw, 4.5rem);
+  font-weight: var(--markd-font-weight-heavy);
+  letter-spacing: 0;
+  line-height: 0.95;
+}
+
+.lede {
+  max-width: 24rem;
+  margin: 1rem 0 0;
+  color: var(--markd-color-steel);
+  font-size: var(--markd-font-size-base);
+  line-height: var(--markd-line-height-relaxed);
+}
+
+.form {
+  display: grid;
+  gap: 1.15rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.5rem;
+  color: var(--markd-color-obsidian);
+  font-size: var(--markd-font-size-sm);
+  font-weight: var(--markd-font-weight-strong);
+}
+
+.field input {
+  width: 100%;
+  min-height: 3.5rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgb(17 19 21 / 24%);
+  border-radius: var(--markd-radius-sm);
+  outline: none;
+  background: var(--markd-color-white);
+  color: var(--markd-color-obsidian);
+  font: inherit;
+  font-weight: var(--markd-font-weight-regular);
+  transition:
+    border-color var(--markd-motion-fast) var(--markd-motion-easing-standard),
+    box-shadow var(--markd-motion-fast) var(--markd-motion-easing-standard);
+}
+
+.field input::placeholder {
+  color: rgb(104 112 120 / 72%);
+}
+
+.field input:focus-visible {
+  border-color: var(--markd-color-obsidian);
+  box-shadow: 0 0 0 3px var(--markd-color-lime-soft);
+}
+
+.submitButton {
+  display: flex;
+  min-height: var(--markd-touch-primary);
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem 0.85rem 1.2rem;
+  border: 1px solid var(--markd-color-obsidian);
+  border-radius: var(--markd-radius-sm);
+  background: var(--markd-color-signal-lime);
+  color: var(--markd-color-obsidian);
+  cursor: pointer;
+  font: inherit;
+  font-weight: var(--markd-font-weight-heavy);
+  transition:
+    background-color var(--markd-motion-fast)
+      var(--markd-motion-easing-standard),
+    transform var(--markd-motion-fast) var(--markd-motion-easing-standard);
+}
+
+.submitButton:hover:not(:disabled) {
+  background: var(--markd-color-lime-soft);
+}
+
+.submitButton:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.submitButton:focus-visible {
+  outline: 3px solid var(--markd-color-obsidian);
+  outline-offset: 3px;
+}
+
+.submitButton:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.buttonArrow {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0.85rem;
+  border-left: 4px solid var(--markd-color-danger);
+  background: rgb(255 104 95 / 12%);
+  color: var(--markd-color-obsidian);
+  font-size: var(--markd-font-size-sm);
+  line-height: var(--markd-line-height-normal);
+}
+
+.error span {
+  font-weight: var(--markd-font-weight-heavy);
+}
+
+.accessNote {
+  display: grid;
+  grid-template-columns: 1.75rem 1fr;
+  gap: 0.75rem;
+  align-items: start;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgb(17 19 21 / 14%);
+}
+
+.accessNote p {
+  margin: 0;
+  color: var(--markd-color-steel);
+  font-size: var(--markd-font-size-xs);
+  line-height: var(--markd-line-height-relaxed);
+}
+
+.accessMark {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border: 1px solid var(--markd-color-obsidian);
+  border-radius: 50%;
+  background: var(--markd-color-white);
+  color: var(--markd-color-obsidian);
+  font-size: 0.75rem;
+  font-weight: var(--markd-font-weight-heavy);
+}
+
+.legal {
+  margin: 2.5rem 0 0;
+  color: var(--markd-color-steel);
+  font-size: var(--markd-font-size-xs);
+  text-align: center;
+}
+
+@media (min-width: 48rem) {
+  .page {
+    grid-template-columns: minmax(20rem, 42%) minmax(0, 1fr);
+  }
+
+  .brandPanel {
+    min-height: 100svh;
+    padding: 2.25rem;
+  }
+
+  .brandMessage {
+    max-width: 25rem;
+  }
+
+  .brandStatement {
+    font-size: clamp(3rem, 5vw, 5.5rem);
+  }
+
+  .brandFoot {
+    display: block;
+  }
+
+  .accessPanel {
+    min-height: 100svh;
+    padding: 2.5rem;
+  }
+
+  .formFrame {
+    padding: 2rem;
+    border: 1px solid rgb(17 19 21 / 14%);
+    border-radius: var(--markd-radius-sm);
+    background: rgb(255 255 255 / 48%);
+    box-shadow: var(--markd-shadow-subtle);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field input,
+  .submitButton {
+    transition: none;
+  }
+}

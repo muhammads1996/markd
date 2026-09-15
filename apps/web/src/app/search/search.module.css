@@ -1,91 +1,127 @@
 .page {
-  max-width: 46rem;
+  width: min(100%, var(--markd-content-reading));
   margin: 0 auto;
-  padding: 1.25rem;
-  color: #17211b;
+  padding: var(--markd-space-xl) var(--markd-space-lg) var(--markd-space-3xl);
+  color: var(--markd-color-text);
 }
 .header {
-  margin-bottom: 1.5rem;
+  padding: var(--markd-space-lg) 0 var(--markd-space-2xl);
+  border-bottom: 1px solid rgb(17 19 21 / 16%);
 }
 .header h1 {
-  margin: 0.2rem 0;
-  font-size: clamp(1.8rem, 8vw, 2.6rem);
+  max-width: 40rem;
+  margin: 0;
+  font-size: clamp(2.25rem, 11vw, 3.75rem);
+  font-weight: var(--markd-font-weight-heavy);
+  line-height: 1;
 }
 .header p {
-  margin: 0.4rem 0;
-  color: #4b5b50;
+  max-width: 36rem;
+  margin: var(--markd-space-md) 0 0;
+  color: var(--markd-color-text-muted);
+  line-height: var(--markd-line-height-relaxed);
 }
 .eyebrow,
 .kind {
-  color: #2e6750;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  color: var(--markd-color-text-muted);
+  font-size: var(--markd-font-size-xs);
+  font-weight: var(--markd-font-weight-heavy);
   text-transform: uppercase;
+}
+.header .eyebrow {
+  margin: 0 0 var(--markd-space-sm);
 }
 .form {
   display: grid;
-  gap: 0.5rem;
-  margin-bottom: 1.75rem;
+  gap: var(--markd-space-sm);
+  margin: var(--markd-space-2xl) 0;
 }
 .form label {
-  font-weight: 700;
+  font-size: var(--markd-font-size-sm);
+  font-weight: var(--markd-font-weight-strong);
 }
 .form div {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--markd-space-sm);
 }
 .form input {
   min-width: 0;
+  min-height: var(--markd-touch-primary);
   flex: 1;
-  padding: 0.8rem;
-  border: 1px solid #9dac9f;
-  border-radius: 0.5rem;
-  font: inherit;
+  padding: var(--markd-space-md) var(--markd-space-lg);
+  border: 1px solid rgb(17 19 21 / 32%);
+  border-radius: var(--markd-radius-xs);
+  background: var(--markd-color-white);
+  color: var(--markd-color-text);
 }
 .form button {
-  padding: 0.8rem 1rem;
-  border: 0;
-  border-radius: 0.5rem;
-  background: #245b43;
-  color: white;
-  font: inherit;
-  font-weight: 700;
+  min-height: var(--markd-touch-primary);
+  padding: var(--markd-space-md) var(--markd-space-xl);
+  border: 1px solid var(--markd-color-obsidian);
+  border-radius: var(--markd-radius-xs);
+  background: var(--markd-color-primary-action);
+  color: var(--markd-color-obsidian);
+  cursor: pointer;
+  font-weight: var(--markd-font-weight-heavy);
+}
+.form input:focus-visible,
+.form button:focus-visible,
+.results a:focus-visible,
+.retry:focus-visible {
+  outline: 3px solid var(--markd-color-signal-lime);
+  outline-offset: 2px;
+}
+.resultSection h2 {
+  margin: 0 0 var(--markd-space-lg);
+  font-size: var(--markd-font-size-lg);
 }
 .results {
   display: grid;
-  gap: 0.65rem;
+  gap: var(--markd-space-sm);
   padding: 0;
   list-style: none;
 }
 .results a {
   display: grid;
-  gap: 0.2rem;
-  padding: 1rem;
-  border: 1px solid #d5ddd7;
-  border-radius: 0.65rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--markd-space-xs) var(--markd-space-md);
+  min-height: 5rem;
+  align-content: center;
+  padding: var(--markd-space-lg);
+  border: 1px solid rgb(17 19 21 / 16%);
+  background: var(--markd-color-surface);
   color: inherit;
   text-decoration: none;
 }
+.results a:hover {
+  border-color: var(--markd-color-obsidian);
+}
+.results .kind {
+  grid-row: 1 / span 2;
+  align-self: center;
+  padding: var(--markd-space-xs) var(--markd-space-sm);
+  background: var(--markd-color-concrete);
+}
 .results small {
-  color: #526158;
+  color: var(--markd-color-text-muted);
 }
 .empty {
   margin: 0;
-  padding: 1rem;
-  border: 1px dashed #9dac9f;
-  border-radius: 0.65rem;
-  color: #526158;
+  padding: var(--markd-space-xl);
+  border: 1px dashed rgb(17 19 21 / 30%);
+  background: var(--markd-color-surface);
+  color: var(--markd-color-text-muted);
+  line-height: var(--markd-line-height-relaxed);
 }
 .retry {
-  margin-top: 1rem;
-  padding: 0.8rem 1rem;
-  border: 0;
-  border-radius: 0.5rem;
-  background: #245b43;
-  color: white;
-  font: inherit;
-  font-weight: 700;
+  min-height: var(--markd-touch-primary);
+  margin-top: var(--markd-space-lg);
+  padding: var(--markd-space-md) var(--markd-space-lg);
+  border: 1px solid var(--markd-color-obsidian);
+  border-radius: var(--markd-radius-xs);
+  background: var(--markd-color-primary-action);
+  color: var(--markd-color-obsidian);
+  font-weight: var(--markd-font-weight-heavy);
 }
 @media (max-width: 380px) {
   .form div {
@@ -93,5 +129,10 @@
   }
   .form button {
     width: 100%;
+  }
+}
+@media (min-width: 46rem) {
+  .page {
+    padding: var(--markd-space-3xl);
   }
 }

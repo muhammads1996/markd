@@ -110,8 +110,14 @@ jobs:
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Run browser smoke tests
+      - name: Run production browser tests
         run: pnpm test:e2e
+
+      - name: Verify operator Work Graph stability
+        run: pnpm test:e2e:operator-stability
+
+      - name: Run participant preview functional browser tests
+        run: MARKD_PARTICIPANT_FIXTURES=1 pnpm exec playwright test --project=desktop-chromium
 
       - name: Stop local Supabase
         if: always()

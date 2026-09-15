@@ -7,6 +7,8 @@
     "ignoreDeprecations": "6.0",
     "paths": {
       "@markd/contracts": ["packages/contracts/src/index.ts"],
+      "@markd/design-tokens": ["packages/design-tokens/src/index.ts"],
+      "@markd/i18n": ["packages/i18n/src/index.ts"],
       "@markd/language": ["packages/language/src/index.ts"],
       "@markd/messaging": ["packages/messaging/src/index.ts"]
     }
