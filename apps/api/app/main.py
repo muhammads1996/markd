@@ -5,6 +5,12 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.health import router as health_router
+from app.api.v1.labour_requests import (
+    assignment_router,
+)
+from app.api.v1.labour_requests import (
+    router as labour_requests_router,
+)
 from app.api.v1.me import router as me_router
 from app.api.v1.onboarding import (
     organisation_router,
@@ -70,6 +76,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(health_router)
     application.include_router(whatsapp_router)
     application.include_router(me_router, prefix="/api/v1")
+    application.include_router(labour_requests_router, prefix="/api/v1")
+    application.include_router(assignment_router, prefix="/api/v1")
     application.include_router(onboarding_router, prefix="/api/v1")
     application.include_router(worker_router, prefix="/api/v1")
     application.include_router(organisation_router, prefix="/api/v1")

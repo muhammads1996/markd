@@ -7,8 +7,13 @@ from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
 
 from app.api.dependencies import get_correlation_id, get_database, get_operator_actor
+from app.api.v1.labour_requests import (
+    CreateLabourRequestInput,
+    create_labour_request_mutation,
+)
 from app.application.dispatcher import MutationResult, execute_command
 from app.core.auth import CurrentActor
+from app.core.problems import ProblemDetail
 from app.integrations.database import Database
 
 router = APIRouter(prefix="/proposed-actions", tags=["Proposed actions"])
@@ -33,11 +38,86 @@ class RejectionInput(BaseModel):
     reason: str
 
 
+class ConfirmLabourRequestActionInput(BaseModel):
+    labour_request: CreateLabourRequestInput
+
+
 def _headers(command_id: UUID, replayed: bool) -> dict[str, str]:
     return {
         "X-Command-Id": str(command_id),
         "X-Idempotent-Replay": str(replayed).lower(),
     }
+
+
+@router.post("/{action_id}/confirm")
+async def confirm_labour_request_action(
+    action_id: UUID,
+    input: ConfirmLabourRequestActionInput,
+    idempotency_key: str = Header(alias="Idempotency-Key"),
+    actor: CurrentActor = Depends(get_operator_actor),
+    database: Database = Depends(get_database),
+    correlation_id: str = Depends(get_correlation_id),
+) -> Any:
+    payload = input.model_dump(mode="json")
+
+    async def handler(connection: Any) -> MutationResult:
+        result = await connection.execute(
+            """
+            select id, action_type, state, channel_event_id
+            from public.proposed_actions
+            where id = %s for update
+            """,
+            (action_id,),
+        )
+        action = await result.fetchone()
+        if action is None:
+            raise ProblemDetail(
+                404, "NOT_FOUND", "Not found", "Proposed Action was not found."
+            )
+        if action["action_type"] != "labour_request":
+            raise ProblemDetail(
+                409,
+                "INVALID_STATE",
+                "Invalid state transition",
+                "Only Labour Request actions can create a Labour Request.",
+            )
+        if action["state"] != "pending":
+            raise ProblemDetail(
+                409,
+                "INVALID_STATE",
+                "Invalid state transition",
+                "Only pending Proposed Actions can be confirmed.",
+            )
+        mutation = await create_labour_request_mutation(
+            connection,
+            actor,
+            input.labour_request,
+            "whatsapp",
+            action["channel_event_id"],
+            action_id,
+        )
+        await connection.execute(
+            "update public.proposed_actions set state = 'executed' where id = %s",
+            (action_id,),
+        )
+        return mutation
+
+    execution = await execute_command(
+        database,
+        actor,
+        correlation_id,
+        "ConfirmProposedAction",
+        idempotency_key,
+        {"action_id": str(action_id), **payload},
+        handler,
+    )
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        status_code=execution.status_code,
+        content={**execution.body, "command_id": str(execution.command_id)},
+        headers=_headers(execution.command_id, execution.replayed),
+    )
 
 
 @router.post("/{action_id}/approve")
