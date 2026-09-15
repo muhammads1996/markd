@@ -2,7 +2,7 @@
 
 MARKD is an operator-led work platform for a provenance-aware, bilateral construction Work Graph. This repository is the TypeScript monorepo foundation for the operator web application and its canonical Supabase/PostgreSQL data layer.
 
-This bootstrap intentionally contains no product domain schema, authentication, WhatsApp integration, AI parsing, matching, or onboarding flows. Those are implemented one Linear issue at a time.
+FLO-104 adds the initial canonical Work Graph schema: provenance-aware Workmarks, additive verification claims, relationship views, and deny-by-default RLS. FLO-105 adds auth-backed operator accounts, live `ops_admin`/`ops_user` authorization, private data/media boundaries, and an internal allowlisted Work Card projection. FLO-106/FLO-107 add operator onboarding/editing, graph search and explicit participant-safe read projections while deliberately deferring participant authentication. None of these slices adds WhatsApp processing, AI parsing, or automatic matching.
 
 ## Prerequisites
 
@@ -57,7 +57,7 @@ corepack pnpm db:types
 corepack pnpm db:stop
 ```
 
-- `db:reset` discards local database changes, reapplies every committed migration, and reseeds only if a later issue adds seed data.
+- `db:reset` discards local database changes, reapplies every committed migration, and applies the deterministic synthetic FLO-104 seed.
 - `db:types` writes generated public-schema types to `packages/db/src/database.types.ts`.
 - `db:types:check` fails when that generated file is stale.
 - Remote linking, pushes, production migrations, schema design, RLS, auth, and storage policies are outside FLO-123.
@@ -75,6 +75,9 @@ The integration suite uses `postgresql://postgres:postgres@127.0.0.1:54322/postg
 - `tests` — unit, local integration, and Playwright suites.
 
 Read `AGENTS.md` before implementing an issue. Linear is the product and scope source of truth; repository code, migrations, and tests are implementation truth.
+
+The schema rationale and provenance/RLS boundaries are documented in [work-graph-schema.md](docs/architecture/work-graph-schema.md). The auth, private-data, and private-media boundary is documented in [operator-access-boundary.md](docs/architecture/operator-access-boundary.md).
+The onboarding, duplicate-prevention, search, and participant-projection boundaries are documented in [onboarding-and-read-projections.md](docs/architecture/onboarding-and-read-projections.md).
 
 ## Canonical language
 
