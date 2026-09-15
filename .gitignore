@@ -62,3 +62,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+*.pyc
+__pycache__/
