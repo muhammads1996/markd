@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { OperatorChrome } from "../../../components/operator/OperatorChrome";
 import {
   assertQuerySuccess,
   getOperatorClient,
   provenanceLabel,
 } from "../../../features/work-graph/queries";
-import styles from "./contractor.module.css";
+import styles from "../../../components/operator/operator-record.module.css";
 
 export default async function ContractorDetailPage({
   params,
@@ -78,111 +79,113 @@ export default async function ContractorDetailPage({
   );
 
   return (
-    <main className={styles.page}>
-      <nav aria-label="Contractor record actions" className={styles.actions}>
-        <Link className={styles.back} href="/search">
-          ← Search
-        </Link>
-        <Link href={`/operator/onboard?organisationId=${organisationId}`}>
-          Edit contractor
-        </Link>
-      </nav>
-      <header className={styles.header}>
-        <p>Contractor record</p>
-        <h1>{organisation.display_name}</h1>
-        <span>{organisation.legal_name}</span>
-      </header>
-      <section>
-        <h2>Known labour network</h2>
-        {relationships.length === 0 ? (
-          <p className={styles.empty}>
-            No workers have been linked to this contractor yet.
-          </p>
-        ) : (
-          <ul className={styles.cards}>
-            {relationships.map((relationship) => {
-              const worker = workers.get(relationship.worker_id);
-              return (
-                <li key={relationship.worker_id}>
-                  <Link href={`/workers/${relationship.worker_id}`}>
-                    {worker?.preferred_name ||
-                      worker?.display_name ||
-                      "Worker record"}
-                  </Link>
+    <OperatorChrome>
+      <main className={styles.page}>
+        <nav aria-label="Contractor record actions" className={styles.actions}>
+          <Link className={styles.back} href="/search">
+            ← Search
+          </Link>
+          <Link href={`/operator/onboard?organisationId=${organisationId}`}>
+            Edit contractor
+          </Link>
+        </nav>
+        <header className={styles.header}>
+          <p>Contractor record</p>
+          <h1>{organisation.display_name}</h1>
+          <span>{organisation.legal_name}</span>
+        </header>
+        <section>
+          <h2>Known labour network</h2>
+          {relationships.length === 0 ? (
+            <p className={styles.empty}>
+              No workers have been linked to this contractor yet.
+            </p>
+          ) : (
+            <ul className={styles.cards}>
+              {relationships.map((relationship) => {
+                const worker = workers.get(relationship.worker_id);
+                return (
+                  <li key={relationship.worker_id}>
+                    <Link href={`/workers/${relationship.worker_id}`}>
+                      {worker?.preferred_name ||
+                        worker?.display_name ||
+                        "Worker record"}
+                    </Link>
+                    <span>
+                      {relationship.confirmed_workmark_count ?? 0} confirmed
+                      Workmarks
+                      {relationship.is_repeat_relationship
+                        ? " · repeated relationship"
+                        : ""}
+                    </span>
+                    <small>
+                      First worked{" "}
+                      {relationship.first_worked_on ?? "not recorded"} · last
+                      worked {relationship.last_worked_on ?? "not recorded"}
+                    </small>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+        <section>
+          <h2>Recent work history</h2>
+          {workmarks.length === 0 ? (
+            <p className={styles.empty}>No Workmarks have been recorded yet.</p>
+          ) : (
+            <ol className={styles.timeline}>
+              {workmarks.map((workmark) => {
+                const worker = workers.get(workmark.worker_id);
+                return (
+                  <li key={workmark.id}>
+                    <Link href={`/workers/${workmark.worker_id}`}>
+                      {worker?.preferred_name ||
+                        worker?.display_name ||
+                        "Worker record"}
+                    </Link>
+                    <span>
+                      {workmark.work_started_on} to {workmark.work_ended_on}
+                    </span>
+                    <em
+                      data-provenance={
+                        workmark.assignment_id
+                          ? "markd_arranged"
+                          : workmark.origin
+                      }
+                    >
+                      {provenanceLabel(workmark.origin, workmark.assignment_id)}
+                    </em>
+                    <small>
+                      {workmark.attendance} attendance · {workmark.completion}{" "}
+                      completion · {workmark.payment} payment
+                    </small>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </section>
+        <section>
+          <h2>Known sites</h2>
+          {(sitesResult.data ?? []).length === 0 ? (
+            <p className={styles.empty}>No sites have been recorded yet.</p>
+          ) : (
+            <ul className={styles.cards}>
+              {(sitesResult.data ?? []).map((site) => (
+                <li key={site.id}>
+                  <strong>{site.name}</strong>
                   <span>
-                    {relationship.confirmed_workmark_count ?? 0} confirmed
-                    Workmarks
-                    {relationship.is_repeat_relationship
-                      ? " · repeated relationship"
-                      : ""}
+                    {site.locality
+                      ? `Area: ${site.locality}`
+                      : "Area not recorded"}
                   </span>
-                  <small>
-                    First worked{" "}
-                    {relationship.first_worked_on ?? "not recorded"} · last
-                    worked {relationship.last_worked_on ?? "not recorded"}
-                  </small>
                 </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-      <section>
-        <h2>Recent work history</h2>
-        {workmarks.length === 0 ? (
-          <p className={styles.empty}>No Workmarks have been recorded yet.</p>
-        ) : (
-          <ol className={styles.timeline}>
-            {workmarks.map((workmark) => {
-              const worker = workers.get(workmark.worker_id);
-              return (
-                <li key={workmark.id}>
-                  <Link href={`/workers/${workmark.worker_id}`}>
-                    {worker?.preferred_name ||
-                      worker?.display_name ||
-                      "Worker record"}
-                  </Link>
-                  <span>
-                    {workmark.work_started_on} to {workmark.work_ended_on}
-                  </span>
-                  <em
-                    data-provenance={
-                      workmark.assignment_id
-                        ? "markd_arranged"
-                        : workmark.origin
-                    }
-                  >
-                    {provenanceLabel(workmark.origin, workmark.assignment_id)}
-                  </em>
-                  <small>
-                    {workmark.attendance} attendance · {workmark.completion}{" "}
-                    completion · {workmark.payment} payment
-                  </small>
-                </li>
-              );
-            })}
-          </ol>
-        )}
-      </section>
-      <section>
-        <h2>Known sites</h2>
-        {(sitesResult.data ?? []).length === 0 ? (
-          <p className={styles.empty}>No sites have been recorded yet.</p>
-        ) : (
-          <ul className={styles.cards}>
-            {(sitesResult.data ?? []).map((site) => (
-              <li key={site.id}>
-                <strong>{site.name}</strong>
-                <span>
-                  {site.locality
-                    ? `Area: ${site.locality}`
-                    : "Area not recorded"}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </main>
+              ))}
+            </ul>
+          )}
+        </section>
+      </main>
+    </OperatorChrome>
   );
 }

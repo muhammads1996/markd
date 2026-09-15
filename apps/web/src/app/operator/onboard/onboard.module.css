@@ -1,121 +1,200 @@
 .shell {
-  max-width: 40rem;
+  width: min(100%, var(--markd-content-compact));
   margin: 0 auto;
-  padding: 1rem;
+  padding: var(--markd-space-xl) var(--markd-space-lg) var(--markd-space-3xl);
+}
+.pageHeader {
+  padding: var(--markd-space-lg) 0 var(--markd-space-2xl);
+  border-bottom: 1px solid rgb(17 19 21 / 16%);
+}
+.pageHeader h1 {
+  margin: 0;
+  font-size: clamp(2.25rem, 11vw, 3.75rem);
+  font-weight: var(--markd-font-weight-heavy);
+  line-height: 1;
+}
+.pageHeader > p:last-child {
+  max-width: 34rem;
+  margin: var(--markd-space-md) 0 0;
+  color: var(--markd-color-text-muted);
+  line-height: var(--markd-line-height-relaxed);
 }
 .eyebrow {
-  color: #456;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  margin: 0 0 var(--markd-space-sm);
+  color: var(--markd-color-text-muted);
+  font-size: var(--markd-font-size-xs);
+  font-weight: var(--markd-font-weight-heavy);
   text-transform: uppercase;
 }
 .form {
   display: grid;
-  gap: 1rem;
-  margin-top: 1.5rem;
+  gap: var(--markd-space-lg);
+  margin-top: var(--markd-space-2xl);
 }
 .form section,
 .kind {
-  border: 1px solid #cbd5e1;
-  border-radius: 0.75rem;
-  padding: 1rem;
+  padding: var(--markd-space-lg);
+  border: 1px solid rgb(17 19 21 / 18%);
+  background: var(--markd-color-surface);
+}
+.form section {
+  display: grid;
+  gap: var(--markd-space-lg);
+}
+.form section h2 {
+  margin: 0;
+  font-size: var(--markd-font-size-xl);
 }
 .form label {
   display: grid;
-  gap: 0.35rem;
-  font-weight: 600;
+  gap: var(--markd-space-sm);
+  font-size: var(--markd-font-size-sm);
+  font-weight: var(--markd-font-weight-strong);
 }
 .form input,
 .form select {
-  border: 1px solid #94a3b8;
-  border-radius: 0.5rem;
-  font: inherit;
-  min-height: 2.75rem;
-  padding: 0.5rem 0.65rem;
+  min-width: 0;
+  min-height: var(--markd-touch-comfortable);
+  padding: var(--markd-space-md);
+  border: 1px solid rgb(17 19 21 / 30%);
+  border-radius: var(--markd-radius-xs);
+  background: var(--markd-color-white);
+  color: var(--markd-color-text);
+}
+.form input:focus-visible,
+.form select:focus-visible,
+.form summary:focus-visible,
+.form button:focus-visible {
+  outline: 3px solid var(--markd-color-signal-lime);
+  outline-offset: 2px;
+}
+.form input[type="file"] {
+  padding: var(--markd-space-xs);
+}
+.form input[type="file"]::file-selector-button {
+  min-height: 2.35rem;
+  margin-right: var(--markd-space-md);
+  padding: var(--markd-space-sm) var(--markd-space-md);
+  border: 0;
+  border-right: 1px solid rgb(17 19 21 / 18%);
+  background: var(--markd-color-concrete);
+  color: var(--markd-color-text);
+  font-weight: var(--markd-font-weight-strong);
 }
 .form input[type="checkbox"],
 .form input[type="radio"] {
-  min-height: auto;
+  width: 1.15rem;
+  min-height: 1.15rem;
+  accent-color: var(--markd-color-obsidian);
 }
 .kind {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--markd-space-sm);
 }
 .kind legend,
 .form fieldset legend {
-  font-weight: 700;
+  margin-bottom: var(--markd-space-sm);
+  font-weight: var(--markd-font-weight-strong);
 }
 .kind label,
 .options label {
-  align-items: center;
   display: flex;
-  font-weight: 500;
-  gap: 0.45rem;
+  align-items: center;
+  gap: var(--markd-space-sm);
+  font-weight: var(--markd-font-weight-regular);
+}
+.kind label {
+  min-height: var(--markd-touch-comfortable);
+  padding: var(--markd-space-sm);
+  border: 1px solid rgb(17 19 21 / 18%);
+  background: var(--markd-color-concrete);
+}
+.kind label:has(input:checked) {
+  border-color: var(--markd-color-obsidian);
+  background: var(--markd-color-positive-subtle);
 }
 .options {
   display: grid;
-  gap: 0.65rem;
+  gap: var(--markd-space-sm);
   grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
 }
+.options label {
+  min-height: var(--markd-touch-minimum);
+  padding: var(--markd-space-sm);
+  border: 1px solid rgb(17 19 21 / 14%);
+  background: var(--markd-color-concrete);
+}
+.form fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: var(--markd-space-md);
+  border: 1px solid rgb(17 19 21 / 14%);
+}
 .secondary {
-  border: 1px dashed #94a3b8;
-  border-radius: 0.5rem;
-  padding: 0.75rem;
+  padding: var(--markd-space-md);
+  border: 1px dashed rgb(17 19 21 / 30%);
+  background: var(--markd-color-concrete);
 }
 .secondary summary {
   cursor: pointer;
-  font-weight: 700;
-  min-height: 2.75rem;
-  padding-top: 0.35rem;
+  font-weight: var(--markd-font-weight-strong);
+  min-height: var(--markd-touch-minimum);
+  padding: var(--markd-space-md) 0;
 }
 .secondary[open] {
   display: grid;
-  gap: 1rem;
+  gap: var(--markd-space-lg);
 }
 .checkline {
-  align-items: center;
   display: flex !important;
-  font-weight: 500 !important;
-  gap: 0.5rem !important;
+  align-items: center;
+  font-weight: var(--markd-font-weight-regular) !important;
+  gap: var(--markd-space-sm) !important;
 }
 .hint {
-  color: #475569;
-  margin-top: 0;
+  margin: 0;
+  color: var(--markd-color-text-muted);
+  line-height: var(--markd-line-height-relaxed);
 }
 .error {
-  background: #fef2f2;
-  border-radius: 0.5rem;
-  color: #991b1b;
-  padding: 0.75rem;
+  margin: 0;
+  padding: var(--markd-space-md);
+  border-left: 4px solid var(--markd-color-danger);
+  background: rgb(255 104 95 / 12%);
+  color: #7b211d;
 }
 .success {
-  background: #f0fdf4;
-  border-radius: 0.5rem;
-  color: #166534;
-  padding: 0.75rem;
+  margin: 0;
+  padding: var(--markd-space-md);
+  border-left: 4px solid var(--markd-color-obsidian);
+  background: var(--markd-color-positive-subtle);
+  color: var(--markd-color-obsidian);
 }
 .form button {
-  background: #0f766e;
-  border: 0;
-  border-radius: 0.5rem;
-  color: white;
-  font: inherit;
-  font-weight: 700;
-  min-height: 3rem;
-  padding: 0.75rem 1rem;
+  min-height: var(--markd-touch-primary);
+  padding: var(--markd-space-md) var(--markd-space-lg);
+  border: 1px solid var(--markd-color-obsidian);
+  border-radius: var(--markd-radius-xs);
+  background: var(--markd-color-primary-action);
+  color: var(--markd-color-obsidian);
+  cursor: pointer;
+  font-weight: var(--markd-font-weight-heavy);
 }
 .form button:disabled {
   opacity: 0.65;
 }
 .form .cancel {
-  background: #fff;
-  border: 1px solid #b91c1c;
-  color: #991b1b;
+  border-color: var(--markd-color-danger);
+  background: var(--markd-color-white);
+  color: #7b211d;
 }
 @media (min-width: 42rem) {
   .shell {
-    padding: 2rem;
+    padding: var(--markd-space-3xl);
+  }
+  .form section,
+  .kind {
+    padding: var(--markd-space-xl);
   }
 }
