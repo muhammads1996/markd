@@ -2,7 +2,13 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "lib": ["DOM", "ES2022"],
-    "types": ["node", "vitest/globals"]
+    "types": ["node", "vitest/globals"],
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "@markd/contracts": ["packages/contracts/src/index.ts"],
+      "@markd/messaging": ["packages/messaging/src/index.ts"]
+    }
   },
   "include": [
     "playwright.config.ts",
