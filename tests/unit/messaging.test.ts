@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildOutboundDeliveryRow,
+  constantTimeEquals,
   normalizeInboundMessage,
   verifyWebhookSignature,
   verifyWebhookToken,
@@ -14,6 +15,25 @@ describe("WhatsApp transport boundary", () => {
     expect(
       verifyWebhookToken("subscribe", "wrong", "challenge", "secret"),
     ).toBeNull();
+    expect(
+      verifyWebhookToken(
+        "subscribe",
+        "short",
+        "challenge",
+        "much-longer-secret",
+      ),
+    ).toBeNull();
+    expect(
+      verifyWebhookToken("subscribe", null, "challenge", "secret"),
+    ).toBeNull();
+  });
+
+  it("compares shared secrets without leaking timing on length mismatch", () => {
+    expect(constantTimeEquals("abc", "abc")).toBe(true);
+    expect(constantTimeEquals("abc", "abd")).toBe(false);
+    expect(constantTimeEquals("abc", "abcd")).toBe(false);
+    expect(constantTimeEquals(null, "abc")).toBe(false);
+    expect(constantTimeEquals("abc", undefined)).toBe(false);
   });
 
   it("normalizes a text message while preserving the provider payload", () => {

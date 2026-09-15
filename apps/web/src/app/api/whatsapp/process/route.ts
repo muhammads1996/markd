@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { actionDraftToRow } from "@markd/messaging";
+import { actionDraftToRow, constantTimeEquals } from "@markd/messaging";
 import type { ProposedActionDraft } from "@markd/contracts";
 import {
   buildLanguageEvidence,
@@ -34,7 +34,10 @@ type ChannelMediaRow = {
 export async function POST(request: Request) {
   const expectedToken = process.env.WHATSAPP_PROCESS_TOKEN;
   const authorization = request.headers.get("authorization");
-  if (!expectedToken || authorization !== `Bearer ${expectedToken}`) {
+  const providedToken = authorization?.startsWith("Bearer ")
+    ? authorization.slice("Bearer ".length)
+    : null;
+  if (!expectedToken || !constantTimeEquals(providedToken, expectedToken)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

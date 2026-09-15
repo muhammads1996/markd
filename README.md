@@ -42,9 +42,13 @@ corepack pnpm db:types:check
 corepack pnpm build
 corepack pnpm exec playwright install chromium
 corepack pnpm test:e2e
+corepack pnpm test:e2e:operator-stability
+$env:MARKD_PARTICIPANT_FIXTURES = "1"
+corepack pnpm exec playwright test --project=desktop-chromium
+$env:MARKD_PARTICIPANT_FIXTURES = $null
 ```
 
-`pnpm test` runs both unit and integration tests, so the local Supabase stack must be running. Playwright starts the already-built production application automatically, with retries disabled. It never reuses a running local server: stop `pnpm dev` before running E2E. This keeps Windows local verification on the same fresh production-server path as Linux CI and avoids testing a stale development build.
+`pnpm test` runs both unit and integration tests, so the local Supabase stack must be running. The standard Playwright and operator-stability commands start an already-built production application with retries disabled. They never reuse a running local server: stop `pnpm dev` before running E2E. This keeps Windows local verification on the same fresh production-server path as Linux CI and avoids testing a stale development build. Participant preview functional tests intentionally use the explicit fixture flag and a separate fresh development server because those fixtures are disabled in production; CI runs both modes. Its mobile visual comparisons require reviewed platform-specific baselines and remain explicitly skipped until such baselines exist.
 
 ## Local Supabase workflow
 
