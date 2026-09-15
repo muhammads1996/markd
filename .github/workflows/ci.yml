@@ -61,10 +61,6 @@ jobs:
       - name: Check generated database types
         run: pnpm db:types:check
 
-      - name: Stop local Supabase
-        if: always()
-        run: pnpm db:stop
-
       - name: Build production application
         run: pnpm build
 
@@ -73,6 +69,10 @@ jobs:
 
       - name: Run browser smoke tests
         run: pnpm test:e2e
+
+      - name: Stop local Supabase
+        if: always()
+        run: pnpm db:stop
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}

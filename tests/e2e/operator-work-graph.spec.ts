@@ -21,16 +21,24 @@ test.beforeAll(async ({}, workerInfo) => {
     await client.query(
       `insert into auth.users(
         id, instance_id, aud, role, email, encrypted_password,
-        email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+        email_confirmed_at, confirmation_token, recovery_token, email_change,
+        email_change_token_current, email_change_token_new, reauthentication_token,
+        raw_app_meta_data, raw_user_meta_data,
         created_at, updated_at
       ) values (
         $1, $2, 'authenticated', 'authenticated', $3,
-        crypt($4, gen_salt('bf')), now(), '{}', '{}', now(), now()
+          crypt($4, gen_salt('bf')), now(), '', '', '', '', '', '', '{}', '{}', now(), now()
       )
       on conflict (id) do update set
         email = excluded.email,
         encrypted_password = excluded.encrypted_password,
         email_confirmed_at = excluded.email_confirmed_at,
+          confirmation_token = ''::text,
+        recovery_token = ''::text,
+        email_change = ''::text,
+        email_change_token_current = ''::text,
+        email_change_token_new = ''::text,
+        reauthentication_token = ''::text,
         updated_at = now()`,
       [userId, authInstanceId, email, password],
     );
