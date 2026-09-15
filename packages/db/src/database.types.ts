@@ -328,35 +328,237 @@ export type Database = {
           },
         ]
       }
+      channel_deliveries: {
+        Row: {
+          body: string
+          channel: string
+          created_at: string
+          delivered_at: string | null
+          failure_reason: string | null
+          id: string
+          idempotency_key: string
+          message_kind: string
+          provider_message_id: string | null
+          recipient_phone_number: string
+          sent_at: string | null
+          source_channel_event_id: string | null
+          source_proposed_action_id: string | null
+          source_record_id: string | null
+          source_table: string | null
+          state: Database["public"]["Enums"]["channel_delivery_state"]
+        }
+        Insert: {
+          body: string
+          channel: string
+          created_at?: string
+          delivered_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          idempotency_key: string
+          message_kind: string
+          provider_message_id?: string | null
+          recipient_phone_number: string
+          sent_at?: string | null
+          source_channel_event_id?: string | null
+          source_proposed_action_id?: string | null
+          source_record_id?: string | null
+          source_table?: string | null
+          state?: Database["public"]["Enums"]["channel_delivery_state"]
+        }
+        Update: {
+          body?: string
+          channel?: string
+          created_at?: string
+          delivered_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          idempotency_key?: string
+          message_kind?: string
+          provider_message_id?: string | null
+          recipient_phone_number?: string
+          sent_at?: string | null
+          source_channel_event_id?: string | null
+          source_proposed_action_id?: string | null
+          source_record_id?: string | null
+          source_table?: string | null
+          state?: Database["public"]["Enums"]["channel_delivery_state"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_deliveries_source_action_fkey"
+            columns: ["source_proposed_action_id"]
+            isOneToOne: false
+            referencedRelation: "proposed_actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_deliveries_source_event_fkey"
+            columns: ["source_channel_event_id"]
+            isOneToOne: false
+            referencedRelation: "channel_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channel_events: {
         Row: {
           channel: string
           created_at: string
+          detected_language_code: string | null
+          detected_language_confidence: number | null
+          event_type: string
+          failure_reason: string | null
           id: string
+          media: Json
+          occurred_at: string | null
           payload: Json
           provider_event_id: string
+          provider_message_id: string | null
           received_at: string
           sender_phone_number: string | null
+          state: Database["public"]["Enums"]["channel_event_state"]
         }
         Insert: {
           channel: string
           created_at?: string
+          detected_language_code?: string | null
+          detected_language_confidence?: number | null
+          event_type?: string
+          failure_reason?: string | null
           id?: string
+          media?: Json
+          occurred_at?: string | null
           payload?: Json
           provider_event_id: string
+          provider_message_id?: string | null
           received_at?: string
           sender_phone_number?: string | null
+          state?: Database["public"]["Enums"]["channel_event_state"]
         }
         Update: {
           channel?: string
           created_at?: string
+          detected_language_code?: string | null
+          detected_language_confidence?: number | null
+          event_type?: string
+          failure_reason?: string | null
           id?: string
+          media?: Json
+          occurred_at?: string | null
           payload?: Json
           provider_event_id?: string
+          provider_message_id?: string | null
           received_at?: string
           sender_phone_number?: string | null
+          state?: Database["public"]["Enums"]["channel_event_state"]
         }
         Relationships: []
+      }
+      channel_media_assets: {
+        Row: {
+          channel_event_id: string
+          created_at: string
+          detected_language_code: string | null
+          failure_reason: string | null
+          id: string
+          media_type: string
+          mime_type: string | null
+          provider_media_id: string
+          provider_url: string | null
+          retrieval_state: string
+          storage_bucket: string | null
+          storage_path: string | null
+          transcript: string | null
+          transcript_confidence: number | null
+          updated_at: string
+        }
+        Insert: {
+          channel_event_id: string
+          created_at?: string
+          detected_language_code?: string | null
+          failure_reason?: string | null
+          id?: string
+          media_type: string
+          mime_type?: string | null
+          provider_media_id: string
+          provider_url?: string | null
+          retrieval_state?: string
+          storage_bucket?: string | null
+          storage_path?: string | null
+          transcript?: string | null
+          transcript_confidence?: number | null
+          updated_at?: string
+        }
+        Update: {
+          channel_event_id?: string
+          created_at?: string
+          detected_language_code?: string | null
+          failure_reason?: string | null
+          id?: string
+          media_type?: string
+          mime_type?: string | null
+          provider_media_id?: string
+          provider_url?: string | null
+          retrieval_state?: string
+          storage_bucket?: string | null
+          storage_path?: string | null
+          transcript?: string | null
+          transcript_confidence?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_media_assets_channel_event_id_fkey"
+            columns: ["channel_event_id"]
+            isOneToOne: false
+            referencedRelation: "channel_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      channel_processing_jobs: {
+        Row: {
+          attempts: number
+          available_at: string
+          channel_event_id: string
+          created_at: string
+          id: string
+          last_error: string | null
+          leased_until: string | null
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          available_at?: string
+          channel_event_id: string
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          leased_until?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          available_at?: string
+          channel_event_id?: string
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          leased_until?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_processing_jobs_channel_event_id_fkey"
+            columns: ["channel_event_id"]
+            isOneToOne: true
+            referencedRelation: "channel_events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       crew_links: {
         Row: {
@@ -1082,34 +1284,61 @@ export type Database = {
       proposed_actions: {
         Row: {
           action_type: string
+          ambiguity: Database["public"]["Enums"]["proposed_action_ambiguity_state"]
           archived_at: string | null
           channel_event_id: string
+          confidence: number | null
+          confirmed_at: string | null
+          confirmed_by_operator_id: string | null
           created_at: string
+          entity_resolution: Json
           id: string
+          interpretation: Json
+          model_name: string | null
+          model_provider: string | null
           payload: Json
-          risk_tier: number
+          rejection_reason: string | null
+          risk_tier: Database["public"]["Enums"]["proposed_action_risk_tier"]
           state: Database["public"]["Enums"]["proposed_action_state"]
           updated_at: string
         }
         Insert: {
           action_type: string
+          ambiguity?: Database["public"]["Enums"]["proposed_action_ambiguity_state"]
           archived_at?: string | null
           channel_event_id: string
+          confidence?: number | null
+          confirmed_at?: string | null
+          confirmed_by_operator_id?: string | null
           created_at?: string
+          entity_resolution?: Json
           id?: string
+          interpretation?: Json
+          model_name?: string | null
+          model_provider?: string | null
           payload?: Json
-          risk_tier: number
+          rejection_reason?: string | null
+          risk_tier: Database["public"]["Enums"]["proposed_action_risk_tier"]
           state?: Database["public"]["Enums"]["proposed_action_state"]
           updated_at?: string
         }
         Update: {
           action_type?: string
+          ambiguity?: Database["public"]["Enums"]["proposed_action_ambiguity_state"]
           archived_at?: string | null
           channel_event_id?: string
+          confidence?: number | null
+          confirmed_at?: string | null
+          confirmed_by_operator_id?: string | null
           created_at?: string
+          entity_resolution?: Json
           id?: string
+          interpretation?: Json
+          model_name?: string | null
+          model_provider?: string | null
           payload?: Json
-          risk_tier?: number
+          rejection_reason?: string | null
+          risk_tier?: Database["public"]["Enums"]["proposed_action_risk_tier"]
           state?: Database["public"]["Enums"]["proposed_action_state"]
           updated_at?: string
         }
@@ -1120,6 +1349,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "channel_events"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposed_actions_confirmed_by_operator_id_fkey"
+            columns: ["confirmed_by_operator_id"]
+            isOneToOne: false
+            referencedRelation: "operator_accounts"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -2588,6 +2824,39 @@ export type Database = {
       }
     }
     Functions: {
+      approve_proposed_action: {
+        Args: {
+          action_id: string
+          edited_payload?: Json
+          resolve_ambiguity?: boolean
+        }
+        Returns: {
+          action_type: string
+          ambiguity: Database["public"]["Enums"]["proposed_action_ambiguity_state"]
+          archived_at: string | null
+          channel_event_id: string
+          confidence: number | null
+          confirmed_at: string | null
+          confirmed_by_operator_id: string | null
+          created_at: string
+          entity_resolution: Json
+          id: string
+          interpretation: Json
+          model_name: string | null
+          model_provider: string | null
+          payload: Json
+          rejection_reason: string | null
+          risk_tier: Database["public"]["Enums"]["proposed_action_risk_tier"]
+          state: Database["public"]["Enums"]["proposed_action_state"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposed_actions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       authorize_worker_media_read: {
         Args: { requested_asset_id: string; requested_expires_in: number }
         Returns: {
@@ -2605,6 +2874,46 @@ export type Database = {
         }[]
       }
       cancel_worker_onboarding: { Args: { worker_id: string }; Returns: string }
+      claim_channel_processing_jobs: {
+        Args: { batch_size?: number }
+        Returns: {
+          attempts: number
+          available_at: string
+          channel_event_id: string
+          created_at: string
+          id: string
+          last_error: string | null
+          leased_until: string | null
+          state: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "channel_processing_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      complete_channel_processing_job: {
+        Args: { error_message?: string; job_id: string; succeeded: boolean }
+        Returns: {
+          attempts: number
+          available_at: string
+          channel_event_id: string
+          created_at: string
+          id: string
+          last_error: string | null
+          leased_until: string | null
+          state: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "channel_processing_jobs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       complete_worker_onboarding: {
         Args: {
           object_path: string
@@ -2633,6 +2942,36 @@ export type Database = {
         }
         Returns: string
       }
+      reject_proposed_action: {
+        Args: { action_id: string; reason: string }
+        Returns: {
+          action_type: string
+          ambiguity: Database["public"]["Enums"]["proposed_action_ambiguity_state"]
+          archived_at: string | null
+          channel_event_id: string
+          confidence: number | null
+          confirmed_at: string | null
+          confirmed_by_operator_id: string | null
+          created_at: string
+          entity_resolution: Json
+          id: string
+          interpretation: Json
+          model_name: string | null
+          model_provider: string | null
+          payload: Json
+          rejection_reason: string | null
+          risk_tier: Database["public"]["Enums"]["proposed_action_risk_tier"]
+          state: Database["public"]["Enums"]["proposed_action_state"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposed_actions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      requeue_expired_channel_processing_jobs: { Args: never; Returns: number }
       search_work_graph: {
         Args: { max_results?: number; search_term: string }
         Returns: {
@@ -2661,6 +3000,13 @@ export type Database = {
         | "no_show"
         | "completed"
       attendance_outcome: "unknown" | "attended" | "no_show" | "partial"
+      channel_delivery_state: "queued" | "sent" | "delivered" | "failed"
+      channel_event_state:
+        | "received"
+        | "queued"
+        | "processing"
+        | "processed"
+        | "failed"
       claim_stance:
         | "asserted"
         | "confirmed"
@@ -2671,6 +3017,12 @@ export type Database = {
       exception_state: "open" | "investigating" | "resolved" | "dismissed"
       operator_role: "ops_admin" | "ops_user"
       payment_state: "unknown" | "unpaid" | "paid" | "disputed"
+      proposed_action_ambiguity_state: "clear" | "ambiguous" | "unresolved"
+      proposed_action_risk_tier:
+        | "informational"
+        | "operational"
+        | "trust"
+        | "economic"
       proposed_action_state:
         | "pending"
         | "approved"
@@ -2821,6 +3173,14 @@ export const Constants = {
         "completed",
       ],
       attendance_outcome: ["unknown", "attended", "no_show", "partial"],
+      channel_delivery_state: ["queued", "sent", "delivered", "failed"],
+      channel_event_state: [
+        "received",
+        "queued",
+        "processing",
+        "processed",
+        "failed",
+      ],
       claim_stance: [
         "asserted",
         "confirmed",
@@ -2832,6 +3192,13 @@ export const Constants = {
       exception_state: ["open", "investigating", "resolved", "dismissed"],
       operator_role: ["ops_admin", "ops_user"],
       payment_state: ["unknown", "unpaid", "paid", "disputed"],
+      proposed_action_ambiguity_state: ["clear", "ambiguous", "unresolved"],
+      proposed_action_risk_tier: [
+        "informational",
+        "operational",
+        "trust",
+        "economic",
+      ],
       proposed_action_state: [
         "pending",
         "approved",
