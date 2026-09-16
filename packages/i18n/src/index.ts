@@ -57,16 +57,26 @@ export const participantMessageKeys = [
   "assignment.offer.doNotTravel",
   "assignment.offer.takeJob",
   "assignment.offer.cantGo",
+  "assignment.offer.callMe",
   "assignment.offer.listen",
+  "assignment.offer.question",
+  "assignment.offer.replyTake",
+  "assignment.offer.replyDecline",
+  "assignment.offer.replyCall",
+  "assignment.offer.voiceNote",
+  "assignment.offer.callRequested",
   "assignment.accepted.title",
   "assignment.accepted.waiting",
   "assignment.accepted.doNotTravel",
+  "assignment.accepted.confirmation",
   "assignment.confirmed.title",
   "assignment.confirmed.travelReady",
+  "assignment.confirmed.go",
   "assignment.confirmed.onMyWay",
   "assignment.confirmed.directions",
   "assignment.changed",
   "assignment.cancelled",
+  "assignment.cancelled.doNotTravel",
   "workCard.workmarks",
   "workCard.demonstratedSkills",
   "workCard.verified",
@@ -110,7 +120,7 @@ export const participantDictionaries = {
     "action.listen": "LISTEN",
     "action.onMyWay": "I'M ON MY WAY",
     "action.directions": "DIRECTIONS",
-    "action.requestCall": "REQUEST A CALL",
+    "action.requestCall": "CALL ME",
     "fact.workType": "Work",
     "fact.contractor": "Contractor",
     "fact.date": "Date",
@@ -130,16 +140,28 @@ export const participantDictionaries = {
     "assignment.offer.doNotTravel": "Do not travel yet",
     "assignment.offer.takeJob": "Take job",
     "assignment.offer.cantGo": "Can't go",
+    "assignment.offer.callMe": "Call me",
     "assignment.offer.listen": "Listen",
+    "assignment.offer.question": "Can you take this job?",
+    "assignment.offer.replyTake": "Reply YES or 1 to take this job.",
+    "assignment.offer.replyDecline": "Reply NO or 2 if you cannot go.",
+    "assignment.offer.replyCall": "Reply 3 if you want a call.",
+    "assignment.offer.voiceNote": "You can also send a voice note.",
+    "assignment.offer.callRequested": "MARKD will call you.",
     "assignment.accepted.title": "Offer accepted",
     "assignment.accepted.waiting": "Waiting for contractor confirmation",
     "assignment.accepted.doNotTravel": "Do not travel yet",
+    "assignment.accepted.confirmation":
+      "We will tell you when work is confirmed.",
     "assignment.confirmed.title": "Work confirmed",
     "assignment.confirmed.travelReady": "You can travel",
+    "assignment.confirmed.go": "GO",
     "assignment.confirmed.onMyWay": "I'm on my way",
     "assignment.confirmed.directions": "Directions",
     "assignment.changed": "Work details changed",
     "assignment.cancelled": "Work cancelled",
+    "assignment.cancelled.doNotTravel":
+      "Do not travel. This work is cancelled.",
     "workCard.workmarks": "Workmarks",
     "workCard.demonstratedSkills": "Demonstrated skills",
     "workCard.verified": "Verified evidence",
@@ -176,7 +198,7 @@ export const participantDictionaries = {
     "action.listen": "LUISTER",
     "action.onMyWay": "EK IS OP PAD",
     "action.directions": "AANWYSINGS",
-    "action.requestCall": "VRA 'N OPROEP",
+    "action.requestCall": "BEL MY",
     "fact.workType": "Werk",
     "fact.contractor": "Kontrakteur",
     "fact.date": "Datum",
@@ -196,16 +218,29 @@ export const participantDictionaries = {
     "assignment.offer.doNotTravel": "Moenie nog reis nie",
     "assignment.offer.takeJob": "Vat die werk",
     "assignment.offer.cantGo": "Kan nie gaan nie",
+    "assignment.offer.callMe": "Bel my",
     "assignment.offer.listen": "Luister",
+    "assignment.offer.question": "Kan jy hierdie werk vat?",
+    "assignment.offer.replyTake": "Antwoord JA of 1 om die werk te vat.",
+    "assignment.offer.replyDecline":
+      "Antwoord NEE of 2 as jy nie kan gaan nie.",
+    "assignment.offer.replyCall": "Antwoord 3 as jy 'n oproep wil he.",
+    "assignment.offer.voiceNote": "Jy kan ook 'n stemboodskap stuur.",
+    "assignment.offer.callRequested": "MARKD sal jou bel.",
     "assignment.accepted.title": "Aanbod aanvaar",
     "assignment.accepted.waiting": "Wag vir kontrakteurbevestiging",
     "assignment.accepted.doNotTravel": "Moenie nog reis nie",
+    "assignment.accepted.confirmation":
+      "Ons sal jou laat weet wanneer werk bevestig is.",
     "assignment.confirmed.title": "Werk bevestig",
     "assignment.confirmed.travelReady": "Jy kan reis",
+    "assignment.confirmed.go": "GAAN",
     "assignment.confirmed.onMyWay": "Ek is op pad",
     "assignment.confirmed.directions": "Aanwysings",
     "assignment.changed": "Werkbesonderhede het verander",
     "assignment.cancelled": "Werk gekanselleer",
+    "assignment.cancelled.doNotTravel":
+      "Moenie reis nie. Hierdie werk is gekanselleer.",
     "workCard.workmarks": "Workmarks",
     "workCard.demonstratedSkills": "Bewese vaardighede",
     "workCard.verified": "Geverifieerde bewyse",
@@ -242,7 +277,7 @@ export const participantDictionaries = {
     "action.listen": "MAMELA",
     "action.onMyWay": "NDISENDLELENI",
     "action.directions": "IZIKHOKELO",
-    "action.requestCall": "CELA UMNXEBA",
+    "action.requestCall": "NDIFOWUNELE",
     "fact.workType": "Umsebenzi",
     "fact.contractor": "Ikontraka",
     "fact.date": "Umhla",
@@ -262,16 +297,29 @@ export const participantDictionaries = {
     "assignment.offer.doNotTravel": "Musa ukuhamba okwangoku",
     "assignment.offer.takeJob": "Wamkele umsebenzi",
     "assignment.offer.cantGo": "Andinakukwazi ukuya",
+    "assignment.offer.callMe": "Ndifowunele",
     "assignment.offer.listen": "Mamela",
+    "assignment.offer.question": "Ungawamkela lo msebenzi?",
+    "assignment.offer.replyTake":
+      "Phendula EWE okanye 1 ukuze wamkele umsebenzi.",
+    "assignment.offer.replyDecline": "Phendula HAYI okanye 2 xa ungenakuya.",
+    "assignment.offer.replyCall": "Phendula 3 ukuba ufuna ukufowunelwa.",
+    "assignment.offer.voiceNote": "Ungathumela nenowuthi yelizwi.",
+    "assignment.offer.callRequested": "UMARKD uza kukufowunela.",
     "assignment.accepted.title": "Isinikezelo samkelwe",
     "assignment.accepted.waiting": "Kulindwe isiqinisekiso sekontraka",
     "assignment.accepted.doNotTravel": "Musa ukuhamba okwangoku",
+    "assignment.accepted.confirmation":
+      "Siza kukuxelela xa umsebenzi uqinisekisiwe.",
     "assignment.confirmed.title": "Umsebenzi uqinisekisiwe",
     "assignment.confirmed.travelReady": "Ungahamba",
+    "assignment.confirmed.go": "HAMBA",
     "assignment.confirmed.onMyWay": "Ndisendleleni",
     "assignment.confirmed.directions": "Izikhokelo",
     "assignment.changed": "Iinkcukacha zomsebenzi zitshintshile",
     "assignment.cancelled": "Umsebenzi urhoxisiwe",
+    "assignment.cancelled.doNotTravel":
+      "Musa ukuhamba. Lo msebenzi urhoxisiwe.",
     "workCard.workmarks": "Ii-Workmark",
     "workCard.demonstratedSkills": "Izakhono ezibonisiweyo",
     "workCard.verified": "Ubungqina obuqinisekisiweyo",
@@ -293,4 +341,107 @@ export function getParticipantDictionary(
   locale: ParticipantLocale,
 ): ParticipantDictionary {
   return participantDictionaries[participantLanguageByLocale[locale]];
+}
+
+export type WorkerAssignmentMessageState =
+  "offer" | "accepted_waiting" | "confirmed_travel_ready" | "cancelled";
+
+export interface WorkerAssignmentMessageFacts {
+  workType?: string;
+  contractorName?: string;
+  dateLabel?: string;
+  startTimeLabel?: string;
+  rateLabel?: string;
+  areaLabel?: string;
+  reportingPoint?: string;
+  travelDetail?: string;
+  contactLabel?: string;
+  cancellationLabel?: string;
+}
+
+export type WorkerAssignmentResponse = "accepted" | "declined" | "call_me";
+
+const workerResponseByWhatsAppReply: Readonly<
+  Record<string, WorkerAssignmentResponse>
+> = {
+  YES: "accepted",
+  "1": "accepted",
+  NO: "declined",
+  "2": "declined",
+  "3": "call_me",
+};
+
+export function parseWorkerAssignmentWhatsAppResponse(
+  reply: string,
+): WorkerAssignmentResponse | null {
+  return workerResponseByWhatsAppReply[reply.trim().toUpperCase()] ?? null;
+}
+
+function formatWorkerAssignmentFacts(
+  dictionary: ParticipantDictionary,
+  facts: WorkerAssignmentMessageFacts,
+  fields: readonly (readonly [ParticipantMessageKey, string | undefined])[],
+): string[] {
+  return fields.flatMap(([label, value]) =>
+    value?.trim() ? [`${dictionary[label]}: ${value.trim()}`] : [],
+  );
+}
+
+export function formatWorkerAssignmentMessage(
+  state: WorkerAssignmentMessageState,
+  facts: WorkerAssignmentMessageFacts,
+  locale: ParticipantLocale,
+): string {
+  const dictionary = getParticipantDictionary(locale);
+  const commonFacts = formatWorkerAssignmentFacts(dictionary, facts, [
+    ["fact.workType", facts.workType],
+    ["fact.contractor", facts.contractorName],
+    ["fact.date", facts.dateLabel],
+    ["fact.startTime", facts.startTimeLabel],
+    ["fact.rate", facts.rateLabel],
+    ["fact.area", facts.areaLabel],
+  ]);
+  const confirmedFacts = formatWorkerAssignmentFacts(dictionary, facts, [
+    ["fact.reportingPoint", facts.reportingPoint],
+    ["fact.travel", facts.travelDetail],
+    ["fact.contact", facts.contactLabel],
+  ]);
+
+  if (state === "offer") {
+    return [
+      `${dictionary["status.offer"]} - ${dictionary["travel.doNotTravelYet"]}`,
+      ...commonFacts,
+      dictionary["assignment.offer.question"],
+      dictionary["assignment.offer.replyTake"],
+      dictionary["assignment.offer.replyDecline"],
+      dictionary["assignment.offer.replyCall"],
+      dictionary["assignment.offer.voiceNote"],
+    ].join("\n");
+  }
+
+  if (state === "accepted_waiting") {
+    return [
+      `${dictionary["status.acceptedWaiting"]} - ${dictionary["travel.doNotTravelYet"]}`,
+      ...commonFacts,
+      dictionary["assignment.accepted.waiting"],
+      dictionary["assignment.accepted.confirmation"],
+    ].join("\n");
+  }
+
+  if (state === "confirmed_travel_ready") {
+    return [
+      `${dictionary["status.confirmedTravelReady"]} - ${dictionary["assignment.confirmed.go"]}`,
+      ...commonFacts,
+      ...confirmedFacts,
+      dictionary["travel.travelReady"],
+    ].join("\n");
+  }
+
+  return [
+    dictionary["status.cancelled"],
+    facts.cancellationLabel?.trim(),
+    dictionary["assignment.cancelled.doNotTravel"],
+  ]
+    .filter((line): line is string => Boolean(line))
+    .join("\n");
 }

@@ -45,6 +45,31 @@ test("worker offer acceptance remains local and never becomes travel ready", asy
   await expect(page.getByText("You can travel.")).toHaveCount(0);
 });
 
+test("worker can request a call or decline without receiving travel authorisation", async ({
+  page,
+}) => {
+  await page.goto("/participant/preview/worker?view=home&scenario=offer");
+  await page.getByRole("button", { name: /call me/i }).click();
+  await expect(page.getByText("MARKD will call you.")).toBeVisible();
+  await page.getByRole("button", { name: /can't go/i }).click();
+  await expect(page.getByText("Work cancelled")).toBeVisible();
+  await expect(
+    page.getByText("Do not travel. This work is cancelled."),
+  ).toBeVisible();
+  await expect(page.getByText("You can travel.")).toHaveCount(0);
+});
+
+test("worker cancellation scenario never shows confirmed travel styling", async ({
+  page,
+}) => {
+  await page.goto("/participant/preview/worker?view=home&scenario=cancelled");
+  await expect(page.getByText("Work cancelled")).toBeVisible();
+  await expect(
+    page.getByText("Do not travel. This work is cancelled."),
+  ).toBeVisible();
+  await expect(page.getByText("You can travel.")).toHaveCount(0);
+});
+
 test("contractor preview shows crew gap and visual-only repeat hire", async ({
   page,
 }) => {

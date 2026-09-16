@@ -8,6 +8,7 @@ export { ParticipantServiceWorkerRegistration } from "./service-worker-registrat
 export {
   ActionLink,
   Button,
+  CancelledAssignmentCard,
   ConfirmedJobHero,
   ConnectivityState,
   EmptyState,
