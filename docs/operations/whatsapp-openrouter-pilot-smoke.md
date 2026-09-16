@@ -6,8 +6,12 @@ variables, logs, fixtures, issue comments, or screenshots.
 
 ## Configure the private environment
 
-1. Start local Supabase and generate `apps/web/.env.local` with `corepack pnpm env:local`
-   if it does not already exist.
+1. Start local Supabase. Generate `apps/web/.env.local` with
+   `corepack pnpm env:local` only when it does not already exist. An
+   "already exists; it was not changed" error is expected and means the
+   existing file was preserved; continue with the next step. To deliberately
+   regenerate it after replacing the local Supabase stack, first confirm it
+   contains only generated public values, then delete it and rerun the command.
 2. Add the blank server-only values from `.env.example` to ignored `.env` or
    `apps/api/.env`. Preserve the generated browser-only `NEXT_PUBLIC_` values
    in `apps/web/.env.local`.
@@ -18,7 +22,9 @@ variables, logs, fixtures, issue comments, or screenshots.
    model routes and conservative caps are configured in `apps/api/.env`.
 5. Start local Supabase, FastAPI, and Next.js in separate terminals:
    `corepack pnpm db:start`, `corepack pnpm api:dev`, and `corepack pnpm dev`.
-   Run queued work with `corepack pnpm api:worker`.
+   `corepack pnpm api:worker` processes one queue pass and exits. For live
+   provider testing, run a continuous local worker with
+   `uv run --project apps/api python apps/api/run.py worker --continuous`.
    Production runs a separate deployment of the same FastAPI image with
    `MARKD_PROCESS_ROLE=worker`; that process polls the durable queue and logs
    failed passes while database leases/retries retain operational recovery state.

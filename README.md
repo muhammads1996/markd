@@ -92,6 +92,13 @@ corepack pnpm db:stop
 
 The integration suite uses `postgresql://postgres:postgres@127.0.0.1:54322/postgres` by default. Set `SUPABASE_DB_URL` to test another local connection explicitly.
 
+## Manual local testing
+
+The [local manual test guide](docs/operations/local-manual-test-guide.md)
+covers synthetic local operator credentials, every worker and contractor
+preview view, seeded operator Work Graph records, deterministic WhatsApp tests,
+and the guarded Meta/OpenRouter smoke sequence.
+
 ## Workspace layout
 
 - `apps/web` — Next.js operator PWA shell.
