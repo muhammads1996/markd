@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   formatWorkerAssignmentMessage,
+  getParticipantDictionary,
   parseWorkerAssignmentWhatsAppResponse,
   participantLocales,
 } from "@markd/i18n";
@@ -30,6 +31,7 @@ describe("worker assignment messages", () => {
 
   it("provides an offer, waiting, confirmed, and cancellation template in every pilot language", () => {
     for (const locale of participantLocales) {
+      const dictionary = getParticipantDictionary(locale);
       const offer = formatWorkerAssignmentMessage("offer", facts, locale);
       const waiting = formatWorkerAssignmentMessage(
         "accepted_waiting",
@@ -47,10 +49,15 @@ describe("worker assignment messages", () => {
         locale,
       );
 
-      expect(offer).toContain("\n");
-      expect(waiting).toContain("\n");
+      expect(offer).toContain(dictionary["travel.doNotTravelYet"]);
+      expect(waiting).toContain(dictionary["travel.doNotTravelYet"]);
       expect(confirmed).toContain("Taxi rank, bay 4");
-      expect(cancelled).toContain("\n");
+      expect(confirmed).toContain(dictionary["travel.travelReady"]);
+      expect(cancelled).toContain(
+        dictionary["assignment.cancelled.doNotTravel"],
+      );
+      expect(offer).not.toContain(dictionary["travel.travelReady"]);
+      expect(waiting).not.toContain(dictionary["travel.travelReady"]);
     }
   });
 

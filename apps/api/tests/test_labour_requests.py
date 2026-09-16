@@ -70,6 +70,7 @@ class FakeConnection:
                     "lifecycle": "active",
                     "worker_response": "pending",
                     "contractor_confirmation": "pending",
+                    "offered_at": datetime(2026, 9, 16, tzinfo=UTC),
                     "travel_authorised_at": None,
                     "version": 1,
                 }
@@ -268,8 +269,40 @@ async def test_contractor_cannot_submit_worker_response() -> None:
     assert error.value.status_code == 403
 
 
-async def test_assignment_confirmation_proposed_action_uses_canonical_mutation(
+@pytest.mark.parametrize("response", ["accepted", "declined", "call_me"])
+async def test_worker_response_uses_the_canonical_assignment_command(
+    response: str,
 ) -> None:
+    application = create_app(Settings(supabase_db_url="postgresql://test"))
+    application.dependency_overrides[get_database] = FakeDatabase
+    application.dependency_overrides[get_labour_command_actor] = lambda: CurrentActor(
+        user_id=uuid.UUID("44444444-4444-4444-8444-444444444444"),
+        claims={
+            "participant_person_id": "99999999-9999-4999-8999-999999999999",
+            "contractor_contacts": [],
+        },
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        result = await client.post(
+            "/api/v1/assignments/88888888-8888-4888-8888-888888888888/respond",
+            headers={"Idempotency-Key": f"worker-response-{response}"},
+            json={"response": response},
+        )
+
+    assert result.status_code == 200, result.text
+    assert result.json()["resource"] == {
+        "type": "assignment",
+        "id": "88888888-8888-4888-8888-888888888888",
+        "version": 2,
+    }
+
+
+async def test_assignment_confirmation_proposed_action_uses_canonical_mutation() -> (
+    None
+):
     application = create_app(Settings(supabase_db_url="postgresql://test"))
     application.dependency_overrides[get_database] = lambda: FakeDatabase(
         "assignment_confirmation"
@@ -315,6 +348,22 @@ async def test_travel_authorisation_requires_complete_logistics() -> None:
 
     assert error.value.status_code == 409
     assert "logistics" in error.value.detail.lower()
+
+
+@pytest.mark.parametrize("response", ["pending", "declined", "call_me"])
+async def test_travel_authorisation_requires_worker_acceptance(response: str) -> None:
+    assignment = _travel_assignment(worker_response=response)
+
+    with pytest.raises(ProblemDetail) as error:
+        await authorise_assignment_travel_mutation(
+            TravelFakeConnection(assignment),
+            _operator(),
+            assignment["id"],
+            AuthoriseAssignmentTravelInput(),
+        )
+
+    assert error.value.status_code == 409
+    assert "worker accepts" in error.value.detail.lower()
 
 
 async def test_authorisation_is_idempotent_and_does_not_repeat_event() -> None:

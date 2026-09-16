@@ -116,7 +116,8 @@ export function ConfirmedJobHero({
     <section className={styles.hero} aria-labelledby="confirmed-job-title">
       <div className={styles.row}>
         <StatusPill tone="confirmed">
-          {dictionary["status.confirmedTravelReady"]}
+          {dictionary["status.confirmedTravelReady"]} -{" "}
+          {dictionary["assignment.confirmed.go"]}
         </StatusPill>
         <strong>{assignment.facts.dateLabel}</strong>
       </div>

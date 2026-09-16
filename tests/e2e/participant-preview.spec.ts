@@ -45,6 +45,16 @@ test("worker offer acceptance remains local and never becomes travel ready", asy
   await expect(page.getByText("You can travel.")).toHaveCount(0);
 });
 
+test("confirmed presentation is the only state that tells a worker to go", async ({
+  page,
+}) => {
+  await page.goto(
+    "/participant/preview/worker?view=home&scenario=travel_ready",
+  );
+  await expect(page.getByText("WORK CONFIRMED - GO")).toBeVisible();
+  await expect(page.getByText("You can travel.")).toBeVisible();
+});
+
 test("worker can request a call or decline without receiving travel authorisation", async ({
   page,
 }) => {

@@ -53,9 +53,7 @@ class CreateLabourRequestInput(BaseModel):
         if (self.contractor_organisation_id is None) == (
             self.individual_hirer_person_id is None
         ):
-            raise ValueError(
-                "Exactly one requester identifier is required."
-            )
+            raise ValueError("Exactly one requester identifier is required.")
         if self.contractor_contact_id and self.contractor_organisation_id is None:
             raise ValueError(
                 "contractor_contact_id requires contractor_organisation_id"
@@ -201,10 +199,9 @@ def _require_request_actor(
         actor
     ):
         return
-    if (
-        individual_hirer_person_id is not None
-        and actor.claims.get("participant_person_id") == individual_hirer_person_id
-    ):
+    if individual_hirer_person_id is not None and str(
+        actor.claims.get("participant_person_id")
+    ) == str(individual_hirer_person_id):
         return
     raise ProblemDetail(
         403, "FORBIDDEN", "Forbidden", "Actor cannot manage this request."
@@ -219,9 +216,11 @@ def _require_assignment_actor(
 ) -> None:
     if _is_operator(actor):
         return
+    participant_person_id = actor.claims.get("participant_person_id")
     is_worker = (
         allow_worker
-        and actor.claims.get("participant_person_id") == assignment.get("worker_id")
+        and participant_person_id is not None
+        and str(participant_person_id) == str(assignment.get("worker_id"))
     )
     if worker_only:
         if is_worker:
@@ -565,11 +564,7 @@ async def set_assignment_logistics_mutation(
             input.place_text,
             input.reporting_at,
             input.pickup_point_id,
-            (
-                Jsonb(input.location_pin.model_dump())
-                if input.location_pin
-                else None
-            ),
+            (Jsonb(input.location_pin.model_dump()) if input.location_pin else None),
             input.landmark,
             input.instructions,
             Jsonb(input.contact.model_dump()) if input.contact else None,
@@ -664,9 +659,10 @@ async def record_assignment_acknowledgement_mutation(
 ) -> MutationResult:
     assignment = await _get_assignment(connection, assignment_id)
     _require_assignment_actor(actor, assignment, allow_worker=True)
-    if assignment["lifecycle"] != "active" or assignment.get(
-        "travel_authorised_at"
-    ) is None:
+    if (
+        assignment["lifecycle"] != "active"
+        or assignment.get("travel_authorised_at") is None
+    ):
         raise ProblemDetail(
             409,
             "INVALID_STATE",
