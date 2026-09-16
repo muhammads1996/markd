@@ -235,6 +235,82 @@ describe("local Supabase database", () => {
     await client.query("rollback");
   });
 
+  it("keeps assignment closeout evidence append-only and auditable", async () => {
+    const client = new Client({ connectionString: localDatabaseUrl });
+    clients.push(client);
+    await client.connect();
+    await client.query("begin");
+    await createOperator(client, operatorAdminId, "ops_admin");
+
+    const stamp = await client.query<{ id: string }>(
+      `insert into public.assignment_stamps(
+        assignment_id, workmark_id, asserted_by_person_id, recorded_by_user_id,
+        asserted_role, attendance, completion, reuse_preference, payment, source
+      ) values (
+        '62000000-0000-4000-8000-000000000001',
+        '40000000-0000-4000-8000-000000000002',
+        '10000000-0000-4000-8000-000000000001', $1,
+        'worker', 'attended', 'completed', 'would_reuse', 'paid', 'integration test'
+      ) returning id`,
+      [operatorAdminId],
+    );
+    const stampId = stamp.rows[0]?.id;
+    await client.query("savepoint stamp_update");
+    await expect(
+      client.query(
+        "update public.assignment_stamps set note = 'mutated' where id = $1",
+        [stampId],
+      ),
+    ).rejects.toThrow("append-only and immutable");
+    await client.query("rollback to savepoint stamp_update");
+    await client.query("savepoint stamp_delete");
+    await expect(
+      client.query("delete from public.assignment_stamps where id = $1", [
+        stampId,
+      ]),
+    ).rejects.toThrow("append-only and immutable");
+    await client.query("rollback to savepoint stamp_delete");
+
+    const correction = await client.query<{ id: string }>(
+      `insert into public.workmark_corrections(
+        workmark_id, reason, changes, asserted_by_person_id, recorded_by_user_id, source
+      ) values (
+        '40000000-0000-4000-8000-000000000002',
+        'integration correction', '{"payment":"pending"}',
+        '10000000-0000-4000-8000-000000000002', $1, 'integration test'
+      ) returning id`,
+      [operatorAdminId],
+    );
+    const correctionId = correction.rows[0]?.id;
+    await client.query("savepoint correction_update");
+    await expect(
+      client.query(
+        "update public.workmark_corrections set reason = 'mutated' where id = $1",
+        [correctionId],
+      ),
+    ).rejects.toThrow("append-only and immutable");
+    await client.query("rollback to savepoint correction_update");
+    await client.query("savepoint correction_delete");
+    await expect(
+      client.query("delete from public.workmark_corrections where id = $1", [
+        correctionId,
+      ]),
+    ).rejects.toThrow("append-only and immutable");
+    await client.query("rollback to savepoint correction_delete");
+
+    const audit = await client.query<{ table_name: string; record_id: string }>(
+      `select table_name, record_id from public.audit_events
+       where record_id in ($1, $2)
+       order by table_name`,
+      [stampId, correctionId],
+    );
+    expect(audit.rows).toEqual([
+      { table_name: "assignment_stamps", record_id: stampId },
+      { table_name: "workmark_corrections", record_id: correctionId },
+    ]);
+    await client.query("rollback");
+  });
+
   it("preserves typed source and actor context without copying sensitive source content into audit rows", async () => {
     const client = new Client({ connectionString: localDatabaseUrl });
     clients.push(client);
