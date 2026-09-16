@@ -125,6 +125,7 @@ class TravelFakeConnection:
         self.assignment = assignment
         self.last_query = ""
         self.blocking_exception = False
+        self.acknowledged = False
 
     async def execute(
         self, query: str, params: tuple[object, ...] | None = None
@@ -132,6 +133,11 @@ class TravelFakeConnection:
         self.last_query = query
         if "from public.exception_cases" in query:
             return FakeResult({"blocked": self.blocking_exception})
+        if "assignment_acknowledgements" in query:
+            if self.acknowledged:
+                return FakeResult()
+            self.acknowledged = True
+            return FakeResult({"id": uuid.uuid4()})
         if "from public.assignments" in query:
             return FakeResult(self.assignment)
         if "update public.assignments" in query:
@@ -712,6 +718,28 @@ async def test_operator_cannot_acknowledge_travel_for_worker() -> None:
         )
 
     assert error.value.status_code == 403
+
+
+async def test_worker_acknowledgement_records_pwa_provenance() -> None:
+    assignment = _travel_assignment(travel_authorised_at=datetime.now(UTC))
+    worker = CurrentActor(
+        user_id=uuid.UUID("44444444-4444-4444-8444-444444444444"),
+        claims={
+            "participant_person_id": str(assignment["worker_id"]),
+            "worker_scope": True,
+            "contractor_contacts": [],
+        },
+    )
+
+    result = await record_assignment_acknowledgement_mutation(
+        TravelFakeConnection(assignment),
+        worker,
+        assignment["id"],
+        AssignmentAcknowledgementInput(kind="on_my_way"),
+    )
+
+    assert result.event_type == "assignment.acknowledged"
+    assert result.source_channel == "pwa"
 
 
 async def test_request_cancellation_records_previous_travel_authorisation() -> None:

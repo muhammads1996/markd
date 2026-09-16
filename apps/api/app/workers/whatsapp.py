@@ -509,19 +509,13 @@ async def _try_execute_worker_action(
         if response not in {"accepted", "declined", "call_me"}:
             return None, {"workerId": str(worker_id)}
         assignment_response = cast(Literal["accepted", "declined", "call_me"], response)
-        eligible_responses = (
-            ["pending", "call_me", "accepted"]
-            if assignment_response == "accepted"
-            else ["pending", "call_me"]
-        )
         result = await connection.execute(
             """
             select id from public.assignments
             where worker_id = %s and lifecycle = 'active' and offered_at is not null
-              and worker_response = any(%s)
             order by offered_at desc
             """,
-            (worker_id, eligible_responses),
+            (worker_id,),
         )
         assignments = await result.fetchall()
         if len(assignments) != 1:
@@ -551,7 +545,17 @@ async def _try_execute_worker_action(
                 },
                 handler,
             )
-        except (HTTPException, ProblemDetail):
+        except ProblemDetail as error:
+            if error.code == "CONFLICTING_RESPONSE":
+                return "conflicted", {
+                    "workerId": str(worker_id),
+                    "assignmentId": str(assignment_id),
+                }
+            return None, {
+                "workerId": str(worker_id),
+                "assignmentId": str(assignment_id),
+            }
+        except HTTPException:
             return None, {
                 "workerId": str(worker_id),
                 "assignmentId": str(assignment_id),

@@ -752,6 +752,7 @@ async def record_assignment_acknowledgement_mutation(
         "assignment",
         assignment_id,
         body,
+        source_channel=_source_for_actor(actor),
     )
 
 

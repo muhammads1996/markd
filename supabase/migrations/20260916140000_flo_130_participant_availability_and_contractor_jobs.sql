@@ -87,9 +87,9 @@ grant select (
   id, version, worker_id, lifecycle, worker_response, contractor_confirmation,
   offered_at, travel_authorised_at, reporting_mode, reporting_place_text,
   reporting_at, starts_on, labour_request_id, labour_requirement_id,
-  organisation_id, site_id, agreed_rate_cents, currency, archived_at
+  organisation_id, site_id, archived_at
 ) on table public.assignments to authenticated;
-grant select (id, needed_from, rate_cents, currency, rate_basis, archived_at)
+grant select (id, needed_from, archived_at)
   on table public.labour_requests to authenticated;
 grant select (id, labour_request_id, work_type, archived_at)
   on table public.labour_requirements to authenticated;

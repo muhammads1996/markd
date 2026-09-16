@@ -16,6 +16,7 @@ from app.api.v1.labour_requests import (
 from app.application.dispatcher import execute_command
 from app.core.auth import CurrentActor
 from app.core.config import Settings
+from app.core.problems import ProblemDetail
 from app.integrations.language import (
     ExtractedIntent,
     OpenRouterProvider,
@@ -344,10 +345,6 @@ class AssignmentResponseConvergenceConnection(DirectProcessingConnection):
                 ]
             )
         if "select id from public.assignments" in query:
-            if self.assignment["worker_response"] == "accepted" and (
-                params is None or "accepted" not in params[1]
-            ):
-                return RowsResult([])
             return RowsResult([{"id": self.assignment["id"]}])
         if "from public.channel_events" in query:
             return FakeResult(self.event)
@@ -540,6 +537,43 @@ async def test_pwa_accept_then_whatsapp_yes_is_already_applied_once() -> None:
     assert connection.assignment["worker_response"] == "accepted"
     assert connection.domain_events == 1
     assert connection.outbox_messages == 1
+
+
+async def test_whatsapp_terminal_conflict_is_not_drafted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connection = DirectProcessingConnection()
+
+    async def mutation(*_: Any, **__: Any) -> Any:
+        raise ProblemDetail(
+            409,
+            "CONFLICTING_RESPONSE",
+            "Conflicting response",
+            "A terminal response cannot be overwritten.",
+        )
+
+    async def dispatch(*args: Any, **_: Any) -> Any:
+        return await args[6](connection)
+
+    monkeypatch.setattr(whatsapp_worker, "respond_to_assignment_mutation", mutation)
+    monkeypatch.setattr(whatsapp_worker, "execute_command", dispatch)
+    connection.event["payload"]["entry"][0]["changes"][0]["value"]["messages"][0][
+        "text"
+    ]["body"] = "NO"
+
+    outcome = await _process_message_job(
+        connection,
+        connection.event["id"],
+        Settings(openrouter_api_key=""),
+        FakeDatabase(connection),
+    )
+
+    assignment_lookup = next(
+        query for query, _ in connection.calls if "select id from public.assignments" in query
+    )
+    assert outcome == "conflicted"
+    assert "worker_response" not in assignment_lookup
+    assert not any("proposed_actions" in query for query, _ in connection.calls)
 
 
 @pytest.mark.parametrize(

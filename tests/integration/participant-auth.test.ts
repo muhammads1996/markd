@@ -301,6 +301,11 @@ describe("participant account mappings", () => {
       client.query("select source from public.availability_signals"),
     ).rejects.toThrow("permission denied");
     await client.query("rollback to savepoint availability_private_column");
+    await client.query("savepoint worker_rate_private_column");
+    await expect(
+      client.query("select agreed_rate_cents from public.assignments"),
+    ).rejects.toThrow("permission denied");
+    await client.query("rollback to savepoint worker_rate_private_column");
 
     await client.query("set local role postgres");
     await becomeAuthenticated(client, participantB);
@@ -337,6 +342,11 @@ describe("participant account mappings", () => {
       client.query("select cancellation_note from public.assignments"),
     ).rejects.toThrow("permission denied");
     await client.query("rollback to savepoint assignment_private_column");
+    await client.query("savepoint contractor_rate_private_column");
+    await expect(
+      client.query("select rate_cents from public.labour_requests"),
+    ).rejects.toThrow("permission denied");
+    await client.query("rollback to savepoint contractor_rate_private_column");
     await client.query("rollback");
   });
 });
