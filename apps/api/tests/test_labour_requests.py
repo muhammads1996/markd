@@ -10,12 +10,17 @@ from app.api.dependencies import (
     get_operator_actor,
 )
 from app.api.v1.labour_requests import (
+    AssignmentAcknowledgementInput,
     AssignmentLogisticsInput,
     AuthoriseAssignmentTravelInput,
     CancelAssignmentInput,
+    ContractorConfirmationInput,
+    _cancel_request_assignments,
     _require_assignment_actor,
     authorise_assignment_travel_mutation,
     cancel_assignment_mutation,
+    confirm_assignment_mutation,
+    record_assignment_acknowledgement_mutation,
     set_assignment_logistics_mutation,
 )
 from app.core.auth import CurrentActor
@@ -134,6 +139,24 @@ class TravelFakeConnection:
                     "id": self.assignment["id"],
                     "version": self.assignment["version"],
                 }
+            )
+        return FakeResult()
+
+
+class RequestCancellationConnection:
+    def __init__(self, cancelled_after_travel_authorised: bool) -> None:
+        self.query = ""
+        self.cancelled_after_travel_authorised = cancelled_after_travel_authorised
+
+    async def execute(
+        self, query: str, params: tuple[object, ...] | None = None
+    ) -> FakeResult:
+        self.query = query
+        if "cancelled_after_travel_authorised\n                or" in query:
+            self.cancelled_after_travel_authorised = (
+                self.cancelled_after_travel_authorised
+                or "travel_authorised_at is not null" in query
+                or "travel_revoked_at is not null" in query
             )
         return FakeResult()
 
@@ -398,6 +421,95 @@ async def test_material_logistics_change_revokes_current_travel_authorisation() 
     assert result.event_type == "assignment.logistics_updated"
     assert assignment["travel_authorised_at"] is None
     assert assignment["travel_revoked_at"] is not None
+
+
+@pytest.mark.parametrize("confirmation", ["pending", "rejected"])
+async def test_travel_authorisation_requires_contractor_confirmation(
+    confirmation: str,
+) -> None:
+    assignment = _travel_assignment(contractor_confirmation=confirmation)
+
+    with pytest.raises(ProblemDetail) as error:
+        await authorise_assignment_travel_mutation(
+            TravelFakeConnection(assignment),
+            _operator(),
+            assignment["id"],
+            AuthoriseAssignmentTravelInput(),
+        )
+
+    assert error.value.status_code == 409
+    assert "contractor confirms" in error.value.detail.lower()
+
+
+async def test_contractor_cannot_reject_currently_travel_authorised_assignment() -> (
+    None
+):
+    assignment = _travel_assignment(travel_authorised_at=datetime.now(UTC))
+
+    with pytest.raises(ProblemDetail) as error:
+        await confirm_assignment_mutation(
+            TravelFakeConnection(assignment),
+            _operator(),
+            assignment["id"],
+            ContractorConfirmationInput(confirmed=False),
+        )
+
+    assert error.value.status_code == 409
+    assert "authorisation must be revoked" in error.value.detail.lower()
+
+
+async def test_only_assigned_worker_can_acknowledge_travel() -> None:
+    assignment = _travel_assignment(travel_authorised_at=datetime.now(UTC))
+    contractor = CurrentActor(
+        user_id=uuid.UUID("44444444-4444-4444-8444-444444444444"),
+        claims={
+            "contractor_contacts": [
+                {"organisation_id": "55555555-5555-4555-8555-555555555555"}
+            ]
+        },
+    )
+
+    with pytest.raises(ProblemDetail) as error:
+        await record_assignment_acknowledgement_mutation(
+            TravelFakeConnection(assignment),
+            contractor,
+            assignment["id"],
+            AssignmentAcknowledgementInput(kind="on_my_way"),
+        )
+
+    assert error.value.status_code == 403
+
+
+async def test_operator_cannot_acknowledge_travel_for_worker() -> None:
+    assignment = _travel_assignment(travel_authorised_at=datetime.now(UTC))
+
+    with pytest.raises(ProblemDetail) as error:
+        await record_assignment_acknowledgement_mutation(
+            TravelFakeConnection(assignment),
+            _operator(),
+            assignment["id"],
+            AssignmentAcknowledgementInput(kind="on_my_way"),
+        )
+
+    assert error.value.status_code == 403
+
+
+async def test_request_cancellation_records_previous_travel_authorisation() -> None:
+    connection = RequestCancellationConnection(
+        cancelled_after_travel_authorised=True,
+    )
+
+    await _cancel_request_assignments(
+        connection,
+        uuid.UUID("22222222-2222-4222-8222-222222222222"),
+        "job_cancelled",
+    )
+
+    assert "cancelled_after_travel_authorised" in connection.query
+    assert "cancelled_after_travel_authorised\n                or" in connection.query
+    assert "travel_authorised_at is not null" in connection.query
+    assert "travel_revoked_at is not null" in connection.query
+    assert connection.cancelled_after_travel_authorised is True
 
 
 async def test_cancellation_preserves_before_and_after_travel_distinction() -> None:

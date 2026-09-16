@@ -214,8 +214,6 @@ def _require_assignment_actor(
     allow_worker: bool = False,
     worker_only: bool = False,
 ) -> None:
-    if _is_operator(actor):
-        return
     participant_person_id = actor.claims.get("participant_person_id")
     is_worker = (
         allow_worker
@@ -228,6 +226,8 @@ def _require_assignment_actor(
         raise ProblemDetail(
             403, "FORBIDDEN", "Forbidden", "Only the assigned worker can respond."
         )
+    if _is_operator(actor):
+        return
     organisation_id = assignment.get("organisation_id")
     if organisation_id and UUID(str(organisation_id)) in _contractor_organisations(
         actor
@@ -292,7 +292,12 @@ async def _cancel_request_assignments(
         """
         update public.assignments
         set lifecycle = 'cancelled', cancelled_at = timezone('utc', now()),
-            cancellation_reason = %s, version = version + 1
+            cancellation_reason = %s,
+            cancelled_after_travel_authorised =
+                cancelled_after_travel_authorised
+                or travel_authorised_at is not null
+                or travel_revoked_at is not null,
+            version = version + 1
         where labour_request_id = %s and lifecycle = 'active'
         """,
         (reason, labour_request_id),
@@ -456,6 +461,13 @@ async def confirm_assignment_mutation(
             "Only active assignments can be confirmed.",
         )
     confirmation = "confirmed" if input.confirmed else "rejected"
+    if not input.confirmed and assignment.get("travel_authorised_at") is not None:
+        raise ProblemDetail(
+            409,
+            "INVALID_STATE",
+            "Invalid state transition",
+            "Travel authorisation must be revoked before rejecting an assignment.",
+        )
     if assignment["contractor_confirmation"] == confirmation:
         body = _command_body(
             "assignment", assignment_id, assignment["version"], "already_applied"
@@ -658,7 +670,7 @@ async def record_assignment_acknowledgement_mutation(
     input: AssignmentAcknowledgementInput,
 ) -> MutationResult:
     assignment = await _get_assignment(connection, assignment_id)
-    _require_assignment_actor(actor, assignment, allow_worker=True)
+    _require_assignment_actor(actor, assignment, allow_worker=True, worker_only=True)
     if (
         assignment["lifecycle"] != "active"
         or assignment.get("travel_authorised_at") is None
