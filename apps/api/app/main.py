@@ -21,6 +21,7 @@ from app.api.v1.onboarding import (
 )
 from app.api.v1.proposed_actions import router as proposed_actions_router
 from app.api.v1.storage import router as storage_router
+from app.api.v1.workmarks import router as workmarks_router
 from app.api.whatsapp import router as whatsapp_router
 from app.core.config import Settings, get_settings
 from app.core.correlation import CorrelationMiddleware
@@ -83,6 +84,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(organisation_router, prefix="/api/v1")
     application.include_router(storage_router, prefix="/api/v1")
     application.include_router(proposed_actions_router, prefix="/api/v1")
+    application.include_router(workmarks_router)
     return application
 
 

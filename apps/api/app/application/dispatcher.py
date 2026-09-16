@@ -25,7 +25,7 @@ class CommandExecution:
 class MutationResult:
     status_code: int
     body: dict[str, Any]
-    event_type: str
+    event_type: str | None
     aggregate_type: str
     aggregate_id: UUID | None
     event_payload: dict[str, Any]
@@ -103,31 +103,35 @@ async def execute_command(
 
         command_id = created["id"]
         mutation = await handler(connection)
-        event_result = await connection.execute(
-            """
-            insert into private.domain_events
-              (command_execution_id, event_type, aggregate_type, aggregate_id, payload)
-            values (%s, %s, %s, %s, %s)
-            returning id
-            """,
-            (
-                command_id,
-                mutation.event_type,
-                mutation.aggregate_type,
-                mutation.aggregate_id,
-                json.dumps(jsonable_encoder(mutation.event_payload)),
-            ),
-        )
-        event = await event_result.fetchone()
-        if event is None:
-            raise HTTPException(status_code=503, detail="Domain event was not recorded")
-        await connection.execute(
-            """
-            insert into private.outbox_messages (domain_event_id)
-            values (%s)
-            """,
-            (event["id"],),
-        )
+        if mutation.event_type is not None:
+            event_result = await connection.execute(
+                """
+                insert into private.domain_events
+                  (command_execution_id, event_type, aggregate_type, aggregate_id,
+                   payload)
+                values (%s, %s, %s, %s, %s)
+                returning id
+                """,
+                (
+                    command_id,
+                    mutation.event_type,
+                    mutation.aggregate_type,
+                    mutation.aggregate_id,
+                    json.dumps(jsonable_encoder(mutation.event_payload)),
+                ),
+            )
+            event = await event_result.fetchone()
+            if event is None:
+                raise HTTPException(
+                    status_code=503, detail="Domain event was not recorded"
+                )
+            await connection.execute(
+                """
+                insert into private.outbox_messages (domain_event_id)
+                values (%s)
+                """,
+                (event["id"],),
+            )
         await connection.execute(
             """
             update private.command_executions

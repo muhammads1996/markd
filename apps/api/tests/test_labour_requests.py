@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -8,7 +9,15 @@ from app.api.dependencies import (
     get_labour_command_actor,
     get_operator_actor,
 )
-from app.api.v1.labour_requests import _require_assignment_actor
+from app.api.v1.labour_requests import (
+    AssignmentLogisticsInput,
+    AuthoriseAssignmentTravelInput,
+    CancelAssignmentInput,
+    _require_assignment_actor,
+    authorise_assignment_travel_mutation,
+    cancel_assignment_mutation,
+    set_assignment_logistics_mutation,
+)
 from app.core.auth import CurrentActor
 from app.core.config import Settings
 from app.core.problems import ProblemDetail
@@ -92,6 +101,71 @@ class FakeDatabase:
                 return None
 
         return Transaction()
+
+
+class TravelFakeConnection:
+    def __init__(self, assignment: dict[str, object]) -> None:
+        self.assignment = assignment
+        self.last_query = ""
+
+    async def execute(
+        self, query: str, params: tuple[object, ...] | None = None
+    ) -> FakeResult:
+        self.last_query = query
+        if "from public.assignments" in query:
+            return FakeResult(self.assignment)
+        if "update public.assignments" in query:
+            self.assignment["version"] = int(self.assignment["version"]) + 1
+            if "lifecycle = 'cancelled'" in query:
+                self.assignment["cancelled_after_travel_authorised"] = (
+                    self.assignment.get("travel_authorised_at") is not None
+                    or self.assignment.get("travel_revoked_at") is not None
+                )
+            elif "reporting_mode = %s" in query:
+                if self.assignment.get("travel_authorised_at") is not None:
+                    self.assignment["travel_authorised_at"] = None
+                    self.assignment["travel_revoked_at"] = datetime.now(UTC)
+            else:
+                self.assignment["travel_authorised_at"] = datetime.now(UTC)
+                self.assignment["travel_revoked_at"] = None
+            return FakeResult(
+                {
+                    "id": self.assignment["id"],
+                    "version": self.assignment["version"],
+                }
+            )
+        return FakeResult()
+
+
+def _travel_assignment(**overrides: object) -> dict[str, object]:
+    assignment: dict[str, object] = {
+        "id": uuid.UUID("88888888-8888-4888-8888-888888888888"),
+        "worker_id": uuid.UUID("99999999-9999-4999-8999-999999999999"),
+        "organisation_id": uuid.UUID("55555555-5555-4555-8555-555555555555"),
+        "lifecycle": "active",
+        "worker_response": "accepted",
+        "contractor_confirmation": "confirmed",
+        "travel_authorised_at": None,
+        "travel_revoked_at": None,
+        "reporting_mode": "site",
+        "reporting_place_text": "Main gate",
+        "reporting_at": datetime(2026, 9, 18, 5, 0, tzinfo=UTC),
+        "pickup_point_id": None,
+        "location_pin": None,
+        "landmark": None,
+        "instructions": None,
+        "contact": None,
+        "version": 1,
+    }
+    assignment.update(overrides)
+    return assignment
+
+
+def _operator() -> CurrentActor:
+    return CurrentActor(
+        user_id=uuid.UUID("44444444-4444-4444-8444-444444444444"),
+        claims={"operator": {"role": "ops_user", "person_id": None}},
+    )
 
 
 async def test_create_labour_request_uses_the_canonical_command_boundary() -> None:
@@ -225,3 +299,85 @@ async def test_assignment_confirmation_proposed_action_uses_canonical_mutation(
         "id": "88888888-8888-4888-8888-888888888888",
         "version": 2,
     }
+
+
+async def test_travel_authorisation_requires_complete_logistics() -> None:
+    assignment = _travel_assignment(reporting_mode=None, reporting_place_text=None)
+    connection = TravelFakeConnection(assignment)
+
+    with pytest.raises(ProblemDetail) as error:
+        await authorise_assignment_travel_mutation(
+            connection,
+            _operator(),
+            assignment["id"],
+            AuthoriseAssignmentTravelInput(),
+        )
+
+    assert error.value.status_code == 409
+    assert "logistics" in error.value.detail.lower()
+
+
+async def test_authorisation_is_idempotent_and_does_not_repeat_event() -> None:
+    assignment = _travel_assignment()
+    connection = TravelFakeConnection(assignment)
+    first = await authorise_assignment_travel_mutation(
+        connection, _operator(), assignment["id"], AuthoriseAssignmentTravelInput()
+    )
+    second = await authorise_assignment_travel_mutation(
+        connection, _operator(), assignment["id"], AuthoriseAssignmentTravelInput()
+    )
+
+    assert first.event_type == "assignment.travel_authorised"
+    assert first.body["effects"]["outbound_messages_queued"] == 1
+    assert second.body["status"] == "already_applied"
+    assert second.event_type is None
+
+
+async def test_material_logistics_change_revokes_current_travel_authorisation() -> None:
+    assignment = _travel_assignment(travel_authorised_at=datetime.now(UTC))
+    connection = TravelFakeConnection(assignment)
+    input = AssignmentLogisticsInput(
+        reporting_mode="pickup",
+        place_text="Library car park",
+        reporting_at=datetime(2026, 9, 18, 5, 0, tzinfo=UTC),
+    )
+
+    result = await set_assignment_logistics_mutation(
+        connection, _operator(), assignment["id"], input
+    )
+
+    assert result.event_type == "assignment.logistics_updated"
+    assert assignment["travel_authorised_at"] is None
+    assert assignment["travel_revoked_at"] is not None
+
+
+async def test_cancellation_preserves_before_and_after_travel_distinction() -> None:
+    before = _travel_assignment(cancelled_after_travel_authorised=False)
+    before_connection = TravelFakeConnection(before)
+    await cancel_assignment_mutation(
+        before_connection,
+        _operator(),
+        before["id"],
+        CancelAssignmentInput(reason_code="operator_cancelled"),
+    )
+
+    after = _travel_assignment(travel_revoked_at=datetime.now(UTC))
+    after_connection = TravelFakeConnection(after)
+    await cancel_assignment_mutation(
+        after_connection,
+        _operator(),
+        after["id"],
+        CancelAssignmentInput(reason_code="operator_cancelled"),
+    )
+
+    assert before["cancelled_after_travel_authorised"] is False
+    assert after["cancelled_after_travel_authorised"] is True
+
+
+async def test_travel_command_paths_are_published() -> None:
+    application = create_app(Settings(supabase_db_url="postgresql://test"))
+    paths = application.openapi()["paths"]
+
+    assert "/api/v1/assignments/{assignment_id}/logistics" in paths
+    assert "/api/v1/assignments/{assignment_id}/authorise-travel" in paths
+    assert "/api/v1/assignments/{assignment_id}/acknowledgements" in paths

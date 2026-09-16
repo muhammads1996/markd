@@ -440,6 +440,126 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/assignments/{assignment_id}/logistics:
+    put:
+      tags:
+      - Assignments
+      summary: Set Assignment Logistics
+      operationId: set_assignment_logistics_api_v1_assignments__assignment_id__logistics_put
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: assignment_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Assignment Id
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignmentLogisticsInput'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/assignments/{assignment_id}/authorise-travel:
+    post:
+      tags:
+      - Assignments
+      summary: Authorise Assignment Travel
+      operationId: authorise_assignment_travel_api_v1_assignments__assignment_id__authorise_travel_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: assignment_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Assignment Id
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthoriseAssignmentTravelInput'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/assignments/{assignment_id}/acknowledgements:
+    post:
+      tags:
+      - Assignments
+      summary: Record Assignment Acknowledgement
+      operationId: record_assignment_acknowledgement_api_v1_assignments__assignment_id__acknowledgements_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: assignment_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Assignment Id
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignmentAcknowledgementInput'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/assignments/{assignment_id}/cancel:
     post:
       tags:
@@ -885,6 +1005,86 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/assignments/{assignment_id}/stamps:
+    post:
+      tags:
+      - Workmarks
+      summary: Submit Assignment Stamp
+      operationId: submit_assignment_stamp_api_v1_assignments__assignment_id__stamps_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: assignment_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Assignment Id
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignmentStampInput'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workmarks/{workmark_id}/corrections:
+    post:
+      tags:
+      - Workmarks
+      summary: Correct Workmark
+      operationId: correct_workmark_api_v1_workmarks__workmark_id__corrections_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: workmark_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Workmark Id
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorrectWorkmarkInput'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
 components:
   schemas:
     ApprovalInput:
@@ -923,6 +1123,179 @@ components:
       required:
       - action_type
       title: ApprovalInput
+    AssignmentAcknowledgementInput:
+      properties:
+        kind:
+          type: string
+          const: on_my_way
+          title: Kind
+      type: object
+      required:
+      - kind
+      title: AssignmentAcknowledgementInput
+    AssignmentContactInput:
+      properties:
+        name:
+          type: string
+          maxLength: 120
+          minLength: 1
+          title: Name
+        phone:
+          type: string
+          maxLength: 32
+          minLength: 1
+          title: Phone
+      type: object
+      required:
+      - name
+      - phone
+      title: AssignmentContactInput
+    AssignmentLogisticsInput:
+      properties:
+        reporting_mode:
+          type: string
+          enum:
+          - site
+          - pickup
+          title: Reporting Mode
+        place_text:
+          type: string
+          maxLength: 500
+          minLength: 1
+          title: Place Text
+        reporting_at:
+          type: string
+          format: date-time
+          title: Reporting At
+        pickup_point_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Pickup Point Id
+        location_pin:
+          anyOf:
+          - $ref: '#/components/schemas/LocationPinInput'
+          - type: 'null'
+        landmark:
+          anyOf:
+          - type: string
+            maxLength: 500
+          - type: 'null'
+          title: Landmark
+        instructions:
+          anyOf:
+          - type: string
+            maxLength: 1000
+          - type: 'null'
+          title: Instructions
+        contact:
+          anyOf:
+          - $ref: '#/components/schemas/AssignmentContactInput'
+          - type: 'null'
+        expected_version:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: Expected Version
+      type: object
+      required:
+      - reporting_mode
+      - place_text
+      - reporting_at
+      title: AssignmentLogisticsInput
+    AssignmentStampInput:
+      properties:
+        attendance:
+          type: string
+          enum:
+          - attended
+          - no_show
+          - unknown
+          title: Attendance
+          default: unknown
+        completion:
+          type: string
+          enum:
+          - completed
+          - partial
+          - not_completed
+          - unknown
+          title: Completion
+          default: unknown
+        reuse_preference:
+          type: string
+          enum:
+          - 'yes'
+          - 'no'
+          - unknown
+          title: Reuse Preference
+          default: unknown
+        payment:
+          $ref: '#/components/schemas/StampPaymentInput'
+        note:
+          anyOf:
+          - type: string
+            maxLength: 2000
+          - type: 'null'
+          title: Note
+        expected_version:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: Expected Version
+        asserted_by:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Asserted By
+        asserted_role:
+          anyOf:
+          - type: string
+            enum:
+            - worker
+            - hirer
+          - type: 'null'
+          title: Asserted Role
+        source:
+          type: string
+          maxLength: 120
+          minLength: 1
+          title: Source
+          default: api
+        source_channel_event_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Source Channel Event Id
+        source_proposed_action_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Source Proposed Action Id
+        occurred_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Occurred At
+      type: object
+      title: AssignmentStampInput
+    AuthoriseAssignmentTravelInput:
+      properties:
+        expected_version:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: Expected Version
+      type: object
+      title: AuthoriseAssignmentTravelInput
     Body_upload_portrait_api_v1_onboarding_workers__worker_id__portrait_post:
       properties:
         asset_id:
@@ -1069,6 +1442,102 @@ components:
       required:
       - confirmed
       title: ContractorConfirmationInput
+    CorrectWorkmarkInput:
+      properties:
+        reason:
+          type: string
+          maxLength: 1000
+          minLength: 1
+          title: Reason
+        changes:
+          $ref: '#/components/schemas/CorrectionChanges'
+        expected_version:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: Expected Version
+        source:
+          type: string
+          maxLength: 120
+          minLength: 1
+          title: Source
+          default: api
+        source_channel_event_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Source Channel Event Id
+        source_proposed_action_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Source Proposed Action Id
+        occurred_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Occurred At
+      type: object
+      required:
+      - reason
+      - changes
+      title: CorrectWorkmarkInput
+    CorrectionChanges:
+      properties:
+        attendance:
+          anyOf:
+          - type: string
+            enum:
+            - attended
+            - no_show
+            - unknown
+          - type: 'null'
+          title: Attendance
+        completion:
+          anyOf:
+          - type: string
+            enum:
+            - completed
+            - partial
+            - not_completed
+            - unknown
+          - type: 'null'
+          title: Completion
+        payment_state:
+          anyOf:
+          - type: string
+            enum:
+            - unknown
+            - pending
+            - paid
+            - partial
+            - disputed
+          - type: 'null'
+          title: Payment State
+        worker_reuse_preference:
+          anyOf:
+          - type: string
+            enum:
+            - 'yes'
+            - 'no'
+            - unknown
+          - type: 'null'
+          title: Worker Reuse Preference
+        organisation_reuse_preference:
+          anyOf:
+          - type: string
+            enum:
+            - 'yes'
+            - 'no'
+            - unknown
+          - type: 'null'
+          title: Organisation Reuse Preference
+      type: object
+      title: CorrectionChanges
     CreateAssignmentsInput:
       properties:
         requirement_id:
@@ -1177,6 +1646,23 @@ components:
           title: Detail
       type: object
       title: HTTPValidationError
+    LocationPinInput:
+      properties:
+        lat:
+          type: number
+          maximum: 90.0
+          minimum: -90.0
+          title: Lat
+        lng:
+          type: number
+          maximum: 180.0
+          minimum: -180.0
+          title: Lng
+      type: object
+      required:
+      - lat
+      - lng
+      title: LocationPinInput
     OfferAssignmentInput:
       properties:
         expected_version:
@@ -1378,6 +1864,38 @@ components:
       required:
       - response
       title: RespondToAssignmentInput
+    StampPaymentInput:
+      properties:
+        state:
+          type: string
+          enum:
+          - unknown
+          - pending
+          - paid
+          - partial
+          - disputed
+          title: State
+          default: unknown
+        amount_minor:
+          anyOf:
+          - type: integer
+            minimum: 0.0
+          - type: 'null'
+          title: Amount Minor
+        currency:
+          anyOf:
+          - type: string
+            pattern: ^[A-Z]{3}$
+          - type: 'null'
+          title: Currency
+        method:
+          anyOf:
+          - type: string
+            maxLength: 80
+          - type: 'null'
+          title: Method
+      type: object
+      title: StampPaymentInput
     UpdateLabourRequestInput:
       properties:
         work_date:

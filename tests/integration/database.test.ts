@@ -57,6 +57,8 @@ async function becomeApiOperator(
 const domainTables = [
   "areas",
   "assignments",
+  "assignment_acknowledgements",
+  "assignment_stamps",
   "audit_events",
   "availability_signals",
   "channel_deliveries",
@@ -90,9 +92,16 @@ const domainTables = [
   "worker_private_details",
   "worker_profiles",
   "worker_skill_evidence",
+  "workmark_corrections",
   "workmark_skills",
   "workmarks",
 ] as const;
+
+const apiDeniedTables = new Set([
+  "assignment_acknowledgements",
+  "assignment_stamps",
+  "workmark_corrections",
+]);
 
 async function insertTestWorkmark(client: Client): Promise<string> {
   const worker = await client.query<{ id: string }>(
@@ -390,6 +399,60 @@ describe("local Supabase database", () => {
       await expect(client.query(statement)).rejects.toThrow(message);
       await client.query(`rollback to savepoint ${savepoint}`);
     }
+    await client.query("rollback");
+  });
+
+  it("stores travel logistics and deduplicates assignment acknowledgements", async () => {
+    const client = new Client({ connectionString: localDatabaseUrl });
+    clients.push(client);
+    await client.connect();
+    await client.query("begin");
+    await createOperator(client, operatorAdminId, "ops_admin");
+
+    await client.query(
+      `update public.assignments
+       set reporting_mode = 'pickup',
+           reporting_place_text = 'Library car park',
+           reporting_at = '2026-09-18T05:00:00Z',
+           location_pin = '{"lat": -33.9, "lng": 18.4}'::jsonb,
+           travel_authorised_at = now()
+       where id = '62000000-0000-4000-8000-000000000001'`,
+    );
+    const assignment = await client.query<{
+      reporting_mode: string;
+      reporting_place_text: string;
+      reporting_at: string;
+      travel_authorised_at: string;
+    }>(
+      `select reporting_mode, reporting_place_text, reporting_at,
+              travel_authorised_at
+       from public.assignments
+       where id = '62000000-0000-4000-8000-000000000001'`,
+    );
+    expect(assignment.rows[0]).toMatchObject({
+      reporting_mode: "pickup",
+      reporting_place_text: "Library car park",
+    });
+    expect(assignment.rows[0]?.reporting_at).toBeTruthy();
+    expect(assignment.rows[0]?.travel_authorised_at).toBeTruthy();
+
+    await client.query(
+      `insert into public.assignment_acknowledgements
+         (assignment_id, kind, actor_user_id)
+       values
+         ('62000000-0000-4000-8000-000000000001', 'on_my_way', $1)`,
+      [operatorAdminId],
+    );
+    await expect(
+      client.query(
+        `insert into public.assignment_acknowledgements
+           (assignment_id, kind, actor_user_id)
+         values
+           ('62000000-0000-4000-8000-000000000001', 'on_my_way', $1)`,
+        [operatorAdminId],
+      ),
+    ).rejects.toThrow("assignment_acknowledgements_assignment_id_kind_key");
+
     await client.query("rollback");
   });
 
@@ -850,6 +913,14 @@ describe("local Supabase database", () => {
       await client.query("begin");
       await client.query(`set local role ${role}`);
       for (const table of domainTables) {
+        if (apiDeniedTables.has(table)) {
+          await client.query(`savepoint denied_${table}`);
+          await expect(
+            client.query(`select count(*)::text as count from public.${table}`),
+          ).rejects.toThrow("permission denied");
+          await client.query(`rollback to savepoint denied_${table}`);
+          continue;
+        }
         const result = await client.query<{ count: string }>(
           `select count(*)::text as count from public.${table}`,
         );
