@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Header, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from psycopg.types.json import Jsonb
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.api.dependencies import (
     get_correlation_id,
@@ -36,6 +36,8 @@ class RequirementInput(BaseModel):
 
 
 class CreateLabourRequestInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     contractor_organisation_id: UUID | None = None
     contractor_contact_id: UUID | None = None
     individual_hirer_person_id: UUID | None = None
@@ -179,6 +181,10 @@ def _is_operator(actor: CurrentActor) -> bool:
     return actor.claims.get("operator") is not None
 
 
+def _source_for_actor(actor: CurrentActor) -> Literal["ops", "pwa"]:
+    return "ops" if _is_operator(actor) else "pwa"
+
+
 def _contractor_organisations(actor: CurrentActor) -> set[UUID]:
     contacts = actor.claims.get("contractor_contacts", [])
     return {
@@ -217,6 +223,7 @@ def _require_assignment_actor(
     participant_person_id = actor.claims.get("participant_person_id")
     is_worker = (
         allow_worker
+        and actor.claims.get("worker_scope") is True
         and participant_person_id is not None
         and str(participant_person_id) == str(assignment.get("worker_id"))
     )
@@ -285,10 +292,26 @@ async def _get_assignment(connection: Any, assignment_id: UUID) -> dict[str, Any
     return dict(assignment)
 
 
+async def _has_blocking_exception(connection: Any, assignment_id: UUID) -> bool:
+    result = await connection.execute(
+        """
+        select exists(
+          select 1 from public.exception_cases
+          where assignment_id = %s
+            and state in ('open', 'investigating')
+            and archived_at is null
+        ) as blocked
+        """,
+        (assignment_id,),
+    )
+    exception = await result.fetchone()
+    return bool(exception and exception["blocked"])
+
+
 async def _cancel_request_assignments(
     connection: Any, labour_request_id: UUID, reason: str
-) -> None:
-    await connection.execute(
+) -> list[UUID]:
+    result = await connection.execute(
         """
         update public.assignments
         set lifecycle = 'cancelled', cancelled_at = timezone('utc', now()),
@@ -299,9 +322,11 @@ async def _cancel_request_assignments(
                 or travel_revoked_at is not null,
             version = version + 1
         where labour_request_id = %s and lifecycle = 'active'
+        returning id
         """,
         (reason, labour_request_id),
     )
+    return [UUID(str(row["id"])) for row in await result.fetchall()]
 
 
 async def create_labour_request_mutation(
@@ -374,6 +399,9 @@ async def create_labour_request_mutation(
         "labour_request",
         labour_request_id,
         jsonable_encoder(body),
+        source,
+        source_channel_event_id,
+        source_proposed_action_id,
     )
 
 
@@ -588,7 +616,16 @@ async def set_assignment_logistics_mutation(
     updated = await result.fetchone()
     body = _command_body("assignment", updated["id"], updated["version"])
     return MutationResult(
-        200, body, "assignment.logistics_updated", "assignment", updated["id"], body
+        200,
+        body,
+        (
+            "assignment.travel_revoked"
+            if was_authorised
+            else "assignment.logistics_updated"
+        ),
+        "assignment",
+        updated["id"],
+        body,
     )
 
 
@@ -626,6 +663,13 @@ async def authorise_assignment_travel_mutation(
             "INVALID_STATE",
             "Invalid state transition",
             "Travel cannot be authorised until the contractor confirms.",
+        )
+    if await _has_blocking_exception(connection, assignment_id):
+        raise ProblemDetail(
+            409,
+            "INVALID_STATE",
+            "Invalid state transition",
+            "Travel cannot be authorised while an exception is unresolved.",
         )
     if not (
         assignment.get("reporting_mode")
@@ -760,9 +804,10 @@ async def create_labour_request(
     correlation_id: str = Depends(get_correlation_id),
 ) -> JSONResponse:
     payload = input.model_dump(mode="json")
+    source = _source_for_actor(actor)
 
     async def handler(connection: Any) -> MutationResult:
-        return await create_labour_request_mutation(connection, actor, input, "ops")
+        return await create_labour_request_mutation(connection, actor, input, source)
 
     execution = await execute_command(
         database,
@@ -899,7 +944,9 @@ async def cancel_labour_request(
                 "Invalid state transition",
                 "Request cannot be cancelled.",
             )
-        await _cancel_request_assignments(connection, labour_request_id, input.reason)
+        cancelled_assignment_ids = await _cancel_request_assignments(
+            connection, labour_request_id, input.reason
+        )
         result = await connection.execute(
             """
             update public.labour_requests
@@ -911,13 +958,19 @@ async def cancel_labour_request(
         )
         cancelled = await result.fetchone()
         body = _command_body("labour_request", cancelled["id"], cancelled["version"])
+        event_payload = {
+            **body,
+            "cancelled_assignment_ids": [
+                str(assignment_id) for assignment_id in cancelled_assignment_ids
+            ],
+        }
         return MutationResult(
             200,
             body,
             "labour_request.cancelled",
             "labour_request",
             cancelled["id"],
-            body,
+            event_payload,
         )
 
     execution = await execute_command(
@@ -1026,6 +1079,80 @@ async def offer_assignment(
     )
 
 
+async def respond_to_assignment_mutation(
+    connection: Any,
+    actor: CurrentActor,
+    assignment_id: UUID,
+    input: RespondToAssignmentInput,
+    *,
+    source_channel: str = "pwa",
+    source_channel_event_id: UUID | None = None,
+    source_proposed_action_id: UUID | None = None,
+) -> MutationResult:
+    if source_channel_event_id is not None:
+        await connection.execute(
+            "select set_config('app.source_channel_event_id', %s, true)",
+            (str(source_channel_event_id),),
+        )
+    if source_proposed_action_id is not None:
+        await connection.execute(
+            "select set_config('app.source_proposed_action_id', %s, true)",
+            (str(source_proposed_action_id),),
+        )
+    assignment = await _get_assignment(connection, assignment_id)
+    _require_assignment_actor(actor, assignment, allow_worker=True, worker_only=True)
+    _check_version(assignment, input.expected_version)
+    if assignment["lifecycle"] != "active" or assignment.get("offered_at") is None:
+        raise ProblemDetail(
+            409,
+            "INVALID_STATE",
+            "Invalid state transition",
+            "Only offered active assignments can receive a response.",
+        )
+    previous = assignment["worker_response"]
+    if previous == input.response:
+        body = _command_body(
+            "assignment", assignment_id, assignment["version"], "already_applied"
+        )
+        return MutationResult(
+            200,
+            body,
+            None,
+            "assignment",
+            assignment_id,
+            body,
+        )
+    if previous in {"accepted", "declined"}:
+        raise ProblemDetail(
+            409,
+            "CONFLICTING_RESPONSE",
+            "Conflicting response",
+            "A terminal response cannot be overwritten.",
+        )
+    result = await connection.execute(
+        """
+        update public.assignments
+        set worker_response = %s, worker_responded_at = timezone('utc', now()),
+            version = version + 1
+        where id = %s returning id, version
+        """,
+        (input.response, assignment_id),
+    )
+    responded = await result.fetchone()
+    body = _command_body("assignment", responded["id"], responded["version"])
+    return MutationResult(
+        200,
+        body,
+        "assignment.worker_responded",
+        "assignment",
+        responded["id"],
+        body,
+        source_channel,
+        source_channel_event_id,
+        source_proposed_action_id,
+    )
+
+
 @assignment_router.post("/{assignment_id}/respond")
 async def respond_to_assignment(
     assignment_id: UUID,
@@ -1035,57 +1162,11 @@ async def respond_to_assignment(
     database: Database = Depends(get_database),
     correlation_id: str = Depends(get_correlation_id),
 ) -> JSONResponse:
+    source = _source_for_actor(actor)
+
     async def handler(connection: Any) -> MutationResult:
-        assignment = await _get_assignment(connection, assignment_id)
-        _require_assignment_actor(
-            actor, assignment, allow_worker=True, worker_only=True
-        )
-        _check_version(assignment, input.expected_version)
-        if assignment["lifecycle"] != "active" or assignment.get("offered_at") is None:
-            raise ProblemDetail(
-                409,
-                "INVALID_STATE",
-                "Invalid state transition",
-                "Only offered active assignments can receive a response.",
-            )
-        previous = assignment["worker_response"]
-        if previous == input.response:
-            body = _command_body(
-                "assignment", assignment_id, assignment["version"], "already_applied"
-            )
-            return MutationResult(
-                200,
-                body,
-                "assignment.worker_responded",
-                "assignment",
-                assignment_id,
-                body,
-            )
-        if previous in {"accepted", "declined"}:
-            raise ProblemDetail(
-                409,
-                "CONFLICTING_RESPONSE",
-                "Conflicting response",
-                "A terminal response cannot be overwritten.",
-            )
-        result = await connection.execute(
-            """
-            update public.assignments
-            set worker_response = %s, worker_responded_at = timezone('utc', now()),
-                version = version + 1
-            where id = %s returning id, version
-            """,
-            (input.response, assignment_id),
-        )
-        responded = await result.fetchone()
-        body = _command_body("assignment", responded["id"], responded["version"])
-        return MutationResult(
-            200,
-            body,
-            "assignment.worker_responded",
-            "assignment",
-            responded["id"],
-            body,
+        return await respond_to_assignment_mutation(
+            connection, actor, assignment_id, input, source_channel=source
         )
 
     execution = await execute_command(

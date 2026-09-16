@@ -24,6 +24,7 @@ AvailabilitySource = Literal["ops", "pwa", "whatsapp"]
 
 class SetWorkerAvailabilityInput(BaseModel):
     status: Literal["available", "unavailable", "unknown"]
+    note: str | None = Field(default=None, max_length=2000)
     expected_version: int | None = Field(default=None, ge=1)
 
 
@@ -41,7 +42,10 @@ def _require_availability_actor(actor: CurrentActor, worker_id: UUID) -> None:
             "Forbidden",
             "Contractors cannot record worker availability.",
         )
-    if str(actor.claims.get("participant_person_id")) != str(worker_id):
+    if (
+        actor.claims.get("worker_scope") is not True
+        or str(actor.claims.get("participant_person_id")) != str(worker_id)
+    ):
         raise ProblemDetail(
             403,
             "FORBIDDEN",
@@ -76,7 +80,7 @@ async def set_worker_availability_mutation(
     _require_availability_actor(actor, worker_id)
     current_result = await connection.execute(
         """
-        select id, status, version
+        select id, status, note, version
         from public.availability_signals
         where worker_id = %s
           and available_from = %s
@@ -90,7 +94,7 @@ async def set_worker_availability_mutation(
     if current is not None:
         current = dict(current)
         _check_version(current, input.expected_version)
-        if current["status"] == input.status:
+        if current["status"] == input.status and current["note"] == input.note:
             return MutationResult(
                 200,
                 _command_body(
@@ -116,9 +120,9 @@ async def set_worker_availability_mutation(
     created_result = await connection.execute(
         """
         insert into public.availability_signals(
-          worker_id, available_from, available_to, status, source,
+          worker_id, available_from, available_to, status, note, source,
           recorded_by_user_id, source_channel_event_id, source_proposed_action_id
-        ) values (%s, %s, %s, %s, %s, %s, %s, %s)
+        ) values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         returning id, version
         """,
         (
@@ -126,6 +130,7 @@ async def set_worker_availability_mutation(
             work_date,
             work_date,
             input.status,
+            input.note,
             source,
             actor.user_id,
             source_channel_event_id,
@@ -148,6 +153,9 @@ async def set_worker_availability_mutation(
         "availability_signal",
         created["id"],
         body,
+        source,
+        source_channel_event_id,
+        source_proposed_action_id,
     )
 
 

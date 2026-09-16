@@ -366,8 +366,13 @@ const workerResponseByWhatsAppReply: Readonly<
 > = {
   YES: "accepted",
   "1": "accepted",
+  JA: "accepted",
+  EWE: "accepted",
   NO: "declined",
   "2": "declined",
+  NEE: "declined",
+  HAYI: "declined",
+  "CALL ME": "call_me",
   "3": "call_me",
 };
 

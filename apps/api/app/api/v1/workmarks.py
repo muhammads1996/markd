@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.api.dependencies import (
     get_correlation_id,
@@ -40,6 +40,8 @@ class StampPaymentInput(BaseModel):
 
 
 class AssignmentStampInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     attendance: Literal["attended", "no_show", "unknown"] = "unknown"
     completion: Literal["completed", "partial", "not_completed", "unknown"] = "unknown"
     reuse_preference: Literal["yes", "no", "unknown"] = "unknown"
@@ -48,10 +50,6 @@ class AssignmentStampInput(BaseModel):
     expected_version: int | None = Field(default=None, ge=1)
     asserted_by: UUID | None = None
     asserted_role: Literal["worker", "hirer"] | None = None
-    source: str = Field(default="api", min_length=1, max_length=120)
-    source_channel_event_id: UUID | None = None
-    source_proposed_action_id: UUID | None = None
-    occurred_at: datetime | None = None
 
 
 class CorrectionChanges(BaseModel):
@@ -73,17 +71,26 @@ class CorrectionChanges(BaseModel):
 
 
 class CorrectWorkmarkInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     reason: str = Field(min_length=1, max_length=1000)
     changes: CorrectionChanges
     expected_version: int | None = Field(default=None, ge=1)
-    source: str = Field(default="api", min_length=1, max_length=120)
-    source_channel_event_id: UUID | None = None
-    source_proposed_action_id: UUID | None = None
-    occurred_at: datetime | None = None
 
 
 def _is_operator(actor: CurrentActor) -> bool:
     return actor.claims.get("operator") is not None
+
+
+def _require_operator_correction(actor: CurrentActor) -> None:
+    if _is_operator(actor):
+        return
+    raise ProblemDetail(
+        403,
+        "FORBIDDEN",
+        "Forbidden",
+        "Only an operator can resolve Workmark facts.",
+    )
 
 
 def _contractor_organisations(actor: CurrentActor) -> set[UUID]:
@@ -98,7 +105,10 @@ def _assertion_role(actor: CurrentActor, assignment: dict[str, Any]) -> str:
     participant_person_id = actor.claims.get("participant_person_id")
     if participant_person_id is not None:
         participant_id = UUID(str(participant_person_id))
-        if participant_id == assignment["worker_id"]:
+        if (
+            actor.claims.get("worker_scope") is True
+            and participant_id == assignment["worker_id"]
+        ):
             return "worker"
         if assignment.get("hirer_person_id") == participant_id:
             return "hirer"
@@ -445,6 +455,11 @@ async def submit_assignment_stamp_mutation(
     actor: CurrentActor,
     assignment_id: UUID,
     input: AssignmentStampInput,
+    *,
+    source: str,
+    source_channel_event_id: UUID | None = None,
+    source_proposed_action_id: UUID | None = None,
+    occurred_at: datetime | None = None,
 ) -> MutationResult:
     assignment = await _get_assignment(connection, assignment_id)
     role, asserted_by = await _resolve_assertion(connection, actor, assignment, input)
@@ -475,20 +490,21 @@ async def submit_assignment_stamp_mutation(
             assignment.get("site_id"),
             assignment["starts_on"],
             assignment["ends_on"],
-            input.source,
-            input.source_channel_event_id,
-            input.source_proposed_action_id,
+            source,
+            source_channel_event_id,
+            source_proposed_action_id,
         ),
     )
-    created_workmark = await workmark_result.fetchone()
-    if created_workmark is None:
+    workmark = await workmark_result.fetchone()
+    workmark_created = workmark is not None
+    if workmark is None:
         existing_result = await connection.execute(
             "select id, version from public.workmarks "
             "where assignment_id = %s for update",
             (assignment_id,),
         )
-        created_workmark = await existing_result.fetchone()
-    workmark_id = created_workmark["id"]
+        workmark = await existing_result.fetchone()
+    workmark_id = workmark["id"]
     await connection.execute(
         """
         insert into public.assignment_stamps(
@@ -513,10 +529,10 @@ async def submit_assignment_stamp_mutation(
             input.payment.currency,
             input.payment.method,
             input.note,
-            input.source,
-            input.source_channel_event_id,
-            input.source_proposed_action_id,
-            input.occurred_at or datetime.now(UTC),
+            source,
+            source_channel_event_id,
+            source_proposed_action_id,
+            occurred_at or datetime.now(UTC),
         ),
     )
     stamp = await (
@@ -542,10 +558,13 @@ async def submit_assignment_stamp_mutation(
     return MutationResult(
         201,
         body,
-        "workmark.created" if created_workmark["version"] == 1 else "workmark.updated",
+        "workmark.created" if workmark_created else "workmark.updated",
         "workmark",
         workmark_id,
         jsonable_encoder(body),
+        source,
+        source_channel_event_id,
+        source_proposed_action_id,
     )
 
 
@@ -560,9 +579,11 @@ async def submit_assignment_stamp(
     database: Database = Depends(get_database),
     correlation_id: str = Depends(get_correlation_id),
 ) -> JSONResponse:
+    source = "ops" if _is_operator(actor) else "pwa"
+
     async def handler(connection: Any) -> MutationResult:
         return await submit_assignment_stamp_mutation(
-            connection, actor, assignment_id, input
+            connection, actor, assignment_id, input, source=source
         )
 
     execution = await execute_command(
@@ -590,11 +611,13 @@ async def correct_workmark(
     database: Database = Depends(get_database),
     correlation_id: str = Depends(get_correlation_id),
 ) -> JSONResponse:
+    source = "ops" if _is_operator(actor) else "pwa"
+
     async def handler(connection: Any) -> MutationResult:
         assignment, workmark = await _get_assignment_for_workmark(
             connection, workmark_id
         )
-        _assertion_role(actor, assignment)
+        _require_operator_correction(actor)
         _check_version(workmark, input.expected_version)
         await connection.execute(
             """
@@ -610,10 +633,10 @@ async def correct_workmark(
                 input.changes.model_dump(mode="json", exclude_none=True),
                 actor.claims.get("participant_person_id"),
                 actor.user_id,
-                input.source,
-                input.source_channel_event_id,
-                input.source_proposed_action_id,
-                input.occurred_at or datetime.now(UTC),
+                source,
+                None,
+                None,
+                datetime.now(UTC),
             ),
         )
         correction = await (
@@ -642,6 +665,7 @@ async def correct_workmark(
             "workmark",
             workmark_id,
             jsonable_encoder(body),
+            source,
         )
 
     execution = await execute_command(

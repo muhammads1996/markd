@@ -13,7 +13,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 async def run_worker(continuous: bool = False) -> None:
     from app.core.config import get_settings
     from app.integrations.database import Database
-    from app.workers.whatsapp import run_delivery_jobs, run_processing_jobs
+    from app.workers.whatsapp import (
+        run_command_outbox_jobs,
+        run_delivery_jobs,
+        run_processing_jobs,
+    )
 
     settings = get_settings()
     database = Database(settings)
@@ -22,6 +26,7 @@ async def run_worker(continuous: bool = False) -> None:
         while True:
             try:
                 await run_processing_jobs(database, settings)
+                await run_command_outbox_jobs(database)
                 await run_delivery_jobs(database, settings)
             except Exception:
                 logging.exception("FastAPI WhatsApp worker pass failed")

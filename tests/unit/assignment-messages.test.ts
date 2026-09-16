@@ -23,8 +23,13 @@ describe("worker assignment messages", () => {
   it("maps the supported WhatsApp replies to canonical assignment responses", () => {
     expect(parseWorkerAssignmentWhatsAppResponse("yes")).toBe("accepted");
     expect(parseWorkerAssignmentWhatsAppResponse("1")).toBe("accepted");
+    expect(parseWorkerAssignmentWhatsAppResponse("JA")).toBe("accepted");
+    expect(parseWorkerAssignmentWhatsAppResponse("EWE")).toBe("accepted");
     expect(parseWorkerAssignmentWhatsAppResponse("NO")).toBe("declined");
     expect(parseWorkerAssignmentWhatsAppResponse("2")).toBe("declined");
+    expect(parseWorkerAssignmentWhatsAppResponse("NEE")).toBe("declined");
+    expect(parseWorkerAssignmentWhatsAppResponse("HAYI")).toBe("declined");
+    expect(parseWorkerAssignmentWhatsAppResponse("call me")).toBe("call_me");
     expect(parseWorkerAssignmentWhatsAppResponse("3")).toBe("call_me");
     expect(parseWorkerAssignmentWhatsAppResponse("maybe")).toBeNull();
   });

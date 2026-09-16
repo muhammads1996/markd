@@ -66,6 +66,13 @@ export type Database = {
             referencedRelation: "assignments"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "assignment_acknowledgements_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_assignments"
+            referencedColumns: ["assignment_id"]
+          },
         ]
       }
       assignment_stamps: {
@@ -146,6 +153,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "assignments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_stamps_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_assignments"
+            referencedColumns: ["assignment_id"]
           },
           {
             foreignKeyName: "assignment_stamps_source_channel_event_id_fkey"
@@ -480,9 +494,13 @@ export type Database = {
           available_to: string | null
           created_at: string
           id: string
+          recorded_by_user_id: string | null
           source: string
+          source_channel_event_id: string | null
+          source_proposed_action_id: string | null
           status: string
           updated_at: string
+          version: number
           worker_id: string
         }
         Insert: {
@@ -491,9 +509,13 @@ export type Database = {
           available_to?: string | null
           created_at?: string
           id?: string
+          recorded_by_user_id?: string | null
           source: string
+          source_channel_event_id?: string | null
+          source_proposed_action_id?: string | null
           status: string
           updated_at?: string
+          version?: number
           worker_id: string
         }
         Update: {
@@ -502,12 +524,30 @@ export type Database = {
           available_to?: string | null
           created_at?: string
           id?: string
+          recorded_by_user_id?: string | null
           source?: string
+          source_channel_event_id?: string | null
+          source_proposed_action_id?: string | null
           status?: string
           updated_at?: string
+          version?: number
           worker_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "availability_signals_source_channel_event_id_fkey"
+            columns: ["source_channel_event_id"]
+            isOneToOne: false
+            referencedRelation: "channel_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "availability_signals_source_proposed_action_id_fkey"
+            columns: ["source_proposed_action_id"]
+            isOneToOne: false
+            referencedRelation: "proposed_actions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "availability_signals_worker_id_fkey"
             columns: ["worker_id"]
@@ -973,6 +1013,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "assignments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exception_cases_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_assignments"
+            referencedColumns: ["assignment_id"]
           },
           {
             foreignKeyName: "exception_cases_opened_by_person_id_fkey"
@@ -2715,6 +2762,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "workmarks_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_assignments"
+            referencedColumns: ["assignment_id"]
+          },
+          {
             foreignKeyName: "workmarks_hirer_person_id_fkey"
             columns: ["hirer_person_id"]
             isOneToOne: false
@@ -2903,6 +2957,75 @@ export type Database = {
           },
           {
             foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["person_id"]
+          },
+        ]
+      }
+      participant_worker_assignments: {
+        Row: {
+          assignment_currency: string | null
+          assignment_id: string | null
+          assignment_rate_cents: number | null
+          assignment_version: number | null
+          contractor_confirmation: string | null
+          lifecycle: string | null
+          offered_at: string | null
+          organisation_display_name: string | null
+          rate_basis: string | null
+          reporting_at: string | null
+          reporting_mode: string | null
+          reporting_place: string | null
+          request_currency: string | null
+          request_rate_cents: number | null
+          site_locality: string | null
+          site_name: string | null
+          travel_authorised_at: string | null
+          work_date: string | null
+          work_type: string | null
+          worker_id: string | null
+          worker_response: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_profile_preferences"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
             columns: ["worker_id"]
             isOneToOne: false
             referencedRelation: "worker_profiles"

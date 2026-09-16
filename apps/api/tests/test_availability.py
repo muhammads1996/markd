@@ -1,6 +1,5 @@
 import uuid
 from datetime import date
-from typing import Any
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -79,7 +78,11 @@ class FakeDatabase:
 def _worker_actor() -> CurrentActor:
     return CurrentActor(
         user_id=ACTOR_ID,
-        claims={"participant_person_id": str(WORKER_ID), "contractor_contacts": []},
+        claims={
+            "participant_person_id": str(WORKER_ID),
+            "worker_scope": True,
+            "contractor_contacts": [],
+        },
     )
 
 
@@ -131,9 +134,11 @@ async def test_contractor_cannot_record_worker_availability() -> None:
     assert error.value.status_code == 403
 
 
-async def test_same_status_is_already_applied_without_domain_event() -> None:
+
+
+async def test_same_status_and_note_are_already_applied_without_domain_event() -> None:
     connection = FakeConnection(
-        {"id": SIGNAL_ID, "status": "available", "version": 2}
+        {"id": SIGNAL_ID, "status": "available", "note": "Near site", "version": 2}
     )
 
     result = await set_worker_availability_mutation(
@@ -141,7 +146,9 @@ async def test_same_status_is_already_applied_without_domain_event() -> None:
         _worker_actor(),
         WORKER_ID,
         date(2026, 9, 18),
-        SetWorkerAvailabilityInput(status="available", expected_version=2),
+        SetWorkerAvailabilityInput(
+            status="available", note="Near site", expected_version=2
+        ),
     )
 
     assert result.body["status"] == "already_applied"
@@ -150,11 +157,11 @@ async def test_same_status_is_already_applied_without_domain_event() -> None:
     assert connection.insert_params is None
 
 
-async def test_changed_status_archives_then_inserts_actor_and_source_provenance() -> (
+async def test_changed_status_or_note_archives_then_inserts_actor_and_source_provenance() -> (
     None
 ):
     connection = FakeConnection(
-        {"id": SIGNAL_ID, "status": "available", "version": 1}
+        {"id": SIGNAL_ID, "status": "available", "note": None, "version": 1}
     )
 
     result = await set_worker_availability_mutation(
@@ -162,7 +169,9 @@ async def test_changed_status_archives_then_inserts_actor_and_source_provenance(
         _worker_actor(),
         WORKER_ID,
         date(2026, 9, 18),
-        SetWorkerAvailabilityInput(status="unavailable", expected_version=1),
+        SetWorkerAvailabilityInput(
+            status="available", note="Near site", expected_version=1
+        ),
         source="ops",
     )
 
@@ -172,7 +181,8 @@ async def test_changed_status_archives_then_inserts_actor_and_source_provenance(
         WORKER_ID,
         date(2026, 9, 18),
         date(2026, 9, 18),
-        "unavailable",
+        "available",
+        "Near site",
         "ops",
         ACTOR_ID,
         None,
@@ -185,9 +195,10 @@ async def test_changed_status_archives_then_inserts_actor_and_source_provenance(
     )
 
 
-async def test_availability_command_path_is_published() -> None:
+async def test_availability_command_route_is_published() -> None:
     application = create_app(Settings(supabase_db_url="postgresql://test"))
 
-    assert "/api/v1/workers/{worker_id}/availability/{work_date}" in application.openapi()[
-        "paths"
-    ]
+    assert (
+        "/api/v1/workers/{worker_id}/availability/{work_date}"
+        in application.openapi()["paths"]
+    )

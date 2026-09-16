@@ -5,8 +5,11 @@ from httpx import ASGITransport, AsyncClient
 
 from app.api.dependencies import get_database, get_labour_command_actor
 from app.api.v1.workmarks import (
+    AssignmentStampInput,
     _aggregate,
+    _require_operator_correction,
     _resolve_assertion,
+    submit_assignment_stamp_mutation,
 )
 from app.core.auth import CurrentActor
 from app.core.config import Settings
@@ -41,6 +44,9 @@ class RowsResult(EmptyResult):
 
 
 class StampConnection:
+    def __init__(self, existing_workmark: bool = False) -> None:
+        self.existing_workmark = existing_workmark
+
     async def execute(
         self, query: str, params: tuple[object, ...] | None = None
     ) -> RowsResult:
@@ -66,6 +72,17 @@ class StampConnection:
         if "from public.assignments" in query:
             return RowsResult([assignment])
         if "insert into public.workmarks" in query:
+            if self.existing_workmark:
+                return RowsResult([])
+            return RowsResult(
+                [
+                    {
+                        "id": uuid.UUID("40000000-0000-4000-8000-000000000001"),
+                        "version": 1,
+                    }
+                ]
+            )
+        if "select id, version from public.workmarks" in query:
             return RowsResult(
                 [
                     {
@@ -247,6 +264,34 @@ async def test_operator_capture_requires_asserted_role_for_other_person() -> Non
     assert error.value.code == "ASSERTED_ROLE_REQUIRED"
 
 
+async def test_participant_cannot_authoritatively_correct_workmark() -> None:
+    actor = CurrentActor(
+        user_id=uuid.UUID("44444444-4444-4444-8444-444444444444"),
+        claims={"participant_person_id": str(WORKER_ID)},
+    )
+
+    with pytest.raises(ProblemDetail) as error:
+        _require_operator_correction(actor)
+
+    assert error.value.status_code == 403
+
+
+async def test_stamp_on_existing_version_one_workmark_is_an_update() -> None:
+    assignment = uuid.UUID("88888888-8888-4888-8888-888888888888")
+    result = await submit_assignment_stamp_mutation(
+        StampConnection(existing_workmark=True),
+        CurrentActor(
+            user_id=uuid.UUID("44444444-4444-4444-8444-444444444444"),
+            claims={"operator": {"role": "ops_user"}},
+        ),
+        assignment,
+        AssignmentStampInput(attendance="attended"),
+        source="ops",
+    )
+
+    assert result.event_type == "workmark.updated"
+
+
 async def test_stamp_route_uses_canonical_workmark_resource() -> None:
     application = create_app(Settings(supabase_db_url="postgresql://test"))
     application.dependency_overrides[get_database] = StampDatabase
@@ -272,3 +317,33 @@ async def test_stamp_route_uses_canonical_workmark_resource() -> None:
     }
     assert response.json()["evidence_state"] == "pending"
     assert response.json()["assignment_lifecycle"] is None
+
+
+async def test_participant_stamp_rejects_forged_provenance() -> None:
+    application = create_app(Settings(supabase_db_url="postgresql://test"))
+    application.dependency_overrides[get_database] = StampDatabase
+    application.dependency_overrides[get_labour_command_actor] = lambda: CurrentActor(
+        user_id=uuid.UUID("44444444-4444-4444-8444-444444444444"),
+        claims={
+            "participant_person_id": str(WORKER_ID),
+            "worker_scope": True,
+            "contractor_contacts": [],
+        },
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        response = await client.post(
+            "/api/v1/assignments/88888888-8888-4888-8888-888888888888/stamps",
+            headers={"Idempotency-Key": "stamp-forged-provenance"},
+            json={
+                "attendance": "attended",
+                "source": "whatsapp",
+                "source_channel_event_id": "77777777-7777-4777-8777-777777777777",
+                "source_proposed_action_id": "66666666-6666-4666-8666-666666666666",
+                "occurred_at": "2026-09-16T12:00:00Z",
+            },
+        )
+
+    assert response.status_code == 422

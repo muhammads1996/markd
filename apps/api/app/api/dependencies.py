@@ -56,6 +56,12 @@ async def get_labour_command_actor(
                                 from public.participant_accounts
                                 where auth_user_id = %s and status = 'active'
               ) as participant_person_id,
+                            exists(
+                                select 1
+                                from public.participant_account_scopes as scope
+                                where scope.auth_user_id = %s
+                                    and scope.scope_kind = 'worker'
+                            ) as worker_scope,
                             coalesce((
                                 select jsonb_agg(jsonb_build_object(
                                     'organisation_contact_id',
@@ -70,7 +76,7 @@ async def get_labour_command_actor(
                                     and contact.archived_at is null
                             ), '[]'::jsonb) as contractor_contacts
                         """,
-            (actor.user_id, actor.user_id, actor.user_id),
+            (actor.user_id, actor.user_id, actor.user_id, actor.user_id),
         )
         resolved = await result.fetchone()
     if resolved is None or (
@@ -83,6 +89,7 @@ async def get_labour_command_actor(
             **actor.claims,
             "operator": resolved["operator"],
             "participant_person_id": resolved["participant_person_id"],
+            "worker_scope": resolved["worker_scope"],
             "contractor_contacts": resolved["contractor_contacts"],
         },
     )

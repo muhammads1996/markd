@@ -26,6 +26,7 @@ router = APIRouter(prefix="/proposed-actions", tags=["Proposed actions"])
 class ApprovalInput(BaseModel):
     action_type: Literal[
         "worker_availability",
+        "assignment_response",
         "labour_request",
         "assignment_confirmation",
         "assignment_cancellation",
@@ -68,14 +69,17 @@ class ConfirmProposedActionInput(BaseModel):
 
     @model_validator(mode="after")
     def validate_action_payload(self) -> "ConfirmProposedActionInput":
-        if sum(
-            value is not None
-            for value in (
-                self.labour_request,
-                self.assignment_confirmation,
-                self.assignment_cancellation,
+        if (
+            sum(
+                value is not None
+                for value in (
+                    self.labour_request,
+                    self.assignment_confirmation,
+                    self.assignment_cancellation,
+                )
             )
-        ) != 1:
+            != 1
+        ):
             raise ValueError("Exactly one Proposed Action payload is required.")
         return self
 
@@ -254,12 +258,8 @@ async def approve_proposed_action(
             raise HTTPException(
                 status_code=409, detail="Only pending proposed actions can be approved"
             )
-        resolves_ambiguity = (
-            existing["ambiguity"] == "clear"
-            or (
-                input.resolve_ambiguity
-                and bool(input.fields or input.entity_ids)
-            )
+        resolves_ambiguity = existing["ambiguity"] == "clear" or (
+            input.resolve_ambiguity and bool(input.fields or input.entity_ids)
         )
         if not resolves_ambiguity:
             raise HTTPException(
