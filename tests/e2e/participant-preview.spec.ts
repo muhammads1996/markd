@@ -33,6 +33,37 @@ test("worker preview covers confirmed state without horizontal overflow", async 
   ).toBeGreaterThan(1_000);
 });
 
+test("worker bottom navigation stays docked while changing views", async ({
+  page,
+}) => {
+  await page.goto(
+    "/participant/preview/worker?view=home&scenario=travel_ready",
+  );
+  const navigation = page.getByRole("navigation", {
+    name: "Worker preview navigation",
+  });
+
+  await navigation.getByRole("link", { name: "Work", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Work", exact: true }),
+  ).toBeVisible();
+
+  const dock = await navigation.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      bottom: rect.bottom,
+      position: getComputedStyle(element).position,
+      right: rect.right,
+      viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
+    };
+  });
+
+  expect(dock.position).toBe("fixed");
+  expect(Math.abs(dock.bottom - dock.viewportHeight)).toBeLessThanOrEqual(1);
+  expect(dock.right).toBeGreaterThanOrEqual(dock.viewportWidth - 1);
+});
+
 test("worker offer acceptance remains local and never becomes travel ready", async ({
   page,
 }) => {
