@@ -36,6 +36,175 @@ export type Database = {
         }
         Relationships: []
       }
+      assignment_acknowledgements: {
+        Row: {
+          actor_user_id: string
+          assignment_id: string
+          created_at: string
+          id: string
+          kind: string
+        }
+        Insert: {
+          actor_user_id: string
+          assignment_id: string
+          created_at?: string
+          id?: string
+          kind: string
+        }
+        Update: {
+          actor_user_id?: string
+          assignment_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_acknowledgements_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_acknowledgements_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "participant_contractor_assignments"
+            referencedColumns: ["assignment_id"]
+          },
+          {
+            foreignKeyName: "assignment_acknowledgements_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_assignments"
+            referencedColumns: ["assignment_id"]
+          },
+        ]
+      }
+      assignment_stamps: {
+        Row: {
+          amount_cents: number | null
+          asserted_by_person_id: string | null
+          asserted_role: string
+          assignment_id: string
+          attendance: Database["public"]["Enums"]["attendance_outcome"]
+          completion: Database["public"]["Enums"]["completion_outcome"]
+          created_at: string
+          currency: string | null
+          id: string
+          note: string | null
+          occurred_at: string
+          payment: Database["public"]["Enums"]["payment_state"]
+          payment_method: string | null
+          recorded_by_user_id: string
+          reuse_preference: Database["public"]["Enums"]["reuse_preference"]
+          source: string
+          source_channel_event_id: string | null
+          source_proposed_action_id: string | null
+          workmark_id: string
+        }
+        Insert: {
+          amount_cents?: number | null
+          asserted_by_person_id?: string | null
+          asserted_role: string
+          assignment_id: string
+          attendance?: Database["public"]["Enums"]["attendance_outcome"]
+          completion?: Database["public"]["Enums"]["completion_outcome"]
+          created_at?: string
+          currency?: string | null
+          id?: string
+          note?: string | null
+          occurred_at?: string
+          payment?: Database["public"]["Enums"]["payment_state"]
+          payment_method?: string | null
+          recorded_by_user_id: string
+          reuse_preference?: Database["public"]["Enums"]["reuse_preference"]
+          source: string
+          source_channel_event_id?: string | null
+          source_proposed_action_id?: string | null
+          workmark_id: string
+        }
+        Update: {
+          amount_cents?: number | null
+          asserted_by_person_id?: string | null
+          asserted_role?: string
+          assignment_id?: string
+          attendance?: Database["public"]["Enums"]["attendance_outcome"]
+          completion?: Database["public"]["Enums"]["completion_outcome"]
+          created_at?: string
+          currency?: string | null
+          id?: string
+          note?: string | null
+          occurred_at?: string
+          payment?: Database["public"]["Enums"]["payment_state"]
+          payment_method?: string | null
+          recorded_by_user_id?: string
+          reuse_preference?: Database["public"]["Enums"]["reuse_preference"]
+          source?: string
+          source_channel_event_id?: string | null
+          source_proposed_action_id?: string | null
+          workmark_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_stamps_asserted_by_person_id_fkey"
+            columns: ["asserted_by_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_stamps_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_stamps_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "participant_contractor_assignments"
+            referencedColumns: ["assignment_id"]
+          },
+          {
+            foreignKeyName: "assignment_stamps_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_assignments"
+            referencedColumns: ["assignment_id"]
+          },
+          {
+            foreignKeyName: "assignment_stamps_source_channel_event_id_fkey"
+            columns: ["source_channel_event_id"]
+            isOneToOne: false
+            referencedRelation: "channel_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_stamps_source_proposed_action_id_fkey"
+            columns: ["source_proposed_action_id"]
+            isOneToOne: false
+            referencedRelation: "proposed_actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_stamps_workmark_id_fkey"
+            columns: ["workmark_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_work"
+            referencedColumns: ["workmark_id"]
+          },
+          {
+            foreignKeyName: "assignment_stamps_workmark_id_fkey"
+            columns: ["workmark_id"]
+            isOneToOne: false
+            referencedRelation: "workmarks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assignments: {
         Row: {
           agreed_rate_cents: number | null
@@ -44,6 +213,7 @@ export type Database = {
           cancellation_reason: string | null
           cancelled_after_travel_authorised: boolean
           cancelled_at: string | null
+          contact: Json | null
           contractor_confirmation: string
           contractor_confirmed_at: string | null
           created_at: string
@@ -51,11 +221,18 @@ export type Database = {
           ends_on: string
           hirer_person_id: string | null
           id: string
+          instructions: string | null
           labour_request_id: string
           labour_requirement_id: string | null
+          landmark: string | null
           lifecycle: string
+          location_pin: Json | null
           offered_at: string | null
           organisation_id: string | null
+          pickup_point_id: string | null
+          reporting_at: string | null
+          reporting_mode: string | null
+          reporting_place_text: string | null
           site_id: string | null
           source: string
           source_channel_event_id: string | null
@@ -76,6 +253,7 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_after_travel_authorised?: boolean
           cancelled_at?: string | null
+          contact?: Json | null
           contractor_confirmation?: string
           contractor_confirmed_at?: string | null
           created_at?: string
@@ -83,11 +261,18 @@ export type Database = {
           ends_on: string
           hirer_person_id?: string | null
           id?: string
+          instructions?: string | null
           labour_request_id: string
           labour_requirement_id?: string | null
+          landmark?: string | null
           lifecycle?: string
+          location_pin?: Json | null
           offered_at?: string | null
           organisation_id?: string | null
+          pickup_point_id?: string | null
+          reporting_at?: string | null
+          reporting_mode?: string | null
+          reporting_place_text?: string | null
           site_id?: string | null
           source?: string
           source_channel_event_id?: string | null
@@ -108,6 +293,7 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_after_travel_authorised?: boolean
           cancelled_at?: string | null
+          contact?: Json | null
           contractor_confirmation?: string
           contractor_confirmed_at?: string | null
           created_at?: string
@@ -115,11 +301,18 @@ export type Database = {
           ends_on?: string
           hirer_person_id?: string | null
           id?: string
+          instructions?: string | null
           labour_request_id?: string
           labour_requirement_id?: string | null
+          landmark?: string | null
           lifecycle?: string
+          location_pin?: Json | null
           offered_at?: string | null
           organisation_id?: string | null
+          pickup_point_id?: string | null
+          reporting_at?: string | null
+          reporting_mode?: string | null
+          reporting_place_text?: string | null
           site_id?: string | null
           source?: string
           source_channel_event_id?: string | null
@@ -315,9 +508,14 @@ export type Database = {
           available_to: string | null
           created_at: string
           id: string
+          note: string | null
+          recorded_by_user_id: string | null
           source: string
+          source_channel_event_id: string | null
+          source_proposed_action_id: string | null
           status: string
           updated_at: string
+          version: number
           worker_id: string
         }
         Insert: {
@@ -326,9 +524,14 @@ export type Database = {
           available_to?: string | null
           created_at?: string
           id?: string
+          note?: string | null
+          recorded_by_user_id?: string | null
           source: string
+          source_channel_event_id?: string | null
+          source_proposed_action_id?: string | null
           status: string
           updated_at?: string
+          version?: number
           worker_id: string
         }
         Update: {
@@ -337,12 +540,31 @@ export type Database = {
           available_to?: string | null
           created_at?: string
           id?: string
+          note?: string | null
+          recorded_by_user_id?: string | null
           source?: string
+          source_channel_event_id?: string | null
+          source_proposed_action_id?: string | null
           status?: string
           updated_at?: string
+          version?: number
           worker_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "availability_signals_source_channel_event_id_fkey"
+            columns: ["source_channel_event_id"]
+            isOneToOne: false
+            referencedRelation: "channel_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "availability_signals_source_proposed_action_id_fkey"
+            columns: ["source_proposed_action_id"]
+            isOneToOne: false
+            referencedRelation: "proposed_actions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "availability_signals_worker_id_fkey"
             columns: ["worker_id"]
@@ -808,6 +1030,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "assignments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exception_cases_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "participant_contractor_assignments"
+            referencedColumns: ["assignment_id"]
+          },
+          {
+            foreignKeyName: "exception_cases_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_assignments"
+            referencedColumns: ["assignment_id"]
           },
           {
             foreignKeyName: "exception_cases_opened_by_person_id_fkey"
@@ -2322,6 +2558,84 @@ export type Database = {
           },
         ]
       }
+      workmark_corrections: {
+        Row: {
+          asserted_by_person_id: string | null
+          changes: Json
+          created_at: string
+          id: string
+          occurred_at: string
+          reason: string
+          recorded_by_user_id: string
+          source: string
+          source_channel_event_id: string | null
+          source_proposed_action_id: string | null
+          workmark_id: string
+        }
+        Insert: {
+          asserted_by_person_id?: string | null
+          changes: Json
+          created_at?: string
+          id?: string
+          occurred_at?: string
+          reason: string
+          recorded_by_user_id: string
+          source: string
+          source_channel_event_id?: string | null
+          source_proposed_action_id?: string | null
+          workmark_id: string
+        }
+        Update: {
+          asserted_by_person_id?: string | null
+          changes?: Json
+          created_at?: string
+          id?: string
+          occurred_at?: string
+          reason?: string
+          recorded_by_user_id?: string
+          source?: string
+          source_channel_event_id?: string | null
+          source_proposed_action_id?: string | null
+          workmark_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workmark_corrections_asserted_by_person_id_fkey"
+            columns: ["asserted_by_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workmark_corrections_source_channel_event_id_fkey"
+            columns: ["source_channel_event_id"]
+            isOneToOne: false
+            referencedRelation: "channel_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workmark_corrections_source_proposed_action_id_fkey"
+            columns: ["source_proposed_action_id"]
+            isOneToOne: false
+            referencedRelation: "proposed_actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workmark_corrections_workmark_id_fkey"
+            columns: ["workmark_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_work"
+            referencedColumns: ["workmark_id"]
+          },
+          {
+            foreignKeyName: "workmark_corrections_workmark_id_fkey"
+            columns: ["workmark_id"]
+            isOneToOne: false
+            referencedRelation: "workmarks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workmark_skills: {
         Row: {
           created_at: string
@@ -2378,10 +2692,12 @@ export type Database = {
           completion: Database["public"]["Enums"]["completion_outcome"]
           created_at: string
           currency: string | null
+          evidence_state: Database["public"]["Enums"]["workmark_evidence_state"]
+          hirer_person_id: string | null
           id: string
           lifecycle: Database["public"]["Enums"]["workmark_lifecycle"]
           organisation_contact_id: string | null
-          organisation_id: string
+          organisation_id: string | null
           organisation_reuse_preference: Database["public"]["Enums"]["reuse_preference"]
           origin: Database["public"]["Enums"]["workmark_origin"]
           payment: Database["public"]["Enums"]["payment_state"]
@@ -2393,6 +2709,7 @@ export type Database = {
           source_reference: string | null
           source_verification_claim_id: string | null
           updated_at: string
+          version: number
           work_ended_on: string
           work_started_on: string
           worker_id: string
@@ -2406,10 +2723,12 @@ export type Database = {
           completion?: Database["public"]["Enums"]["completion_outcome"]
           created_at?: string
           currency?: string | null
+          evidence_state?: Database["public"]["Enums"]["workmark_evidence_state"]
+          hirer_person_id?: string | null
           id?: string
           lifecycle?: Database["public"]["Enums"]["workmark_lifecycle"]
           organisation_contact_id?: string | null
-          organisation_id: string
+          organisation_id?: string | null
           organisation_reuse_preference?: Database["public"]["Enums"]["reuse_preference"]
           origin: Database["public"]["Enums"]["workmark_origin"]
           payment?: Database["public"]["Enums"]["payment_state"]
@@ -2421,6 +2740,7 @@ export type Database = {
           source_reference?: string | null
           source_verification_claim_id?: string | null
           updated_at?: string
+          version?: number
           work_ended_on: string
           work_started_on: string
           worker_id: string
@@ -2434,10 +2754,12 @@ export type Database = {
           completion?: Database["public"]["Enums"]["completion_outcome"]
           created_at?: string
           currency?: string | null
+          evidence_state?: Database["public"]["Enums"]["workmark_evidence_state"]
+          hirer_person_id?: string | null
           id?: string
           lifecycle?: Database["public"]["Enums"]["workmark_lifecycle"]
           organisation_contact_id?: string | null
-          organisation_id?: string
+          organisation_id?: string | null
           organisation_reuse_preference?: Database["public"]["Enums"]["reuse_preference"]
           origin?: Database["public"]["Enums"]["workmark_origin"]
           payment?: Database["public"]["Enums"]["payment_state"]
@@ -2449,6 +2771,7 @@ export type Database = {
           source_reference?: string | null
           source_verification_claim_id?: string | null
           updated_at?: string
+          version?: number
           work_ended_on?: string
           work_started_on?: string
           worker_id?: string
@@ -2460,6 +2783,27 @@ export type Database = {
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workmarks_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "participant_contractor_assignments"
+            referencedColumns: ["assignment_id"]
+          },
+          {
+            foreignKeyName: "workmarks_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_assignments"
+            referencedColumns: ["assignment_id"]
+          },
+          {
+            foreignKeyName: "workmarks_hirer_person_id_fkey"
+            columns: ["hirer_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
           {
@@ -2589,6 +2933,68 @@ export type Database = {
           },
         ]
       }
+      participant_contractor_assignments: {
+        Row: {
+          assignment_id: string | null
+          contractor_confirmation: string | null
+          lifecycle: string | null
+          offered_at: string | null
+          reporting_at: string | null
+          reporting_mode: string | null
+          reporting_place: string | null
+          travel_authorised_at: string | null
+          version: number | null
+          work_date: string | null
+          work_type: string | null
+          worker_display_name: string | null
+          worker_id: string | null
+          worker_response: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_profile_preferences"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["person_id"]
+          },
+        ]
+      }
       participant_contractor_labour_book: {
         Row: {
           confirmed_workmark_count: number | null
@@ -2644,6 +3050,137 @@ export type Database = {
           },
           {
             foreignKeyName: "workmarks_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["person_id"]
+          },
+        ]
+      }
+      participant_worker_assignments: {
+        Row: {
+          assignment_id: string | null
+          assignment_version: number | null
+          contractor_confirmation: string | null
+          lifecycle: string | null
+          offered_at: string | null
+          organisation_display_name: string | null
+          reporting_at: string | null
+          reporting_mode: string | null
+          reporting_place: string | null
+          site_locality: string | null
+          site_name: string | null
+          travel_authorised_at: string | null
+          work_date: string | null
+          work_type: string | null
+          worker_id: string | null
+          worker_response: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_profile_preferences"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["person_id"]
+          },
+        ]
+      }
+      participant_worker_availability: {
+        Row: {
+          note: string | null
+          status: string | null
+          version: number | null
+          work_date: string | null
+          worker_id: string | null
+        }
+        Insert: {
+          note?: string | null
+          status?: string | null
+          version?: number | null
+          work_date?: string | null
+          worker_id?: string | null
+        }
+        Update: {
+          note?: string | null
+          status?: string | null
+          version?: number | null
+          work_date?: string | null
+          worker_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "availability_signals_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "availability_signals_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "availability_signals_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "availability_signals_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "availability_signals_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_profile_preferences"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "availability_signals_worker_id_fkey"
             columns: ["worker_id"]
             isOneToOne: false
             referencedRelation: "worker_profiles"
@@ -3338,12 +3875,24 @@ export type Database = {
         | "disputed"
         | "corrected"
         | "withdrawn"
-      completion_outcome: "unknown" | "completed" | "incomplete" | "disputed"
+      completion_outcome:
+        | "unknown"
+        | "completed"
+        | "incomplete"
+        | "disputed"
+        | "partial"
+        | "not_completed"
       exception_state: "open" | "investigating" | "resolved" | "dismissed"
       operator_role: "ops_admin" | "ops_user"
       participant_account_status: "active" | "disabled"
       participant_scope_kind: "worker" | "contractor"
-      payment_state: "unknown" | "unpaid" | "paid" | "disputed"
+      payment_state:
+        | "unknown"
+        | "unpaid"
+        | "paid"
+        | "disputed"
+        | "pending"
+        | "partial"
       proposed_action_ambiguity_state: "clear" | "ambiguous" | "unresolved"
       proposed_action_risk_tier:
         | "informational"
@@ -3358,11 +3907,17 @@ export type Database = {
         | "expired"
       record_status: "draft" | "active" | "inactive"
       reuse_preference: "unknown" | "would_reuse" | "would_not_reuse"
+      workmark_evidence_state:
+        | "pending"
+        | "corroborated"
+        | "conflicted"
+        | "operator_resolved"
       workmark_lifecycle: "draft" | "confirmed" | "corrected" | "voided"
       workmark_origin:
         | "operator_recorded"
         | "historical_claim"
         | "channel_event"
+        | "assignment_closeout"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3512,12 +4067,26 @@ export const Constants = {
         "corrected",
         "withdrawn",
       ],
-      completion_outcome: ["unknown", "completed", "incomplete", "disputed"],
+      completion_outcome: [
+        "unknown",
+        "completed",
+        "incomplete",
+        "disputed",
+        "partial",
+        "not_completed",
+      ],
       exception_state: ["open", "investigating", "resolved", "dismissed"],
       operator_role: ["ops_admin", "ops_user"],
       participant_account_status: ["active", "disabled"],
       participant_scope_kind: ["worker", "contractor"],
-      payment_state: ["unknown", "unpaid", "paid", "disputed"],
+      payment_state: [
+        "unknown",
+        "unpaid",
+        "paid",
+        "disputed",
+        "pending",
+        "partial",
+      ],
       proposed_action_ambiguity_state: ["clear", "ambiguous", "unresolved"],
       proposed_action_risk_tier: [
         "informational",
@@ -3534,11 +4103,18 @@ export const Constants = {
       ],
       record_status: ["draft", "active", "inactive"],
       reuse_preference: ["unknown", "would_reuse", "would_not_reuse"],
+      workmark_evidence_state: [
+        "pending",
+        "corroborated",
+        "conflicted",
+        "operator_resolved",
+      ],
       workmark_lifecycle: ["draft", "confirmed", "corrected", "voided"],
       workmark_origin: [
         "operator_recorded",
         "historical_claim",
         "channel_event",
+        "assignment_closeout",
       ],
     },
   },

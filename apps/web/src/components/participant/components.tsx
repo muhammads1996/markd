@@ -116,7 +116,8 @@ export function ConfirmedJobHero({
     <section className={styles.hero} aria-labelledby="confirmed-job-title">
       <div className={styles.row}>
         <StatusPill tone="confirmed">
-          {dictionary["assignment.confirmed.title"]}
+          {dictionary["status.confirmedTravelReady"]} -{" "}
+          {dictionary["assignment.confirmed.go"]}
         </StatusPill>
         <strong>{assignment.facts.dateLabel}</strong>
       </div>
@@ -180,11 +181,13 @@ export function WorkOfferCard({
   locale = "en-ZA",
   onAccept,
   onDecline,
+  onRequestCall,
 }: {
   assignment: OfferModel;
   locale?: ParticipantLocale;
   onAccept?: () => void;
   onDecline?: () => void;
+  onRequestCall?: () => void;
 }) {
   const dictionary = getParticipantDictionary(locale);
   const offered = assignment.state === "offer";
@@ -192,11 +195,7 @@ export function WorkOfferCard({
     <article className={styles.card}>
       <div className={styles.row}>
         <StatusPill tone={offered ? "neutral" : "warning"}>
-          {
-            dictionary[
-              offered ? "assignment.offer.title" : "assignment.accepted.title"
-            ]
-          }
+          {dictionary[offered ? "status.offer" : "status.acceptedWaiting"]}
         </StatusPill>
         <strong>{assignment.facts.dateLabel}</strong>
       </div>
@@ -225,7 +224,7 @@ export function WorkOfferCard({
           ]
         }
       </p>
-      {offered && (onAccept || onDecline) ? (
+      {offered && (onAccept || onDecline || onRequestCall) ? (
         <div className={styles.actions}>
           {onAccept ? (
             <Button onClick={onAccept}>
@@ -239,6 +238,11 @@ export function WorkOfferCard({
               {dictionary["assignment.offer.cantGo"]}
             </Button>
           ) : null}
+          {onRequestCall ? (
+            <Button variant="secondary" onClick={onRequestCall}>
+              {dictionary["assignment.offer.callMe"]}
+            </Button>
+          ) : null}
         </div>
       ) : (
         <p className={styles.muted}>
@@ -249,6 +253,34 @@ export function WorkOfferCard({
         assignment={assignment}
         locale={locale}
         label={dictionary["assignment.offer.listen"]}
+      />
+    </article>
+  );
+}
+
+export function CancelledAssignmentCard({
+  assignment,
+  locale = "en-ZA",
+}: {
+  assignment: Extract<WorkerAssignmentCardModel, { state: "cancelled" }>;
+  locale?: ParticipantLocale;
+}) {
+  const dictionary = getParticipantDictionary(locale);
+  return (
+    <article className={styles.card}>
+      <div className={styles.row}>
+        <StatusPill tone="danger">{dictionary["status.cancelled"]}</StatusPill>
+        <strong>{assignment.facts.dateLabel}</strong>
+      </div>
+      <h2>{assignment.facts.workType}</h2>
+      <p className={styles.warningText}>
+        {dictionary["assignment.cancelled.doNotTravel"]}
+      </p>
+      <p className={styles.muted}>{assignment.cancellationLabel}</p>
+      <ReadAloudButton
+        assignment={assignment}
+        locale={locale}
+        label={dictionary["action.listen"]}
       />
     </article>
   );

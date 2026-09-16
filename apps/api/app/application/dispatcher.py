@@ -25,10 +25,13 @@ class CommandExecution:
 class MutationResult:
     status_code: int
     body: dict[str, Any]
-    event_type: str
+    event_type: str | None
     aggregate_type: str
     aggregate_id: UUID | None
     event_payload: dict[str, Any]
+    source_channel: str | None = None
+    source_channel_event_id: UUID | None = None
+    source_proposed_action_id: UUID | None = None
 
 
 CommandHandler = Callable[[AsyncConnection[Any]], Awaitable[MutationResult]]
@@ -103,31 +106,57 @@ async def execute_command(
 
         command_id = created["id"]
         mutation = await handler(connection)
-        event_result = await connection.execute(
-            """
-            insert into private.domain_events
-              (command_execution_id, event_type, aggregate_type, aggregate_id, payload)
-            values (%s, %s, %s, %s, %s)
-            returning id
-            """,
-            (
-                command_id,
-                mutation.event_type,
-                mutation.aggregate_type,
-                mutation.aggregate_id,
-                json.dumps(jsonable_encoder(mutation.event_payload)),
-            ),
-        )
-        event = await event_result.fetchone()
-        if event is None:
-            raise HTTPException(status_code=503, detail="Domain event was not recorded")
-        await connection.execute(
-            """
-            insert into private.outbox_messages (domain_event_id)
-            values (%s)
-            """,
-            (event["id"],),
-        )
+        if mutation.event_type is not None:
+            resource = mutation.body.get("resource", {})
+            aggregate_version = resource.get("version")
+            event_payload = {
+                **mutation.event_payload,
+                "provenance": {
+                    "command_id": command_id,
+                    "actor_user_id": actor.user_id,
+                    "correlation_id": correlation_id,
+                    "source_channel": mutation.source_channel,
+                    "source_channel_event_id": mutation.source_channel_event_id,
+                    "source_proposed_action_id": mutation.source_proposed_action_id,
+                    "aggregate_version": aggregate_version,
+                },
+            }
+            event_result = await connection.execute(
+                """
+                insert into private.domain_events
+                  (command_execution_id, event_type, aggregate_type, aggregate_id,
+                   payload, actor_user_id, correlation_id, source_channel,
+                   source_channel_event_id, source_proposed_action_id,
+                   aggregate_version)
+                values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                returning id
+                """,
+                (
+                    command_id,
+                    mutation.event_type,
+                    mutation.aggregate_type,
+                    mutation.aggregate_id,
+                    json.dumps(jsonable_encoder(event_payload)),
+                    actor.user_id,
+                    correlation_id,
+                    mutation.source_channel,
+                    mutation.source_channel_event_id,
+                    mutation.source_proposed_action_id,
+                    aggregate_version,
+                ),
+            )
+            event = await event_result.fetchone()
+            if event is None:
+                raise HTTPException(
+                    status_code=503, detail="Domain event was not recorded"
+                )
+            await connection.execute(
+                """
+                insert into private.outbox_messages (domain_event_id)
+                values (%s)
+                """,
+                (event["id"],),
+            )
         await connection.execute(
             """
             update private.command_executions

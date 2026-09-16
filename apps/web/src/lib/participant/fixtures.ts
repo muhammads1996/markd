@@ -114,6 +114,24 @@ const participantFixtures: ParticipantFixtures = {
         contactLabel: "Sipho Demo, MARKD coordinator",
       },
     },
+    {
+      state: "cancelled",
+      assignmentId: "00000000-0000-4000-8000-000000000132",
+      status: "cancelled",
+      travelState: "do_not_travel",
+      cancellationLabel: "The contractor cancelled this work.",
+      facts: {
+        workType: "General labour",
+        contractorName: "Cape Build Demo",
+        dateLabel: "Sunday, 20 September 2026",
+        startTimeLabel: "06:30",
+        rateLabel: "R480 for the day",
+        areaLabel: "Bellville South, Cape Town",
+        reportingPoint: "Bellville taxi rank, bay 4",
+        travelDetail: "Do not travel to the pickup point",
+        contactLabel: "MARKD demo coordinator",
+      },
+    },
   ],
 };
 

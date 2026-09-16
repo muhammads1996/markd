@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import {
+  CancelledAssignmentCard,
   ConfirmedJobHero,
   ConnectivityState,
   EmptyState,
@@ -56,6 +57,8 @@ export default function WorkerPreview({
   initialScenario: WorkerScenario;
 }) {
   const [accepted, setAccepted] = useState(false);
+  const [declined, setDeclined] = useState(false);
+  const [callRequested, setCallRequested] = useState(false);
   const assignment = assignmentFor(fixtures, initialScenario);
   let displayedAssignment: WorkerAssignmentCardModel | undefined = assignment;
   if (accepted && assignment?.state === "offer") {
@@ -64,6 +67,15 @@ export default function WorkerPreview({
       state: "accepted_waiting",
       status: "accepted_waiting",
       responseState: "accepted",
+    };
+  }
+  if (declined && assignment?.state === "offer") {
+    displayedAssignment = {
+      ...assignment,
+      state: "cancelled",
+      status: "cancelled",
+      travelState: "do_not_travel",
+      cancellationLabel: "You said you cannot go.",
     };
   }
 
@@ -127,10 +139,20 @@ export default function WorkerPreview({
               <WorkOfferCard
                 assignment={displayedAssignment}
                 onAccept={() => setAccepted(true)}
+                onDecline={() => setDeclined(true)}
+                onRequestCall={() => setCallRequested(true)}
               />
             ) : null}
             {displayedAssignment?.state === "accepted_waiting" ? (
               <WorkOfferCard assignment={displayedAssignment} />
+            ) : null}
+            {displayedAssignment?.state === "cancelled" ? (
+              <CancelledAssignmentCard assignment={displayedAssignment} />
+            ) : null}
+            {callRequested && displayedAssignment?.state === "offer" ? (
+              <p className={styles.muted} role="status">
+                MARKD will call you.
+              </p>
             ) : null}
           </section>
         </>
@@ -142,6 +164,11 @@ export default function WorkerPreview({
               <ConfirmedJobHero key={item.assignmentId} assignment={item} />
             ) : item.state === "offer" || item.state === "accepted_waiting" ? (
               <WorkOfferCard key={item.assignmentId} assignment={item} />
+            ) : item.state === "cancelled" ? (
+              <CancelledAssignmentCard
+                key={item.assignmentId}
+                assignment={item}
+              />
             ) : null,
           )}
         </section>

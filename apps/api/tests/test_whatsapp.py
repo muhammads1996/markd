@@ -1,13 +1,22 @@
 import hashlib
 import hmac
 import json
+import uuid
 from contextlib import asynccontextmanager
+from datetime import UTC, date, datetime
 from typing import Any
 
 import pytest
 from httpx import ASGITransport, AsyncClient, MockTransport, Request, Response
 
+from app.api.v1.labour_requests import (
+    RespondToAssignmentInput,
+    respond_to_assignment_mutation,
+)
+from app.application.dispatcher import execute_command
+from app.core.auth import CurrentActor
 from app.core.config import Settings
+from app.core.problems import ProblemDetail
 from app.integrations.language import (
     ExtractedIntent,
     OpenRouterProvider,
@@ -18,7 +27,14 @@ from app.integrations.language import (
 from app.integrations.whatsapp import MetaWhatsAppCloudProvider, WhatsAppProviderError
 from app.main import create_app
 from app.workers import whatsapp as whatsapp_worker
-from app.workers.whatsapp import _process_message_job, run_delivery_jobs
+from app.workers.whatsapp import (
+    _availability_work_date,
+    _exact_assignment_response,
+    _process_message_job,
+    _try_execute_worker_action,
+    run_command_outbox_jobs,
+    run_delivery_jobs,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -61,6 +77,10 @@ class FakeDatabase:
 
     @asynccontextmanager
     async def service_transaction(self) -> Any:
+        yield self.connection
+
+    @asynccontextmanager
+    async def transaction(self, *_: object) -> Any:
         yield self.connection
 
 
@@ -138,9 +158,7 @@ async def test_webhook_persists_replayed_messages_and_read_status_as_evidence() 
         ],
     }
     body = json.dumps(payload).encode("utf-8")
-    signature = "sha256=" + hmac.new(
-        b"app-secret", body, hashlib.sha256
-    ).hexdigest()
+    signature = "sha256=" + hmac.new(b"app-secret", body, hashlib.sha256).hexdigest()
     async with AsyncClient(
         transport=ASGITransport(app=_application(connection)), base_url="http://test"
     ) as client:
@@ -194,14 +212,11 @@ async def test_webhook_persists_replayed_messages_and_read_status_as_evidence() 
     )
 
 
-async def test_webhook_preserves_unknown_valid_events_without_enqueuing_provider_work(
-) -> None:
+async def test_webhook_preserves_unknown_valid_event_as_evidence() -> None:
     connection = WebhookConnection()
     payload = {"entry": [{"changes": [{"value": {"contacts": []}}]}]}
     body = json.dumps(payload).encode("utf-8")
-    signature = "sha256=" + hmac.new(
-        b"app-secret", body, hashlib.sha256
-    ).hexdigest()
+    signature = "sha256=" + hmac.new(b"app-secret", body, hashlib.sha256).hexdigest()
     async with AsyncClient(
         transport=ASGITransport(app=_application(connection)), base_url="http://test"
     ) as client:
@@ -227,6 +242,7 @@ class ProcessingConnection:
             "id": "11111111-1111-4111-8111-111111111111",
             "event_type": "message",
             "provider_message_id": "wamid-inbound-1",
+            "occurred_at": datetime(2026, 9, 16, 23, 30, tzinfo=UTC),
             "payload": {
                 "entry": [
                     {
@@ -236,9 +252,7 @@ class ProcessingConnection:
                                     "messages": [
                                         {
                                             "id": "wamid-inbound-1",
-                                            "text": {
-                                                "body": "I am available tomorrow"
-                                            }
+                                            "text": {"body": "I am available tomorrow"},
                                         }
                                     ]
                                 }
@@ -255,6 +269,94 @@ class ProcessingConnection:
         self.calls.append((query, params))
         if "from public.channel_events" in query:
             return FakeResult(self.event)
+        return FakeResult()
+
+
+class RowsResult(FakeResult):
+    def __init__(self, rows: list[dict[str, Any]]) -> None:
+        super().__init__(rows[0] if rows else None)
+        self._rows = rows
+
+    async def fetchall(self) -> list[dict[str, Any]]:
+        return self._rows
+
+
+class DirectProcessingConnection(ProcessingConnection):
+    def __init__(self, assignment_ids: list[str] | None = None) -> None:
+        super().__init__()
+        self.assignment_ids = assignment_ids or ["88888888-8888-4888-8888-888888888888"]
+
+    async def execute(
+        self, query: str, params: tuple[Any, ...] | None = None
+    ) -> FakeResult:
+        self.calls.append((query, params))
+        if "from public.channel_events as event" in query:
+            return RowsResult(
+                [
+                    {
+                        "auth_user_id": "44444444-4444-4444-8444-444444444444",
+                        "worker_id": "99999999-9999-4999-8999-999999999999",
+                    }
+                ]
+            )
+        if "select id from public.assignments" in query:
+            return RowsResult(
+                [{"id": assignment_id} for assignment_id in self.assignment_ids]
+            )
+        if "from public.channel_events" in query:
+            return FakeResult(self.event)
+        return FakeResult()
+
+
+class AssignmentResponseConvergenceConnection(DirectProcessingConnection):
+    def __init__(self) -> None:
+        super().__init__()
+        self.assignment: dict[str, Any] = {
+            "id": "88888888-8888-4888-8888-888888888888",
+            "worker_id": "99999999-9999-4999-8999-999999999999",
+            "organisation_id": "55555555-5555-4555-8555-555555555555",
+            "lifecycle": "active",
+            "worker_response": "pending",
+            "offered_at": datetime(2026, 9, 16, 12, tzinfo=UTC),
+            "version": 1,
+        }
+        self.domain_events = 0
+        self.outbox_messages = 0
+
+    async def execute(
+        self, query: str, params: tuple[Any, ...] | None = None
+    ) -> FakeResult:
+        self.calls.append((query, params))
+        if "insert into private.command_executions" in query:
+            return FakeResult({"id": "22222222-2222-4222-8222-222222222222"})
+        if "insert into private.domain_events" in query:
+            self.domain_events += 1
+            return FakeResult({"id": "33333333-3333-4333-8333-333333333333"})
+        if "insert into private.outbox_messages" in query:
+            self.outbox_messages += 1
+            return FakeResult()
+        if "from public.channel_events as event" in query:
+            return RowsResult(
+                [
+                    {
+                        "auth_user_id": "44444444-4444-4444-8444-444444444444",
+                        "worker_id": "99999999-9999-4999-8999-999999999999",
+                    }
+                ]
+            )
+        if "select id from public.assignments" in query:
+            return RowsResult([{"id": self.assignment["id"]}])
+        if "from public.channel_events" in query:
+            return FakeResult(self.event)
+        if "from public.assignments" in query:
+            return FakeResult(self.assignment)
+        if "update public.assignments" in query:
+            assert params is not None
+            self.assignment["worker_response"] = params[0]
+            self.assignment["version"] += 1
+            return FakeResult(
+                {"id": self.assignment["id"], "version": self.assignment["version"]}
+            )
         return FakeResult()
 
 
@@ -338,7 +440,6 @@ async def test_message_processing_creates_only_a_proposed_action_draft() -> None
         "11111111-1111-4111-8111-111111111111",
         Settings(openrouter_api_key=""),
     )
-
     assert outcome == "created"
     action_call = next(
         (params for query, params in connection.calls if "proposed_actions" in query),
@@ -351,6 +452,435 @@ async def test_message_processing_creates_only_a_proposed_action_draft() -> None
         for query, _ in connection.calls
         for table in ("workmarks", "assignments", "worker_availability")
     )
+
+
+async def test_exact_yes_executes_canonical_assignment_command_with_provenance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connection = DirectProcessingConnection()
+    connection.event["payload"]["entry"][0]["changes"][0]["value"]["messages"][0][
+        "text"
+    ]["body"] = " YES "
+    observed: dict[str, Any] = {}
+
+    async def mutation(*args: Any, **kwargs: Any) -> Any:
+        observed["response"] = args[3].response
+        observed["source_event_id"] = kwargs["source_channel_event_id"]
+        return None
+
+    async def dispatch(*args: Any, **kwargs: Any) -> Any:
+        observed["command_name"] = args[3]
+        observed["idempotency_key"] = args[4]
+        await args[6](connection)
+        return None
+
+    monkeypatch.setattr(whatsapp_worker, "respond_to_assignment_mutation", mutation)
+    monkeypatch.setattr(whatsapp_worker, "execute_command", dispatch)
+
+    outcome = await _process_message_job(
+        connection,
+        "11111111-1111-4111-8111-111111111111",
+        Settings(openrouter_api_key=""),
+        FakeDatabase(connection),
+    )
+
+    assert outcome == "executed"
+    assert observed["command_name"] == "RespondToAssignment"
+    assert observed["idempotency_key"] == "wa:wamid-inbound-1:respond-to-assignment"
+    assert observed["response"] == "accepted"
+    assert str(observed["source_event_id"]) == connection.event["id"]
+    assert not any("proposed_actions" in query for query, _ in connection.calls)
+
+
+async def test_pwa_accept_then_whatsapp_yes_is_already_applied_once() -> None:
+    connection = AssignmentResponseConvergenceConnection()
+    database = FakeDatabase(connection)
+    actor = CurrentActor(
+        user_id=uuid.UUID("44444444-4444-4444-8444-444444444444"),
+        claims={
+            "participant_person_id": "99999999-9999-4999-8999-999999999999",
+            "worker_scope": True,
+            "contractor_contacts": [],
+        },
+    )
+
+    async def pwa_handler(command_connection: Any) -> Any:
+        return await respond_to_assignment_mutation(
+            command_connection,
+            actor,
+            uuid.UUID(connection.assignment["id"]),
+            RespondToAssignmentInput(response="accepted"),
+        )
+
+    pwa_execution = await execute_command(
+        database,
+        actor,
+        "pwa-correlation",
+        "RespondToAssignment",
+        "pwa-accept-1",
+        {"assignment_id": connection.assignment["id"], "response": "accepted"},
+        pwa_handler,
+    )
+    connection.event["payload"]["entry"][0]["changes"][0]["value"]["messages"][0][
+        "text"
+    ]["body"] = "YES"
+
+    outcome = await _process_message_job(
+        connection,
+        connection.event["id"],
+        Settings(openrouter_api_key=""),
+        database,
+    )
+
+    assert pwa_execution.body["status"] == "applied"
+    assert outcome == "executed"
+    assert connection.assignment["worker_response"] == "accepted"
+    assert connection.domain_events == 1
+    assert connection.outbox_messages == 1
+
+
+async def test_whatsapp_terminal_conflict_is_not_drafted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connection = DirectProcessingConnection()
+
+    async def mutation(*_: Any, **__: Any) -> Any:
+        raise ProblemDetail(
+            409,
+            "CONFLICTING_RESPONSE",
+            "Conflicting response",
+            "A terminal response cannot be overwritten.",
+        )
+
+    async def dispatch(*args: Any, **_: Any) -> Any:
+        return await args[6](connection)
+
+    monkeypatch.setattr(whatsapp_worker, "respond_to_assignment_mutation", mutation)
+    monkeypatch.setattr(whatsapp_worker, "execute_command", dispatch)
+    connection.event["payload"]["entry"][0]["changes"][0]["value"]["messages"][0][
+        "text"
+    ]["body"] = "NO"
+
+    outcome = await _process_message_job(
+        connection,
+        connection.event["id"],
+        Settings(openrouter_api_key=""),
+        FakeDatabase(connection),
+    )
+
+    assignment_lookup = next(
+        query for query, _ in connection.calls if "select id from public.assignments" in query
+    )
+    assert outcome == "conflicted"
+    assert "worker_response" not in assignment_lookup
+    assert not any("proposed_actions" in query for query, _ in connection.calls)
+
+
+@pytest.mark.parametrize(
+    ("reply", "response"),
+    [
+        ("YES", "accepted"),
+        ("JA", "accepted"),
+        ("EWE", "accepted"),
+        ("NO", "declined"),
+        ("NEE", "declined"),
+        ("HAYI", "declined"),
+        ("CALL ME", "call_me"),
+        ("3", "call_me"),
+    ],
+)
+async def test_exact_assignment_response_supports_worker_offer_templates(
+    reply: str, response: str
+) -> None:
+    assert _exact_assignment_response(reply) == response
+
+
+async def test_ambiguous_assignment_response_remains_proposed_action(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connection = DirectProcessingConnection()
+    connection.event["payload"]["entry"][0]["changes"][0]["value"]["messages"][0][
+        "text"
+    ]["body"] = "I'll take it"
+    intent = ExtractedIntent(
+        "assignment_response",
+        {"response": "accepted"},
+        0.95,
+        "clear",
+        ProviderEvidence("openrouter", "intent-model", 23, 0.001, False),
+    )
+
+    monkeypatch.setattr(whatsapp_worker, "extract_intent", lambda *_: intent)
+
+    async def cannot_execute(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("model-derived assignment response must not execute")
+
+    monkeypatch.setattr(whatsapp_worker, "execute_command", cannot_execute)
+
+    outcome = await _process_message_job(
+        connection,
+        connection.event["id"],
+        Settings(openrouter_api_key=""),
+        FakeDatabase(connection),
+    )
+    action_call = next(
+        (params for query, params in connection.calls if "proposed_actions" in query),
+        None,
+    )
+
+    assert outcome == "created"
+    assert action_call is not None
+    assert action_call[1] == "assignment_response"
+    assert action_call[2] == "clear"
+    assert action_call[8].obj["fields"] == {"response": "accepted"}
+    assert action_call[8].obj["entityIds"] == {
+        "workerId": "99999999-9999-4999-8999-999999999999"
+    }
+    assert not any(
+        "select id from public.assignments" in query for query, _ in connection.calls
+    )
+
+
+async def test_ambiguous_assignment_response_is_not_directly_executable() -> None:
+    connection = DirectProcessingConnection()
+    outcome, entity_ids = await _try_execute_worker_action(
+        FakeDatabase(connection),
+        connection,
+        connection.event,
+        ExtractedIntent(
+            "assignment_response",
+            {"response": "accepted"},
+            0.6,
+            "ambiguous",
+        ),
+        connection.event["id"],
+        exact_assignment_response=False,
+    )
+
+    assert outcome is None
+    assert entity_ids == {"workerId": "99999999-9999-4999-8999-999999999999"}
+    assert not any(
+        "select id from public.assignments" in query for query, _ in connection.calls
+    )
+
+
+async def test_unresolved_or_multiple_assignment_response_remains_draft() -> None:
+    connection = DirectProcessingConnection(
+        [
+            "88888888-8888-4888-8888-888888888888",
+            "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        ]
+    )
+    connection.event["payload"]["entry"][0]["changes"][0]["value"]["messages"][0][
+        "text"
+    ]["body"] = "NO"
+
+    outcome = await _process_message_job(
+        connection,
+        "11111111-1111-4111-8111-111111111111",
+        Settings(openrouter_api_key=""),
+        FakeDatabase(connection),
+    )
+
+    action_call = next(
+        (params for query, params in connection.calls if "proposed_actions" in query),
+        None,
+    )
+    assert outcome == "created"
+    assert action_call is not None
+    assert action_call[1] == "assignment_response"
+    assert action_call[8].obj["fields"] == {"response": "declined"}
+    assert action_call[8].obj["entityIds"] == {
+        "workerId": "99999999-9999-4999-8999-999999999999"
+    }
+
+
+async def test_resolved_availability_executes_canonical_mutation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connection = DirectProcessingConnection()
+    observed: dict[str, Any] = {}
+
+    async def mutation(*args: Any, **kwargs: Any) -> Any:
+        observed["status"] = args[4].status
+        observed["source"] = kwargs["source"]
+        observed["source_event_id"] = kwargs["source_channel_event_id"]
+        return None
+
+    async def dispatch(*args: Any, **kwargs: Any) -> Any:
+        observed["command_name"] = args[3]
+        await args[6](connection)
+        return None
+
+    monkeypatch.setattr(whatsapp_worker, "set_worker_availability_mutation", mutation)
+    monkeypatch.setattr(whatsapp_worker, "execute_command", dispatch)
+
+    outcome = await _process_message_job(
+        connection,
+        "11111111-1111-4111-8111-111111111111",
+        Settings(openrouter_api_key=""),
+        FakeDatabase(connection),
+    )
+
+    assert outcome == "executed"
+    assert observed["command_name"] == "SetWorkerAvailability"
+    assert observed["status"] == "available"
+    assert observed["source"] == "whatsapp"
+    assert str(observed["source_event_id"]) == connection.event["id"]
+
+
+async def test_availability_date_uses_the_immutable_event_timestamp() -> None:
+    occurred_at = datetime(2026, 9, 16, 23, 30, tzinfo=UTC)
+
+    assert _availability_work_date("today", occurred_at) == date(2026, 9, 16)
+    assert _availability_work_date("tomorrow", occurred_at) == date(2026, 9, 17)
+
+
+class OutboxConnection:
+    def __init__(
+        self,
+        event_type: str = "assignment.travel_authorised",
+        payload: dict[str, object] | None = None,
+    ) -> None:
+        self.calls: list[tuple[str, tuple[Any, ...] | None]] = []
+        self.claimed = False
+        self.event_type = event_type
+        self.payload = payload or {}
+
+    async def execute(
+        self, query: str, params: tuple[Any, ...] | None = None
+    ) -> FakeResult:
+        self.calls.append((query, params))
+        if "with claimed" in query:
+            return RowsResult(
+                [
+                    {
+                        "id": "11111111-1111-4111-8111-111111111111",
+                        "domain_event_id": "22222222-2222-4222-8222-222222222222",
+                    }
+                ]
+            )
+        if "from private.domain_events" in query:
+            return FakeResult(
+                {
+                    "id": "22222222-2222-4222-8222-222222222222",
+                    "event_type": self.event_type,
+                    "aggregate_id": "88888888-8888-4888-8888-888888888888",
+                    "assignment_id": "88888888-8888-4888-8888-888888888888",
+                    "phone_number": "+27821234567",
+                    "payload": self.payload,
+                }
+            )
+        if "where assignment.id = any" in query:
+            return RowsResult(
+                [
+                    {
+                        "assignment_id": assignment_id,
+                        "phone_number": phone_number,
+                    }
+                    for assignment_id, phone_number in (
+                        (
+                            "88888888-8888-4888-8888-888888888888",
+                            "+27821234567",
+                        ),
+                        (
+                            "99999999-9999-4999-8999-999999999999",
+                            "+27829876543",
+                        ),
+                    )
+                ]
+            )
+        return FakeResult()
+
+
+async def test_command_outbox_mirrors_travel_authorisation_after_commit() -> None:
+    connection = OutboxConnection()
+
+    outcomes = await run_command_outbox_jobs(FakeDatabase(connection))
+
+    delivery = next(
+        (
+            params
+            for query, params in connection.calls
+            if "insert into public.channel_deliveries" in query
+        ),
+        None,
+    )
+    assert outcomes == [
+        {"outbox_id": "11111111-1111-4111-8111-111111111111", "outcome": "published"}
+    ]
+    assert delivery == (
+        "+27821234567",
+        "WORK CONFIRMED. GO to the reporting point.",
+        "assignment_update",
+        "domain-event:22222222-2222-4222-8222-222222222222",
+    )
+    assert any("set state = 'published'" in query for query, _ in connection.calls)
+
+
+@pytest.mark.parametrize(
+    ("event_type", "expected_body"),
+    [
+        ("assignment.travel_revoked", "Work details changed. DO NOT TRAVEL."),
+        ("labour_request.cancelled", "Work cancelled. DO NOT TRAVEL."),
+    ],
+)
+async def test_command_outbox_notifies_workers_not_to_travel_after_revocation(
+    event_type: str, expected_body: str
+) -> None:
+    connection = OutboxConnection(
+        event_type,
+        {
+            "cancelled_assignment_ids": [
+                "88888888-8888-4888-8888-888888888888",
+                "99999999-9999-4999-8999-999999999999",
+            ]
+        },
+    )
+
+    await run_command_outbox_jobs(FakeDatabase(connection))
+
+    deliveries = [
+        params
+        for query, params in connection.calls
+        if "insert into public.channel_deliveries" in query
+    ]
+    assert len(deliveries) == (2 if event_type == "labour_request.cancelled" else 1)
+    assert all(
+        delivery is not None and delivery[1] == expected_body for delivery in deliveries
+    )
+    if event_type == "labour_request.cancelled":
+        assert {delivery[3] for delivery in deliveries if delivery} == {
+            "domain-event:22222222-2222-4222-8222-222222222222:88888888-8888-4888-8888-888888888888",
+            "domain-event:22222222-2222-4222-8222-222222222222:99999999-9999-4999-8999-999999999999",
+        }
+
+
+async def test_command_outbox_queues_availability_acknowledgement_after_commit() -> (
+    None
+):
+    connection = OutboxConnection("worker.availability_set")
+
+    outcomes = await run_command_outbox_jobs(FakeDatabase(connection))
+
+    delivery = next(
+        (
+            params
+            for query, params in connection.calls
+            if "insert into public.channel_deliveries" in query
+        ),
+        None,
+    )
+    assert outcomes == [
+        {"outbox_id": "11111111-1111-4111-8111-111111111111", "outcome": "published"}
+    ]
+    assert delivery == (
+        "+27821234567",
+        "Availability saved.",
+        "availability_update",
+        "domain-event:22222222-2222-4222-8222-222222222222",
+    )
+    assert any("availability_signals" in query for query, _ in connection.calls)
 
 
 async def test_audio_processing_persists_transcription_evidence_as_ambiguous_draft(
@@ -412,8 +942,7 @@ async def test_audio_processing_persists_transcription_evidence_as_ambiguous_dra
     )
 
 
-async def test_language_rules_cover_afrikaans_isixhosa_and_code_switched_uncertainty(
-) -> None:
+async def test_language_rules_cover_supported_languages_and_uncertainty() -> None:
     afrikaans = extract_intent("Ek is beskikbaar more", "af")
     isixhosa = extract_intent("Ndiyakwazi ukusebenza ngomso", "xh")
     code_switched = extract_intent("I am beskikbaar after work", None)
@@ -439,7 +968,7 @@ async def test_interactive_reply_is_usable_as_message_evidence() -> None:
                                     "id": "wamid-inbound-1",
                                     "interactive": {
                                         "button_reply": {"id": "available tomorrow"}
-                                    }
+                                    },
                                 }
                             ]
                         }
@@ -464,9 +993,7 @@ async def test_batched_webhook_jobs_use_the_matching_provider_message() -> None:
     messages = connection.event["payload"]["entry"][0]["changes"][0]["value"][
         "messages"
     ]
-    messages.append(
-        {"id": "wamid-inbound-2", "text": {"body": "We need 4 workers"}}
-    )
+    messages.append({"id": "wamid-inbound-2", "text": {"body": "We need 4 workers"}})
 
     outcome = await _process_message_job(
         connection,

@@ -9,6 +9,7 @@ import httpx
 LanguageCode = Literal["en", "af", "xh"]
 ActionType = Literal[
     "worker_availability",
+    "assignment_response",
     "labour_request",
     "assignment_confirmation",
     "assignment_cancellation",
@@ -20,6 +21,7 @@ Ambiguity = Literal["clear", "ambiguous", "unresolved"]
 LANGUAGE_CODES: tuple[LanguageCode, ...] = ("en", "af", "xh")
 ACTION_TYPES: tuple[ActionType, ...] = (
     "worker_availability",
+    "assignment_response",
     "labour_request",
     "assignment_confirmation",
     "assignment_cancellation",
@@ -321,6 +323,7 @@ def _intent_schema() -> dict[str, Any]:
             "actionType": {
                 "enum": [
                     "worker_availability",
+                    "assignment_response",
                     "labour_request",
                     "assignment_confirmation",
                     "assignment_cancellation",

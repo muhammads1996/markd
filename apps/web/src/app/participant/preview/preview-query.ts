@@ -5,6 +5,7 @@ export const workerScenarios = [
   "travel_ready",
   "offer",
   "accepted_waiting",
+  "cancelled",
   "no-work",
   "completed",
   "degraded",

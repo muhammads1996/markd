@@ -57,6 +57,8 @@ async function becomeApiOperator(
 const domainTables = [
   "areas",
   "assignments",
+  "assignment_acknowledgements",
+  "assignment_stamps",
   "audit_events",
   "availability_signals",
   "channel_deliveries",
@@ -90,9 +92,16 @@ const domainTables = [
   "worker_private_details",
   "worker_profiles",
   "worker_skill_evidence",
+  "workmark_corrections",
   "workmark_skills",
   "workmarks",
 ] as const;
+
+const apiDeniedTables = new Set([
+  "assignment_acknowledgements",
+  "assignment_stamps",
+  "workmark_corrections",
+]);
 
 async function insertTestWorkmark(client: Client): Promise<string> {
   const worker = await client.query<{ id: string }>(
@@ -223,6 +232,82 @@ describe("local Supabase database", () => {
         "insert into public.audit_events(table_name, record_id, action, changes) values ('test', gen_random_uuid(), 'INSERT', '{}')",
       ),
     ).rejects.toThrow("append-only");
+    await client.query("rollback");
+  });
+
+  it("keeps assignment closeout evidence append-only and auditable", async () => {
+    const client = new Client({ connectionString: localDatabaseUrl });
+    clients.push(client);
+    await client.connect();
+    await client.query("begin");
+    await createOperator(client, operatorAdminId, "ops_admin");
+
+    const stamp = await client.query<{ id: string }>(
+      `insert into public.assignment_stamps(
+        assignment_id, workmark_id, asserted_by_person_id, recorded_by_user_id,
+        asserted_role, attendance, completion, reuse_preference, payment, source
+      ) values (
+        '62000000-0000-4000-8000-000000000001',
+        '40000000-0000-4000-8000-000000000002',
+        '10000000-0000-4000-8000-000000000001', $1,
+        'worker', 'attended', 'completed', 'would_reuse', 'paid', 'integration test'
+      ) returning id`,
+      [operatorAdminId],
+    );
+    const stampId = stamp.rows[0]?.id;
+    await client.query("savepoint stamp_update");
+    await expect(
+      client.query(
+        "update public.assignment_stamps set note = 'mutated' where id = $1",
+        [stampId],
+      ),
+    ).rejects.toThrow("append-only and immutable");
+    await client.query("rollback to savepoint stamp_update");
+    await client.query("savepoint stamp_delete");
+    await expect(
+      client.query("delete from public.assignment_stamps where id = $1", [
+        stampId,
+      ]),
+    ).rejects.toThrow("append-only and immutable");
+    await client.query("rollback to savepoint stamp_delete");
+
+    const correction = await client.query<{ id: string }>(
+      `insert into public.workmark_corrections(
+        workmark_id, reason, changes, asserted_by_person_id, recorded_by_user_id, source
+      ) values (
+        '40000000-0000-4000-8000-000000000002',
+        'integration correction', '{"payment":"pending"}',
+        '10000000-0000-4000-8000-000000000002', $1, 'integration test'
+      ) returning id`,
+      [operatorAdminId],
+    );
+    const correctionId = correction.rows[0]?.id;
+    await client.query("savepoint correction_update");
+    await expect(
+      client.query(
+        "update public.workmark_corrections set reason = 'mutated' where id = $1",
+        [correctionId],
+      ),
+    ).rejects.toThrow("append-only and immutable");
+    await client.query("rollback to savepoint correction_update");
+    await client.query("savepoint correction_delete");
+    await expect(
+      client.query("delete from public.workmark_corrections where id = $1", [
+        correctionId,
+      ]),
+    ).rejects.toThrow("append-only and immutable");
+    await client.query("rollback to savepoint correction_delete");
+
+    const audit = await client.query<{ table_name: string; record_id: string }>(
+      `select table_name, record_id from public.audit_events
+       where record_id in ($1, $2)
+       order by table_name`,
+      [stampId, correctionId],
+    );
+    expect(audit.rows).toEqual([
+      { table_name: "assignment_stamps", record_id: stampId },
+      { table_name: "workmark_corrections", record_id: correctionId },
+    ]);
     await client.query("rollback");
   });
 
@@ -390,6 +475,60 @@ describe("local Supabase database", () => {
       await expect(client.query(statement)).rejects.toThrow(message);
       await client.query(`rollback to savepoint ${savepoint}`);
     }
+    await client.query("rollback");
+  });
+
+  it("stores travel logistics and deduplicates assignment acknowledgements", async () => {
+    const client = new Client({ connectionString: localDatabaseUrl });
+    clients.push(client);
+    await client.connect();
+    await client.query("begin");
+    await createOperator(client, operatorAdminId, "ops_admin");
+
+    await client.query(
+      `update public.assignments
+       set reporting_mode = 'pickup',
+           reporting_place_text = 'Library car park',
+           reporting_at = '2026-09-18T05:00:00Z',
+           location_pin = '{"lat": -33.9, "lng": 18.4}'::jsonb,
+           travel_authorised_at = now()
+       where id = '62000000-0000-4000-8000-000000000001'`,
+    );
+    const assignment = await client.query<{
+      reporting_mode: string;
+      reporting_place_text: string;
+      reporting_at: string;
+      travel_authorised_at: string;
+    }>(
+      `select reporting_mode, reporting_place_text, reporting_at,
+              travel_authorised_at
+       from public.assignments
+       where id = '62000000-0000-4000-8000-000000000001'`,
+    );
+    expect(assignment.rows[0]).toMatchObject({
+      reporting_mode: "pickup",
+      reporting_place_text: "Library car park",
+    });
+    expect(assignment.rows[0]?.reporting_at).toBeTruthy();
+    expect(assignment.rows[0]?.travel_authorised_at).toBeTruthy();
+
+    await client.query(
+      `insert into public.assignment_acknowledgements
+         (assignment_id, kind, actor_user_id)
+       values
+         ('62000000-0000-4000-8000-000000000001', 'on_my_way', $1)`,
+      [operatorAdminId],
+    );
+    await expect(
+      client.query(
+        `insert into public.assignment_acknowledgements
+           (assignment_id, kind, actor_user_id)
+         values
+           ('62000000-0000-4000-8000-000000000001', 'on_my_way', $1)`,
+        [operatorAdminId],
+      ),
+    ).rejects.toThrow("assignment_acknowledgements_assignment_id_kind_key");
+
     await client.query("rollback");
   });
 
@@ -850,6 +989,14 @@ describe("local Supabase database", () => {
       await client.query("begin");
       await client.query(`set local role ${role}`);
       for (const table of domainTables) {
+        if (apiDeniedTables.has(table)) {
+          await client.query(`savepoint denied_${table}`);
+          await expect(
+            client.query(`select count(*)::text as count from public.${table}`),
+          ).rejects.toThrow("permission denied");
+          await client.query(`rollback to savepoint denied_${table}`);
+          continue;
+        }
         const result = await client.query<{ count: string }>(
           `select count(*)::text as count from public.${table}`,
         );
@@ -954,7 +1101,7 @@ describe("local Supabase database", () => {
     await client.query("set local role postgres");
     await becomeAuthenticatedOperator(client, unprovisionedUserId);
     await expect(
-      client.query("select * from public.people"),
+      client.query("select id from public.people"),
     ).resolves.toMatchObject({ rows: [] });
     await client.query("savepoint unprovisioned_write");
     await expect(
@@ -971,7 +1118,7 @@ describe("local Supabase database", () => {
     );
     await becomeAuthenticatedOperator(client, operatorUserId);
     await expect(
-      client.query("select * from public.people"),
+      client.query("select id from public.people"),
     ).resolves.toMatchObject({ rows: [] });
     await expect(
       client.query(

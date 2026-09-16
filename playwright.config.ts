@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
+const useExistingServer = process.env.PLAYWRIGHT_BASE_URL !== undefined;
+
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
@@ -7,7 +10,7 @@ export default defineConfig({
   retries: 0,
   reporter: process.env.CI ? [["html", { open: "never" }], ["github"]] : "list",
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    baseURL,
     trace: "on-first-retry",
   },
   projects: [
@@ -20,13 +23,17 @@ export default defineConfig({
       use: { ...devices["Pixel 7"] },
     },
   ],
-  webServer: {
-    command:
-      process.env.MARKD_PARTICIPANT_FIXTURES === "1"
-        ? "corepack pnpm dev"
-        : "corepack pnpm start",
-    url: "http://127.0.0.1:3000",
-    reuseExistingServer: false,
-    timeout: 120_000,
-  },
+  ...(useExistingServer
+    ? {}
+    : {
+        webServer: {
+          command:
+            process.env.MARKD_PARTICIPANT_FIXTURES === "1"
+              ? "corepack pnpm dev"
+              : "corepack pnpm start",
+          url: baseURL,
+          reuseExistingServer: false,
+          timeout: 120_000,
+        },
+      }),
 });
