@@ -31,13 +31,6 @@ function assignmentTone(
   return card ? getAssignmentStatusTone(card.status) : "neutral";
 }
 
-function rateLabel(assignment: ParticipantWorkerAssignment): string {
-  const amount = assignment.assignmentRateCents ?? assignment.requestRateCents;
-  const currency = assignment.assignmentCurrency ?? assignment.requestCurrency;
-  if (amount === null || currency === null) return "Rate to be confirmed";
-  return `${currency} ${(amount / 100).toFixed(2)}`;
-}
-
 export function WorkerAssignmentList({
   assignments,
 }: {
@@ -61,10 +54,6 @@ export function WorkerAssignmentList({
               .join(", ") || "Site to be confirmed"}
           </p>
           <div className={styles.facts}>
-            <div>
-              <span className={styles.factLabel}>Rate</span>
-              <strong>{rateLabel(assignment)}</strong>
-            </div>
             <div>
               <span className={styles.factLabel}>Reporting</span>
               <strong>{assignment.reportingPlace ?? "To be confirmed"}</strong>

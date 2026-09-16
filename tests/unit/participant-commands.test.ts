@@ -46,6 +46,21 @@ describe("participant command boundary", () => {
     expect(commandSource).toContain(
       "path: `/api/v1/workers/${workerId}/availability/${workDate}`",
     );
+    expect(commandSource).toContain(
+      "body: { status, note, expected_version: expectedVersion }",
+    );
+    expect(commandSource).toContain(
+      "path: `/api/v1/assignments/${assignmentId}/contractor-confirm`",
+    );
+    expect(commandSource).toContain(
+      "path: `/api/v1/assignments/${assignmentId}/logistics`",
+    );
+    expect(commandSource).toContain(
+      "path: `/api/v1/assignments/${assignmentId}/authorise-travel`",
+    );
+    expect(commandSource).toContain(
+      "path: `/api/v1/assignments/${assignmentId}/cancel`",
+    );
     expect(commandSource).toContain('path: "/api/v1/labour-requests"');
   });
 });

@@ -1101,7 +1101,7 @@ describe("local Supabase database", () => {
     await client.query("set local role postgres");
     await becomeAuthenticatedOperator(client, unprovisionedUserId);
     await expect(
-      client.query("select * from public.people"),
+      client.query("select id from public.people"),
     ).resolves.toMatchObject({ rows: [] });
     await client.query("savepoint unprovisioned_write");
     await expect(
@@ -1118,7 +1118,7 @@ describe("local Supabase database", () => {
     );
     await becomeAuthenticatedOperator(client, operatorUserId);
     await expect(
-      client.query("select * from public.people"),
+      client.query("select id from public.people"),
     ).resolves.toMatchObject({ rows: [] });
     await expect(
       client.query(

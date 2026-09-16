@@ -42,10 +42,9 @@ def _require_availability_actor(actor: CurrentActor, worker_id: UUID) -> None:
             "Forbidden",
             "Contractors cannot record worker availability.",
         )
-    if (
-        actor.claims.get("worker_scope") is not True
-        or str(actor.claims.get("participant_person_id")) != str(worker_id)
-    ):
+    if actor.claims.get("worker_scope") is not True or str(
+        actor.claims.get("participant_person_id")
+    ) != str(worker_id):
         raise ProblemDetail(
             403,
             "FORBIDDEN",
@@ -54,9 +53,7 @@ def _require_availability_actor(actor: CurrentActor, worker_id: UUID) -> None:
         )
 
 
-def _check_version(
-    signal: dict[str, Any], expected_version: int | None
-) -> None:
+def _check_version(signal: dict[str, Any], expected_version: int | None) -> None:
     if expected_version is not None and signal["version"] != expected_version:
         raise ProblemDetail(
             409,
@@ -121,8 +118,9 @@ async def set_worker_availability_mutation(
         """
         insert into public.availability_signals(
           worker_id, available_from, available_to, status, note, source,
-          recorded_by_user_id, source_channel_event_id, source_proposed_action_id
-        ) values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    recorded_by_user_id, source_channel_event_id,
+                    source_proposed_action_id, version
+                ) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         returning id, version
         """,
         (
@@ -135,6 +133,7 @@ async def set_worker_availability_mutation(
             actor.user_id,
             source_channel_event_id,
             source_proposed_action_id,
+            (current["version"] + 1) if current is not None else 1,
         ),
     )
     created = await created_result.fetchone()

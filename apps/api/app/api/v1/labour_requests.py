@@ -503,7 +503,7 @@ async def confirm_assignment_mutation(
         return MutationResult(
             200,
             body,
-            "assignment.contractor_confirmed",
+            None,
             "assignment",
             assignment_id,
             body,
@@ -526,6 +526,7 @@ async def confirm_assignment_mutation(
         "assignment",
         confirmed["id"],
         body,
+        source_channel=_source_for_actor(actor),
     )
 
 
@@ -626,6 +627,7 @@ async def set_assignment_logistics_mutation(
         "assignment",
         updated["id"],
         body,
+        source_channel=_source_for_actor(actor),
     )
 
 
@@ -704,6 +706,7 @@ async def authorise_assignment_travel_mutation(
         "assignment",
         authorised["id"],
         body,
+        source_channel=_source_for_actor(actor),
     )
 
 
@@ -765,9 +768,7 @@ async def cancel_assignment_mutation(
         body = _command_body(
             "assignment", assignment_id, assignment["version"], "already_applied"
         )
-        return MutationResult(
-            200, body, "assignment.cancelled", "assignment", assignment_id, body
-        )
+        return MutationResult(200, body, None, "assignment", assignment_id, body)
     if assignment["lifecycle"] != "active":
         raise ProblemDetail(
             409,
@@ -791,7 +792,13 @@ async def cancel_assignment_mutation(
     cancelled = await result.fetchone()
     body = _command_body("assignment", cancelled["id"], cancelled["version"])
     return MutationResult(
-        200, body, "assignment.cancelled", "assignment", cancelled["id"], body
+        200,
+        body,
+        "assignment.cancelled",
+        "assignment",
+        cancelled["id"],
+        body,
+        source_channel=_source_for_actor(actor),
     )
 
 

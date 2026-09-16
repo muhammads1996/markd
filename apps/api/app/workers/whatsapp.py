@@ -505,26 +505,28 @@ async def _try_execute_worker_action(
     if intent.action_type == "assignment_response":
         if not exact_assignment_response:
             return None, {"workerId": str(worker_id)}
+        response = intent.fields.get("response")
+        if response not in {"accepted", "declined", "call_me"}:
+            return None, {"workerId": str(worker_id)}
+        assignment_response = cast(Literal["accepted", "declined", "call_me"], response)
+        eligible_responses = (
+            ["pending", "call_me", "accepted"]
+            if assignment_response == "accepted"
+            else ["pending", "call_me"]
+        )
         result = await connection.execute(
             """
             select id from public.assignments
             where worker_id = %s and lifecycle = 'active' and offered_at is not null
-              and worker_response in ('pending', 'call_me')
+              and worker_response = any(%s)
             order by offered_at desc
             """,
-            (worker_id,),
+            (worker_id, eligible_responses),
         )
         assignments = await result.fetchall()
         if len(assignments) != 1:
             return None, {"workerId": str(worker_id)}
         assignment_id = UUID(str(assignments[0]["id"]))
-        response = intent.fields.get("response")
-        if response not in {"accepted", "declined", "call_me"}:
-            return None, {
-                "workerId": str(worker_id),
-                "assignmentId": str(assignment_id),
-            }
-        assignment_response = cast(Literal["accepted", "declined", "call_me"], response)
 
         async def handler(command_connection: Any) -> Any:
             return await respond_to_assignment_mutation(

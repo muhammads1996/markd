@@ -23,6 +23,20 @@ export interface ParticipantIdentity {
   role?: string;
 }
 
+export interface AssignmentStampCommandInput {
+  attendance: "attended" | "no_show" | "unknown";
+  completion: "completed" | "partial" | "not_completed" | "unknown";
+  reusePreference: "yes" | "no" | "unknown";
+  payment: {
+    state: "unknown" | "pending" | "paid" | "partial" | "disputed";
+    amountMinor?: number;
+    currency?: string;
+    method?: string;
+  };
+  note?: string;
+  expectedVersion?: number;
+}
+
 interface ApiErrorBody {
   detail?: string;
   title?: string;
@@ -135,16 +149,30 @@ export function acknowledgeOnMyWay(assignmentId: string) {
 
 export function submitStamp(
   assignmentId: string,
-  input: {
-    attendance: "attended" | "no_show" | "unknown";
-    completion: "completed" | "partial" | "not_completed" | "unknown";
-    expectedVersion?: number;
-  },
+  input: AssignmentStampCommandInput,
 ) {
   return sendParticipantApiRequest({
     path: `/api/v1/assignments/${assignmentId}/stamps`,
     method: "POST",
-    body: input,
+    body: {
+      attendance: input.attendance,
+      completion: input.completion,
+      reuse_preference: input.reusePreference,
+      payment: {
+        state: input.payment.state,
+        ...(input.payment.amountMinor === undefined
+          ? {}
+          : { amount_minor: input.payment.amountMinor }),
+        ...(input.payment.currency === undefined
+          ? {}
+          : { currency: input.payment.currency }),
+        ...(input.payment.method === undefined
+          ? {}
+          : { method: input.payment.method }),
+      },
+      ...(input.note === undefined ? {} : { note: input.note }),
+      expected_version: input.expectedVersion,
+    },
     idempotencyKey: `assignment-stamp-${assignmentId}-${crypto.randomUUID()}`,
   });
 }
@@ -154,12 +182,75 @@ export function setWorkerAvailability(
   workDate: string,
   status: "available" | "unavailable" | "unknown",
   expectedVersion?: number,
+  note?: string,
 ) {
   return sendParticipantApiRequest({
     path: `/api/v1/workers/${workerId}/availability/${workDate}`,
     method: "PUT",
-    body: { status, expected_version: expectedVersion },
+    body: { status, note, expected_version: expectedVersion },
     idempotencyKey: `worker-availability-${workerId}-${workDate}-${crypto.randomUUID()}`,
+  });
+}
+
+export function confirmAssignment(
+  assignmentId: string,
+  confirmed: boolean,
+  expectedVersion?: number,
+) {
+  return sendParticipantApiRequest({
+    path: `/api/v1/assignments/${assignmentId}/contractor-confirm`,
+    method: "POST",
+    body: { confirmed, expected_version: expectedVersion },
+    idempotencyKey: `assignment-contractor-confirm-${assignmentId}-${crypto.randomUUID()}`,
+  });
+}
+
+export function setAssignmentLogistics(
+  assignmentId: string,
+  input: {
+    reportingMode: "site" | "pickup";
+    placeText: string;
+    reportingAt: string;
+    expectedVersion?: number;
+  },
+) {
+  return sendParticipantApiRequest({
+    path: `/api/v1/assignments/${assignmentId}/logistics`,
+    method: "PUT",
+    body: {
+      reporting_mode: input.reportingMode,
+      place_text: input.placeText,
+      reporting_at: input.reportingAt,
+      expected_version: input.expectedVersion,
+    },
+    idempotencyKey: `assignment-logistics-${assignmentId}-${crypto.randomUUID()}`,
+  });
+}
+
+export function authoriseAssignmentTravel(
+  assignmentId: string,
+  expectedVersion?: number,
+) {
+  return sendParticipantApiRequest({
+    path: `/api/v1/assignments/${assignmentId}/authorise-travel`,
+    method: "POST",
+    body: { expected_version: expectedVersion },
+    idempotencyKey: `assignment-authorise-travel-${assignmentId}-${crypto.randomUUID()}`,
+  });
+}
+
+export function cancelContractorAssignment(
+  assignmentId: string,
+  expectedVersion?: number,
+) {
+  return sendParticipantApiRequest({
+    path: `/api/v1/assignments/${assignmentId}/cancel`,
+    method: "POST",
+    body: {
+      reason_code: "contractor_cancelled",
+      expected_version: expectedVersion,
+    },
+    idempotencyKey: `assignment-contractor-cancel-${assignmentId}-${crypto.randomUUID()}`,
   });
 }
 

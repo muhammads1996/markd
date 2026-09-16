@@ -17,7 +17,7 @@ export default async function Page() {
         </p>
       </header>
       <section className={styles.card}>
-        <WorkerAvailabilityCommand workerId={personId} currentStatus={null} />
+        <WorkerAvailabilityCommand workerId={personId} />
       </section>
     </>
   );

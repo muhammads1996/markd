@@ -134,8 +134,6 @@ async def test_contractor_cannot_record_worker_availability() -> None:
     assert error.value.status_code == 403
 
 
-
-
 async def test_same_status_and_note_are_already_applied_without_domain_event() -> None:
     connection = FakeConnection(
         {"id": SIGNAL_ID, "status": "available", "note": "Near site", "version": 2}
@@ -157,7 +155,7 @@ async def test_same_status_and_note_are_already_applied_without_domain_event() -
     assert connection.insert_params is None
 
 
-async def test_changed_status_or_note_archives_then_inserts_actor_and_source_provenance() -> (
+async def test_changed_status_or_note_archives_then_inserts_provenance() -> (
     None
 ):
     connection = FakeConnection(
@@ -187,6 +185,7 @@ async def test_changed_status_or_note_archives_then_inserts_actor_and_source_pro
         ACTOR_ID,
         None,
         None,
+        2,
     )
     assert connection.queries.index(
         next(query for query in connection.queries if "update public" in query)

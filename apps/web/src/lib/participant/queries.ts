@@ -16,13 +16,58 @@ export interface ParticipantWorkerAssignment {
   siteLocality: string | null;
   siteName: string | null;
   workDate: string;
-  assignmentRateCents: number | null;
-  assignmentCurrency: string | null;
-  requestRateCents: number | null;
-  requestCurrency: string | null;
-  rateBasis: string | null;
   workType: string;
 }
+
+export interface ParticipantWorkerAvailability {
+  workerId: string;
+  workDate: string;
+  status: "available" | "unavailable" | "unknown";
+  note: string | null;
+  version: number;
+}
+
+export type ParticipantWorkerAvailabilityRow = {
+  worker_id: string;
+  work_date: string;
+  status: ParticipantWorkerAvailability["status"];
+  note: string | null;
+  version: number;
+};
+
+export interface ParticipantContractorAssignment {
+  assignmentId: string;
+  version: number;
+  workerId: string;
+  workerDisplayName: string;
+  lifecycle: "active" | "completed" | "cancelled" | "no_show";
+  workerResponse: "pending" | "call_me" | "accepted" | "declined";
+  contractorConfirmation: "pending" | "confirmed" | "rejected";
+  offeredAt: string | null;
+  travelAuthorisedAt: string | null;
+  reportingMode: "site" | "pickup" | null;
+  reportingPlace: string | null;
+  reportingAt: string | null;
+  workDate: string;
+  workType: string;
+}
+
+export type ParticipantContractorAssignmentRow = {
+  assignment_id: string;
+  version: number;
+  worker_id: string;
+  worker_display_name: string;
+  lifecycle: ParticipantContractorAssignment["lifecycle"];
+  worker_response: ParticipantContractorAssignment["workerResponse"];
+  contractor_confirmation: ParticipantContractorAssignment["contractorConfirmation"];
+  offered_at: string | null;
+  travel_authorised_at: string | null;
+  reporting_mode: ParticipantContractorAssignment["reportingMode"];
+  reporting_place: string | null;
+  reporting_at: string | null;
+  work_date: string;
+  work_type: string;
+};
 
 export type ParticipantWorkerAssignmentRow = {
   assignment_id: string;
@@ -40,11 +85,6 @@ export type ParticipantWorkerAssignmentRow = {
   site_locality: string | null;
   site_name: string | null;
   work_date: string;
-  assignment_rate_cents: number | null;
-  assignment_currency: string | null;
-  request_rate_cents: number | null;
-  request_currency: string | null;
-  rate_basis: string | null;
   work_type: string;
 };
 
@@ -60,14 +100,6 @@ function formatTime(value: string | null): string {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
-}
-
-function formatRate(assignment: ParticipantWorkerAssignment): string {
-  const amount = assignment.assignmentRateCents ?? assignment.requestRateCents;
-  const currency = assignment.assignmentCurrency ?? assignment.requestCurrency;
-  if (amount === null || currency === null) return "Rate to be confirmed";
-  const basis = assignment.rateBasis ? ` per ${assignment.rateBasis}` : "";
-  return `${currency} ${(amount / 100).toFixed(2)}${basis}`;
 }
 
 export function toParticipantWorkerAssignment(
@@ -89,11 +121,39 @@ export function toParticipantWorkerAssignment(
     siteLocality: row.site_locality,
     siteName: row.site_name,
     workDate: row.work_date,
-    assignmentRateCents: row.assignment_rate_cents,
-    assignmentCurrency: row.assignment_currency,
-    requestRateCents: row.request_rate_cents,
-    requestCurrency: row.request_currency,
-    rateBasis: row.rate_basis,
+    workType: row.work_type,
+  };
+}
+
+export function toParticipantWorkerAvailability(
+  row: ParticipantWorkerAvailabilityRow,
+): ParticipantWorkerAvailability {
+  return {
+    workerId: row.worker_id,
+    workDate: row.work_date,
+    status: row.status,
+    note: row.note,
+    version: row.version,
+  };
+}
+
+export function toParticipantContractorAssignment(
+  row: ParticipantContractorAssignmentRow,
+): ParticipantContractorAssignment {
+  return {
+    assignmentId: row.assignment_id,
+    version: row.version,
+    workerId: row.worker_id,
+    workerDisplayName: row.worker_display_name,
+    lifecycle: row.lifecycle,
+    workerResponse: row.worker_response,
+    contractorConfirmation: row.contractor_confirmation,
+    offeredAt: row.offered_at,
+    travelAuthorisedAt: row.travel_authorised_at,
+    reportingMode: row.reporting_mode,
+    reportingPlace: row.reporting_place,
+    reportingAt: row.reporting_at,
+    workDate: row.work_date,
     workType: row.work_type,
   };
 }
@@ -106,7 +166,7 @@ export function toWorkerAssignmentCardModel(
     contractorName: assignment.organisationDisplayName ?? "MARKD contractor",
     dateLabel: formatDate(assignment.workDate),
     startTimeLabel: formatTime(assignment.reportingAt),
-    rateLabel: formatRate(assignment),
+    rateLabel: "Rate confirmed separately",
     areaLabel:
       [assignment.siteName, assignment.siteLocality]
         .filter(Boolean)

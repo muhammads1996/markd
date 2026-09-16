@@ -137,10 +137,14 @@ class TravelFakeConnection:
         if "update public.assignments" in query:
             self.assignment["version"] = int(self.assignment["version"]) + 1
             if "lifecycle = 'cancelled'" in query:
+                self.assignment["lifecycle"] = "cancelled"
                 self.assignment["cancelled_after_travel_authorised"] = (
                     self.assignment.get("travel_authorised_at") is not None
                     or self.assignment.get("travel_revoked_at") is not None
                 )
+            elif "contractor_confirmation = %s" in query:
+                assert params is not None
+                self.assignment["contractor_confirmation"] = params[0]
             elif "reporting_mode = %s" in query:
                 if self.assignment.get("travel_authorised_at") is not None:
                     self.assignment["travel_authorised_at"] = None
@@ -203,6 +207,18 @@ def _operator() -> CurrentActor:
     return CurrentActor(
         user_id=uuid.UUID("44444444-4444-4444-8444-444444444444"),
         claims={"operator": {"role": "ops_user", "person_id": None}},
+    )
+
+
+def _contractor() -> CurrentActor:
+    return CurrentActor(
+        user_id=uuid.UUID("44444444-4444-4444-8444-444444444444"),
+        claims={
+            "participant_person_id": "99999999-9999-4999-8999-999999999999",
+            "contractor_contacts": [
+                {"organisation_id": "55555555-5555-4555-8555-555555555555"}
+            ],
+        },
     )
 
 
@@ -353,8 +369,6 @@ async def test_contractor_cannot_submit_worker_response() -> None:
     assert error.value.status_code == 403
 
 
-
-
 @pytest.mark.parametrize("response", ["accepted", "declined", "call_me"])
 async def test_worker_response_uses_the_canonical_assignment_command(
     response: str,
@@ -402,9 +416,7 @@ async def test_contractor_scope_cannot_submit_worker_response_for_same_person() 
         _require_assignment_actor(
             actor,
             {
-                "organisation_id": uuid.UUID(
-                    "55555555-5555-4555-8555-555555555555"
-                ),
+                "organisation_id": uuid.UUID("55555555-5555-4555-8555-555555555555"),
                 "worker_id": uuid.UUID("99999999-9999-4999-8999-999999999999"),
             },
             allow_worker=True,
@@ -424,7 +436,7 @@ async def test_repeated_worker_response_does_not_emit_a_duplicate_event() -> Non
             user_id=uuid.UUID("44444444-4444-4444-8444-444444444444"),
             claims={
                 "participant_person_id": "99999999-9999-4999-8999-999999999999",
-                    "worker_scope": True,
+                "worker_scope": True,
                 "contractor_contacts": [],
             },
         ),
@@ -444,7 +456,7 @@ async def test_extracted_response_mutation_preserves_whatsapp_audit_provenance()
         user_id=uuid.UUID("44444444-4444-4444-8444-444444444444"),
         claims={
             "participant_person_id": "99999999-9999-4999-8999-999999999999",
-                "worker_scope": True,
+            "worker_scope": True,
             "contractor_contacts": [],
         },
     )
@@ -616,6 +628,54 @@ async def test_contractor_cannot_reject_currently_travel_authorised_assignment()
 
     assert error.value.status_code == 409
     assert "authorisation must be revoked" in error.value.detail.lower()
+
+
+async def test_contractor_confirmation_pwa_source_and_no_op() -> (
+    None
+):
+    assignment = _travel_assignment(contractor_confirmation="pending")
+    connection = TravelFakeConnection(assignment)
+
+    applied = await confirm_assignment_mutation(
+        connection,
+        _contractor(),
+        assignment["id"],
+        ContractorConfirmationInput(confirmed=True),
+    )
+    no_op = await confirm_assignment_mutation(
+        connection,
+        _contractor(),
+        assignment["id"],
+        ContractorConfirmationInput(confirmed=True),
+    )
+
+    assert applied.source_channel == "pwa"
+    assert no_op.body["status"] == "already_applied"
+    assert no_op.event_type is None
+
+
+async def test_contractor_cancellation_pwa_source_and_no_op() -> (
+    None
+):
+    assignment = _travel_assignment()
+    connection = TravelFakeConnection(assignment)
+
+    applied = await cancel_assignment_mutation(
+        connection,
+        _contractor(),
+        assignment["id"],
+        CancelAssignmentInput(reason_code="contractor_cancelled"),
+    )
+    no_op = await cancel_assignment_mutation(
+        connection,
+        _contractor(),
+        assignment["id"],
+        CancelAssignmentInput(reason_code="contractor_cancelled"),
+    )
+
+    assert applied.source_channel == "pwa"
+    assert no_op.body["status"] == "already_applied"
+    assert no_op.event_type is None
 
 
 async def test_only_assigned_worker_can_acknowledge_travel() -> None:

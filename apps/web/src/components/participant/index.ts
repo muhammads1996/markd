@@ -6,6 +6,7 @@ export {
 } from "./client-components";
 export { ParticipantServiceWorkerRegistration } from "./service-worker-registration";
 export { ContractorHireForm } from "./contractor-hire-form";
+export { ContractorAssignmentList } from "./contractor-assignment-list";
 export {
   WorkerAssignmentCommands,
   WorkerAvailabilityCommand,
