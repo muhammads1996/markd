@@ -837,6 +837,53 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workers/{worker_id}/availability/{work_date}:
+    put:
+      tags:
+      - Workers
+      summary: Set Worker Availability
+      operationId: set_worker_availability_api_v1_workers__worker_id__availability__work_date__put
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: worker_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Worker Id
+      - name: work_date
+        in: path
+        required: true
+        schema:
+          type: string
+          format: date
+          title: Work Date
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetWorkerAvailabilityInput'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/onboarding/workers/{worker_id}/portrait:
     post:
       tags:
@@ -1093,6 +1140,7 @@ components:
           type: string
           enum:
           - worker_availability
+          - assignment_response
           - labour_request
           - assignment_confirmation
           - assignment_cancellation
@@ -1260,30 +1308,7 @@ components:
             - hirer
           - type: 'null'
           title: Asserted Role
-        source:
-          type: string
-          maxLength: 120
-          minLength: 1
-          title: Source
-          default: api
-        source_channel_event_id:
-          anyOf:
-          - type: string
-            format: uuid
-          - type: 'null'
-          title: Source Channel Event Id
-        source_proposed_action_id:
-          anyOf:
-          - type: string
-            format: uuid
-          - type: 'null'
-          title: Source Proposed Action Id
-        occurred_at:
-          anyOf:
-          - type: string
-            format: date-time
-          - type: 'null'
-          title: Occurred At
+      additionalProperties: false
       type: object
       title: AssignmentStampInput
     AuthoriseAssignmentTravelInput:
@@ -1425,6 +1450,10 @@ components:
           anyOf:
           - $ref: '#/components/schemas/CancelAssignmentActionInput'
           - type: 'null'
+        work_completion:
+          anyOf:
+          - $ref: '#/components/schemas/WorkCompletionActionInput'
+          - type: 'null'
       type: object
       title: ConfirmProposedActionInput
     ContractorConfirmationInput:
@@ -1457,30 +1486,7 @@ components:
             minimum: 1.0
           - type: 'null'
           title: Expected Version
-        source:
-          type: string
-          maxLength: 120
-          minLength: 1
-          title: Source
-          default: api
-        source_channel_event_id:
-          anyOf:
-          - type: string
-            format: uuid
-          - type: 'null'
-          title: Source Channel Event Id
-        source_proposed_action_id:
-          anyOf:
-          - type: string
-            format: uuid
-          - type: 'null'
-          title: Source Proposed Action Id
-        occurred_at:
-          anyOf:
-          - type: string
-            format: date-time
-          - type: 'null'
-          title: Occurred At
+      additionalProperties: false
       type: object
       required:
       - reason
@@ -1518,6 +1524,24 @@ components:
             - disputed
           - type: 'null'
           title: Payment State
+        amount_minor:
+          anyOf:
+          - type: integer
+            minimum: 0.0
+          - type: 'null'
+          title: Amount Minor
+        currency:
+          anyOf:
+          - type: string
+            pattern: ^[A-Z]{3}$
+          - type: 'null'
+          title: Currency
+        payment_method:
+          anyOf:
+          - type: string
+            maxLength: 80
+          - type: 'null'
+          title: Payment Method
         worker_reuse_preference:
           anyOf:
           - type: string
@@ -1620,6 +1644,7 @@ components:
           type: array
           minItems: 1
           title: Requirements
+      additionalProperties: false
       type: object
       required:
       - work_date
@@ -1864,6 +1889,31 @@ components:
       required:
       - response
       title: RespondToAssignmentInput
+    SetWorkerAvailabilityInput:
+      properties:
+        status:
+          type: string
+          enum:
+          - available
+          - unavailable
+          - unknown
+          title: Status
+        note:
+          anyOf:
+          - type: string
+            maxLength: 2000
+          - type: 'null'
+          title: Note
+        expected_version:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: Expected Version
+      type: object
+      required:
+      - status
+      title: SetWorkerAvailabilityInput
     StampPaymentInput:
       properties:
         state:
@@ -1989,6 +2039,19 @@ components:
       - inbound_messages
       - delivery_statuses
       title: WebhookReceipt
+    WorkCompletionActionInput:
+      properties:
+        assignment_id:
+          type: string
+          format: uuid
+          title: Assignment Id
+        stamp:
+          $ref: '#/components/schemas/AssignmentStampInput'
+      type: object
+      required:
+      - assignment_id
+      - stamp
+      title: WorkCompletionActionInput
     WorkerBeginResponse:
       properties:
         worker_id:

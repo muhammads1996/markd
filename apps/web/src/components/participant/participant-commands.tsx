@@ -172,7 +172,9 @@ export function WorkerAssignmentCommands({
   const canWithdraw =
     assignment.lifecycle === "active" &&
     assignment.workerResponse === "accepted";
-  const canStamp = ["active", "completed"].includes(assignment.lifecycle);
+  const canStamp = ["active", "completed", "no_show"].includes(
+    assignment.lifecycle,
+  );
 
   return (
     <section className={styles.stack} aria-label="Work actions">

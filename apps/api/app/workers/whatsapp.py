@@ -4,6 +4,7 @@ from dataclasses import asdict
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal, cast
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 from psycopg.types.json import Jsonb
@@ -417,7 +418,15 @@ async def _process_message_job(
                     "entityIds": entity_ids,
                 }
             ),
-            "operational" if intent.evidence else "informational",
+            (
+                "trust"
+                if intent.action_type == "work_completion"
+                else "economic"
+                if intent.action_type == "payment_issue"
+                else "operational"
+                if intent.evidence
+                else "informational"
+            ),
         ),
     )
     return "created"
@@ -475,6 +484,100 @@ async def _resolve_active_participant_workers(
     return [dict(worker) for worker in await result.fetchall()]
 
 
+async def _resolve_closeout_workers(
+    connection: Any, channel_event_id: str
+) -> list[dict[str, Any]]:
+    result = await connection.execute(
+        """
+        select worker.person_id as worker_id
+        from public.channel_events as event
+        join public.person_phone_numbers as phone
+          on phone.phone_number = event.sender_phone_number
+         and phone.archived_at is null
+        join public.worker_profiles as worker
+          on worker.person_id = phone.person_id
+         and worker.archived_at is null and worker.record_status = 'active'
+        where event.id = %s::uuid
+        """,
+        (channel_event_id,),
+    )
+    return [dict(worker) for worker in await result.fetchall()]
+
+
+async def _resolve_closeout_hirers(
+    connection: Any, channel_event_id: str
+) -> list[dict[str, Any]]:
+    result = await connection.execute(
+        """
+        select distinct contact.person_id as asserted_by_id, contact.organisation_id
+        from public.channel_events as event
+        join public.person_phone_numbers as phone
+          on phone.phone_number = event.sender_phone_number
+         and phone.archived_at is null
+        join public.organisation_contacts as contact
+          on contact.person_id = phone.person_id and contact.archived_at is null
+        where event.id = %s::uuid
+        """,
+        (channel_event_id,),
+    )
+    return [dict(hirer) for hirer in await result.fetchall()]
+
+
+async def _resolve_closeout_entities(
+    connection: Any,
+    event: dict[str, Any],
+    channel_event_id: str,
+) -> dict[str, str]:
+    workers = await _resolve_closeout_workers(connection, channel_event_id)
+    hirers = await _resolve_closeout_hirers(connection, channel_event_id)
+    closeout_date = event["occurred_at"].astimezone(
+        ZoneInfo("Africa/Johannesburg")
+    ).date()
+    entity_ids: dict[str, str]
+    assignment_query: str
+    assignment_params: tuple[object, ...]
+    if len(workers) == 1 and not hirers:
+        worker_id = UUID(str(workers[0]["worker_id"]))
+        entity_ids = {
+            "workerId": str(worker_id),
+            "assertedById": str(worker_id),
+            "assertedRole": "worker",
+        }
+        assignment_query = "worker_id = %s"
+        assignment_params = (worker_id, closeout_date, closeout_date)
+    elif len(hirers) == 1 and not workers:
+        hirer = hirers[0]
+        entity_ids = {
+            "assertedById": str(hirer["asserted_by_id"]),
+            "assertedRole": "hirer",
+            "organisationId": str(hirer["organisation_id"]),
+        }
+        assignment_query = "organisation_id = %s"
+        assignment_params = (
+            hirer["organisation_id"],
+            closeout_date,
+            closeout_date,
+        )
+    else:
+        return {}
+    result = await connection.execute(
+        f"""
+        select id
+        from public.assignments
+        where {assignment_query}
+          and lifecycle in ('active', 'completed', 'no_show')
+          and ends_on between %s::date - 14 and %s::date
+        order by ends_on desc, created_at desc
+        limit 2
+        """,
+        assignment_params,
+    )
+    assignments = await result.fetchall()
+    if len(assignments) == 1:
+        entity_ids["assignmentId"] = str(assignments[0]["id"])
+    return entity_ids
+
+
 async def _try_execute_worker_action(
     database: Database,
     connection: Any,
@@ -485,6 +588,10 @@ async def _try_execute_worker_action(
     exact_assignment_response: bool,
 ) -> tuple[str | None, dict[str, str]]:
     workers = await _resolve_active_participant_workers(connection, channel_event_id)
+    if intent.action_type == "work_completion":
+        return None, await _resolve_closeout_entities(
+            connection, event, channel_event_id
+        )
     if len(workers) != 1:
         return None, {}
     worker = workers[0]

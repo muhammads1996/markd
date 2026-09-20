@@ -1,6 +1,6 @@
 from __future__ import annotations
-import json
 
+import json
 from dataclasses import dataclass, replace
 from time import perf_counter
 from typing import Any, Literal, cast
@@ -284,7 +284,8 @@ class OpenRouterProvider:
                 )
                 if response.status_code >= 400:
                     raise OpenRouterProviderError(
-                        f"OpenRouter request failed with status {response.status_code}: "
+                        "OpenRouter request failed with status "
+                        f"{response.status_code}: "
                         f"{response.text}",
                         _retryable_status(response.status_code),
                     )
@@ -349,6 +350,13 @@ def _intent_schema() -> dict[str, Any]:
                 "required": [
                     "availability",
                     "headcount",
+                    "attendance",
+                    "completion",
+                    "reuse_preference",
+                    "payment_state",
+                    "amount_minor",
+                    "currency",
+                    "payment_method",
                 ],
                 "properties": {
                     "availability": {
@@ -357,6 +365,41 @@ def _intent_schema() -> dict[str, Any]:
                     "headcount": {
                         "type": ["integer", "null"],
                     },
+                    "attendance": {
+                        "type": ["string", "null"],
+                        "enum": ["attended", "no_show", "unknown", None],
+                    },
+                    "completion": {
+                        "type": ["string", "null"],
+                        "enum": [
+                            "completed",
+                            "partial",
+                            "not_completed",
+                            "unknown",
+                            None,
+                        ],
+                    },
+                    "reuse_preference": {
+                        "type": ["string", "null"],
+                        "enum": ["yes", "no", "unknown", None],
+                    },
+                    "payment_state": {
+                        "type": ["string", "null"],
+                        "enum": [
+                            "unknown",
+                            "pending",
+                            "paid",
+                            "partial",
+                            "disputed",
+                            None,
+                        ],
+                    },
+                    "amount_minor": {"type": ["integer", "null"], "minimum": 0},
+                    "currency": {
+                        "type": ["string", "null"],
+                        "pattern": "^[A-Z]{3}$",
+                    },
+                    "payment_method": {"type": ["string", "null"]},
                 },
             },
             "confidence": {

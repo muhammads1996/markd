@@ -22,6 +22,15 @@ class CommandExecution:
 
 
 @dataclass(frozen=True)
+class RelatedDomainEvent:
+    event_type: str
+    aggregate_type: str
+    aggregate_id: UUID | None
+    aggregate_version: int | None
+    payload: dict[str, Any]
+
+
+@dataclass(frozen=True)
 class MutationResult:
     status_code: int
     body: dict[str, Any]
@@ -32,6 +41,7 @@ class MutationResult:
     source_channel: str | None = None
     source_channel_event_id: UUID | None = None
     source_proposed_action_id: UUID | None = None
+    related_events: tuple[RelatedDomainEvent, ...] = ()
 
 
 CommandHandler = Callable[[AsyncConnection[Any]], Awaitable[MutationResult]]
@@ -106,11 +116,23 @@ async def execute_command(
 
         command_id = created["id"]
         mutation = await handler(connection)
+        events: list[RelatedDomainEvent] = list(mutation.related_events)
         if mutation.event_type is not None:
             resource = mutation.body.get("resource", {})
             aggregate_version = resource.get("version")
+            events.insert(
+                0,
+                RelatedDomainEvent(
+                    mutation.event_type,
+                    mutation.aggregate_type,
+                    mutation.aggregate_id,
+                    aggregate_version,
+                    mutation.event_payload,
+                ),
+            )
+        for domain_event in events:
             event_payload = {
-                **mutation.event_payload,
+                **domain_event.payload,
                 "provenance": {
                     "command_id": command_id,
                     "actor_user_id": actor.user_id,
@@ -118,7 +140,7 @@ async def execute_command(
                     "source_channel": mutation.source_channel,
                     "source_channel_event_id": mutation.source_channel_event_id,
                     "source_proposed_action_id": mutation.source_proposed_action_id,
-                    "aggregate_version": aggregate_version,
+                    "aggregate_version": domain_event.aggregate_version,
                 },
             }
             event_result = await connection.execute(
@@ -133,16 +155,16 @@ async def execute_command(
                 """,
                 (
                     command_id,
-                    mutation.event_type,
-                    mutation.aggregate_type,
-                    mutation.aggregate_id,
+                    domain_event.event_type,
+                    domain_event.aggregate_type,
+                    domain_event.aggregate_id,
                     json.dumps(jsonable_encoder(event_payload)),
                     actor.user_id,
                     correlation_id,
                     mutation.source_channel,
                     mutation.source_channel_event_id,
                     mutation.source_proposed_action_id,
-                    aggregate_version,
+                    domain_event.aggregate_version,
                 ),
             )
             event = await event_result.fetchone()

@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
+from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.api.dependencies import (
@@ -18,7 +19,12 @@ from app.api.v1.labour_requests import (
     _get_assignment,
     _headers,
 )
-from app.application.dispatcher import MutationResult, execute_command
+from app.application.dispatcher import (
+    MutationResult,
+    RelatedDomainEvent,
+    execute_command,
+)
+from app.application.workmark_reconciliation import reconcile_workmark_evidence
 from app.core.auth import CurrentActor
 from app.core.problems import ProblemDetail
 from app.integrations.database import Database
@@ -60,6 +66,9 @@ class CorrectionChanges(BaseModel):
     payment_state: (
         Literal["unknown", "pending", "paid", "partial", "disputed"] | None
     ) = None
+    amount_minor: int | None = Field(default=None, ge=0)
+    currency: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")
+    payment_method: str | None = Field(default=None, max_length=80)
     worker_reuse_preference: Literal["yes", "no", "unknown"] | None = None
     organisation_reuse_preference: Literal["yes", "no", "unknown"] | None = None
 
@@ -90,6 +99,24 @@ def _require_operator_correction(actor: CurrentActor) -> None:
         "FORBIDDEN",
         "Forbidden",
         "Only an operator can resolve Workmark facts.",
+    )
+
+
+def _require_assignment_outcome_ready(assignment: dict[str, Any]) -> None:
+    if assignment["lifecycle"] != "active":
+        return
+    if (
+        assignment.get("worker_response") == "accepted"
+        and assignment.get("contractor_confirmation") == "confirmed"
+        and assignment.get("travel_authorised_at") is not None
+    ):
+        return
+    raise ProblemDetail(
+        409,
+        "WORK_NOT_TRAVEL_READY",
+        "Work is not travel-ready",
+        "Assignment closeout evidence can only be recorded after worker acceptance, "
+        "contractor confirmation, and travel authorisation.",
     )
 
 
@@ -239,122 +266,7 @@ def _api_preference(value: str) -> str:
 def _aggregate(
     stamps: list[dict[str, Any]], corrections: list[dict[str, Any]]
 ) -> dict[str, Any]:
-    def field_value(field: str) -> tuple[str, bool, set[str]]:
-        by_role: dict[str, set[str]] = {}
-        for stamp in stamps:
-            value = str(stamp[field])
-            if value != "unknown":
-                by_role.setdefault(str(stamp["asserted_role"]), set()).add(value)
-        values = set().union(*by_role.values()) if by_role else set()
-        return (
-            next(iter(values)) if len(values) == 1 else "unknown",
-            len(values) > 1,
-            set(by_role),
-        )
-
-    attendance, attendance_conflict, attendance_roles = field_value("attendance")
-    completion, completion_conflict, completion_roles = field_value("completion")
-    payment, payment_conflict, payment_roles = field_value("payment")
-    worker_reuse = "unknown"
-    worker_reuse_conflict = False
-    organisation_reuse = "unknown"
-    organisation_reuse_conflict = False
-    for role, target in (("worker", "worker_reuse"), ("hirer", "organisation_reuse")):
-        values = {
-            str(stamp["reuse_preference"])
-            for stamp in stamps
-            if stamp["asserted_role"] == role and stamp["reuse_preference"] != "unknown"
-        }
-        value = next(iter(values)) if len(values) == 1 else "unknown"
-        if role == "worker":
-            worker_reuse, worker_reuse_conflict = value, len(values) > 1
-        else:
-            organisation_reuse, organisation_reuse_conflict = value, len(values) > 1
-
-    amount_values = {
-        stamp["amount_cents"] for stamp in stamps if stamp["amount_cents"] is not None
-    }
-    currency_values = {
-        stamp["currency"] for stamp in stamps if stamp["currency"] is not None
-    }
-    method_values = {
-        stamp["payment_method"]
-        for stamp in stamps
-        if stamp["payment_method"] is not None
-    }
-    payment_conflict = (
-        payment_conflict
-        or len(amount_values) > 1
-        or len(currency_values) > 1
-        or len(method_values) > 1
-    )
-    material_conflict = any(
-        (
-            attendance_conflict,
-            completion_conflict,
-            payment_conflict,
-            worker_reuse_conflict,
-            organisation_reuse_conflict,
-        )
-    )
-    derived = {
-        "attendance": attendance,
-        "completion": completion,
-        "payment": payment,
-        "worker_reuse_preference": worker_reuse,
-        "organisation_reuse_preference": organisation_reuse,
-        "amount_cents": next(iter(amount_values)) if len(amount_values) == 1 else None,
-        "currency": next(iter(currency_values)) if len(currency_values) == 1 else None,
-        "payment_method": next(iter(method_values))
-        if len(method_values) == 1
-        else None,
-    }
-    correction_fields: set[str] = set()
-    for correction in corrections:
-        changes = correction["changes"]
-        for key, value in changes.items():
-            target = {
-                "payment_state": "payment",
-                "worker_reuse_preference": "worker_reuse_preference",
-                "organisation_reuse_preference": "organisation_reuse_preference",
-            }.get(key, key)
-            if target in derived:
-                derived[target] = (
-                    _db_preference(value)
-                    if target.endswith("reuse_preference")
-                    else value
-                )
-                correction_fields.add(target)
-    remaining_conflict = material_conflict and not (
-        correction_fields
-        >= {
-            field
-            for field, conflicted in (
-                ("attendance", attendance_conflict),
-                ("completion", completion_conflict),
-                ("payment", payment_conflict),
-                ("worker_reuse_preference", worker_reuse_conflict),
-                ("organisation_reuse_preference", organisation_reuse_conflict),
-            )
-            if conflicted
-        }
-    )
-    known_role_sets = [
-        roles for roles in (attendance_roles, completion_roles, payment_roles) if roles
-    ]
-    has_corresponding_assertions = bool(known_role_sets) and all(
-        roles == {"worker", "hirer"} for roles in known_role_sets
-    )
-    if remaining_conflict:
-        evidence_state = "conflicted"
-    elif correction_fields:
-        evidence_state = "operator_resolved"
-    elif has_corresponding_assertions:
-        evidence_state = "corroborated"
-    else:
-        evidence_state = "pending"
-    derived["evidence_state"] = evidence_state
-    return derived
+    return reconcile_workmark_evidence(stamps, corrections)
 
 
 async def _read_evidence(
@@ -364,7 +276,7 @@ async def _read_evidence(
         """
         select asserted_role, attendance::text, completion::text,
                reuse_preference::text, payment::text, amount_cents,
-               currency, payment_method
+               currency, payment_method, created_at
         from public.assignment_stamps
         where workmark_id = %s
         order by created_at, id
@@ -373,7 +285,7 @@ async def _read_evidence(
     )
     corrections_result = await connection.execute(
         """
-        select changes from public.workmark_corrections
+        select changes, created_at from public.workmark_corrections
         where workmark_id = %s
         order by created_at, id
         """,
@@ -388,15 +300,13 @@ async def _reconcile_workmark(
     connection: Any,
     workmark_id: UUID,
     assignment: dict[str, Any],
-    correction: bool = False,
-) -> tuple[dict[str, Any], str | None]:
+) -> tuple[dict[str, Any], str | None, int | None]:
     stamps, corrections = await _read_evidence(connection, workmark_id)
     aggregate = _aggregate(stamps, corrections)
-    workmark_lifecycle = (
-        "corrected"
-        if correction
-        else ("confirmed" if aggregate["evidence_state"] == "corroborated" else "draft")
-    )
+    workmark_lifecycle = {
+        "corroborated": "confirmed",
+        "operator_resolved": "corrected",
+    }.get(aggregate["evidence_state"], "draft")
     result = await connection.execute(
         """
         update public.workmarks
@@ -423,31 +333,43 @@ async def _reconcile_workmark(
     )
     updated = await result.fetchone()
     assignment_lifecycle: str | None = None
-    if assignment["lifecycle"] == "active" and aggregate["evidence_state"] in {
-        "corroborated",
-        "operator_resolved",
-    }:
-        if aggregate["attendance"] == "no_show":
+    assignment_version: int | None = None
+    authoritative_fields = aggregate.pop("authoritative_fields")
+    aggregate.pop("conflicting_fields")
+    aggregate.pop("unresolved_shared_fields")
+    if assignment["lifecycle"] == "active":
+        if (
+            "attendance" in authoritative_fields
+            and aggregate["attendance"] == "no_show"
+        ):
             assignment_lifecycle = "no_show"
         elif (
-            aggregate["attendance"] == "attended"
+            {"attendance", "completion"} <= authoritative_fields
+            and aggregate["attendance"] == "attended"
             and aggregate["completion"] == "completed"
         ):
             assignment_lifecycle = "completed"
         if assignment_lifecycle is not None:
-            await connection.execute(
+            assignment_result = await connection.execute(
                 """
                 update public.assignments
                 set lifecycle = %s, version = version + 1
                 where id = %s and lifecycle = 'active'
+                returning version
                 """,
                 (assignment_lifecycle, assignment["id"]),
             )
-    return {
-        "id": updated["id"],
-        "version": updated["version"],
-        **aggregate,
-    }, assignment_lifecycle
+            assignment_row = await assignment_result.fetchone()
+            assignment_version = assignment_row["version"]
+    return (
+        {
+            "id": updated["id"],
+            "version": updated["version"],
+            **aggregate,
+        },
+        assignment_lifecycle,
+        assignment_version,
+    )
 
 
 async def submit_assignment_stamp_mutation(
@@ -471,6 +393,7 @@ async def submit_assignment_stamp_mutation(
             "Invalid state transition",
             "Cancelled assignments cannot be rewritten by closeout evidence.",
         )
+    _require_assignment_outcome_ready(assignment)
     workmark_result = await connection.execute(
         """
         insert into public.workmarks(
@@ -479,7 +402,7 @@ async def submit_assignment_stamp_mutation(
           source_channel_event_id, source_proposed_action_id
         ) values (%s, %s, %s, %s, %s, %s, %s, 'assignment_closeout',
               'draft', %s, %s, %s)
-        on conflict (assignment_id) do nothing
+        on conflict (assignment_id) where assignment_id is not null do nothing
         returning id, version
         """,
         (
@@ -505,7 +428,7 @@ async def submit_assignment_stamp_mutation(
         )
         workmark = await existing_result.fetchone()
     workmark_id = workmark["id"]
-    await connection.execute(
+    stamp_result = await connection.execute(
         """
         insert into public.assignment_stamps(
           assignment_id, workmark_id, asserted_by_person_id, recorded_by_user_id,
@@ -535,14 +458,8 @@ async def submit_assignment_stamp_mutation(
             occurred_at or datetime.now(UTC),
         ),
     )
-    stamp = await (
-        await connection.execute(
-            "select id from public.assignment_stamps "
-            "where workmark_id = %s order by created_at desc, id desc limit 1",
-            (workmark_id,),
-        )
-    ).fetchone()
-    workmark, assignment_lifecycle = await _reconcile_workmark(
+    stamp = await stamp_result.fetchone()
+    workmark, assignment_lifecycle, assignment_version = await _reconcile_workmark(
         connection, workmark_id, assignment
     )
     body = _command_body("workmark", workmark_id, workmark["version"])
@@ -555,6 +472,25 @@ async def submit_assignment_stamp_mutation(
             "arranged": True,
         }
     )
+    related_events = (
+        (
+            RelatedDomainEvent(
+                "assignment.completed"
+                if assignment_lifecycle == "completed"
+                else "assignment.no_show",
+                "assignment",
+                assignment_id,
+                assignment_version,
+                {
+                    "assignment_id": str(assignment_id),
+                    "outcome": assignment_lifecycle,
+                    "workmark_id": str(workmark_id),
+                },
+            ),
+        )
+        if assignment_lifecycle is not None
+        else ()
+    )
     return MutationResult(
         201,
         body,
@@ -565,6 +501,7 @@ async def submit_assignment_stamp_mutation(
         source,
         source_channel_event_id,
         source_proposed_action_id,
+        related_events,
     )
 
 
@@ -619,7 +556,7 @@ async def correct_workmark(
         )
         _require_operator_correction(actor)
         _check_version(workmark, input.expected_version)
-        await connection.execute(
+        correction_result = await connection.execute(
             """
             insert into public.workmark_corrections(
               workmark_id, reason, changes, asserted_by_person_id, recorded_by_user_id,
@@ -630,7 +567,7 @@ async def correct_workmark(
             (
                 workmark_id,
                 input.reason,
-                input.changes.model_dump(mode="json", exclude_none=True),
+                Jsonb(input.changes.model_dump(mode="json", exclude_none=True)),
                 actor.claims.get("participant_person_id"),
                 actor.user_id,
                 source,
@@ -639,16 +576,12 @@ async def correct_workmark(
                 datetime.now(UTC),
             ),
         )
-        correction = await (
-            await connection.execute(
-                "select id from public.workmark_corrections "
-                "where workmark_id = %s order by created_at desc, id desc limit 1",
-                (workmark_id,),
-            )
-        ).fetchone()
-        reconciled, assignment_lifecycle = await _reconcile_workmark(
-            connection, workmark_id, assignment, correction=True
-        )
+        correction = await correction_result.fetchone()
+        (
+            reconciled,
+            assignment_lifecycle,
+            assignment_version,
+        ) = await _reconcile_workmark(connection, workmark_id, assignment)
         body = _command_body("workmark", workmark_id, reconciled["version"])
         body.update(
             {
@@ -658,6 +591,25 @@ async def correct_workmark(
                 "arranged": True,
             }
         )
+        related_events = (
+            (
+                RelatedDomainEvent(
+                    "assignment.completed"
+                    if assignment_lifecycle == "completed"
+                    else "assignment.no_show",
+                    "assignment",
+                    assignment["id"],
+                    assignment_version,
+                    {
+                        "assignment_id": str(assignment["id"]),
+                        "outcome": assignment_lifecycle,
+                        "workmark_id": str(workmark_id),
+                    },
+                ),
+            )
+            if assignment_lifecycle is not None
+            else ()
+        )
         return MutationResult(
             200,
             body,
@@ -666,6 +618,7 @@ async def correct_workmark(
             workmark_id,
             jsonable_encoder(body),
             source,
+            related_events=related_events,
         )
 
     execution = await execute_command(

@@ -569,7 +569,9 @@ async def test_whatsapp_terminal_conflict_is_not_drafted(
     )
 
     assignment_lookup = next(
-        query for query, _ in connection.calls if "select id from public.assignments" in query
+        query
+        for query, _ in connection.calls
+        if "select id from public.assignments" in query
     )
     assert outcome == "conflicted"
     assert "worker_response" not in assignment_lookup
@@ -1039,6 +1041,26 @@ async def test_openrouter_retries_the_configured_fallback_model() -> None:
     async def handler(request: Request) -> Response:
         body = json.loads(request.content)
         requested_models.append(body["model"])
+        fields = body["response_format"]["json_schema"]["schema"]["properties"][
+            "fields"
+        ]
+        assert fields["required"] == [
+            "availability",
+            "headcount",
+            "attendance",
+            "completion",
+            "reuse_preference",
+            "payment_state",
+            "amount_minor",
+            "currency",
+            "payment_method",
+        ]
+        assert fields["properties"]["attendance"]["enum"] == [
+            "attended",
+            "no_show",
+            "unknown",
+            None,
+        ]
         if body["model"] == "primary-model":
             return Response(503)
         return Response(

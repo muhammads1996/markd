@@ -52,19 +52,72 @@ export async function confirmProposedAction(
 
   try {
     const api = await createMarkdApiClient();
-    await api.json(`/api/v1/proposed-actions/${id}/approve`, {
-      body: JSON.stringify({
-        action_type: actionType,
-        fields,
-        entity_ids: entityIds,
-        resolve_ambiguity: ambiguity !== "clear",
-      }),
-      headers: {
-        "Content-Type": "application/json",
-        "Idempotency-Key": `proposed-action-approve-${id}`,
+    const isWorkCompletion = actionType === "work_completion";
+    const assignmentId = entityIds.assignmentId;
+    const assertedById = entityIds.assertedById ?? entityIds.workerId;
+    const assertedRole =
+      entityIds.assertedRole ?? (entityIds.workerId ? "worker" : undefined);
+    if (
+      isWorkCompletion &&
+      (!assignmentId ||
+        !assertedById ||
+        (assertedRole !== "worker" && assertedRole !== "hirer"))
+    ) {
+      return {
+        error:
+          "This WhatsApp closeout has unresolved source evidence. Capture it as a new Ops Stamp instead.",
+      };
+    }
+    const paymentAmount = fields.amount_minor;
+    const paymentCurrency = fields.currency;
+    const requestBody = isWorkCompletion
+      ? {
+          work_completion: {
+            assignment_id: assignmentId,
+            stamp: {
+              attendance: fields.attendance,
+              completion: fields.completion,
+              reuse_preference: fields.reuse_preference,
+              payment: {
+                state: fields.payment_state,
+                ...(typeof paymentAmount === "number"
+                  ? { amount_minor: paymentAmount }
+                  : {}),
+                ...(typeof paymentCurrency === "string" && paymentCurrency
+                  ? { currency: paymentCurrency.toUpperCase() }
+                  : {}),
+                ...(typeof fields.payment_method === "string" &&
+                fields.payment_method
+                  ? { method: fields.payment_method }
+                  : {}),
+              },
+              ...(typeof fields.note === "string" && fields.note
+                ? { note: fields.note }
+                : {}),
+              asserted_by: assertedById,
+              asserted_role: assertedRole,
+            },
+          },
+        }
+      : {
+          action_type: actionType,
+          fields,
+          entity_ids: entityIds,
+          resolve_ambiguity: ambiguity !== "clear",
+        };
+    await api.json(
+      `/api/v1/proposed-actions/${id}/${isWorkCompletion ? "confirm" : "approve"}`,
+      {
+        body: JSON.stringify({
+          ...requestBody,
+        }),
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": `proposed-action-${isWorkCompletion ? "confirm" : "approve"}-${id}`,
+        },
+        method: "POST",
       },
-      method: "POST",
-    });
+    );
   } catch {
     return { error: "Unable to confirm this proposed action." };
   }

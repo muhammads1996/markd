@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Any, Literal, cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException
@@ -14,6 +14,10 @@ from app.api.v1.labour_requests import (
     cancel_assignment_mutation,
     confirm_assignment_mutation,
     create_labour_request_mutation,
+)
+from app.api.v1.workmarks import (
+    AssignmentStampInput,
+    submit_assignment_stamp_mutation,
 )
 from app.application.dispatcher import MutationResult, execute_command
 from app.core.auth import CurrentActor
@@ -62,10 +66,16 @@ class CancelAssignmentActionInput(BaseModel):
     expected_version: int | None = Field(default=None, ge=1)
 
 
+class WorkCompletionActionInput(BaseModel):
+    assignment_id: UUID
+    stamp: AssignmentStampInput
+
+
 class ConfirmProposedActionInput(BaseModel):
     labour_request: CreateLabourRequestInput | None = None
     assignment_confirmation: ConfirmAssignmentActionInput | None = None
     assignment_cancellation: CancelAssignmentActionInput | None = None
+    work_completion: WorkCompletionActionInput | None = None
 
     @model_validator(mode="after")
     def validate_action_payload(self) -> "ConfirmProposedActionInput":
@@ -76,12 +86,94 @@ class ConfirmProposedActionInput(BaseModel):
                     self.labour_request,
                     self.assignment_confirmation,
                     self.assignment_cancellation,
+                    self.work_completion,
                 )
             )
             != 1
         ):
             raise ValueError("Exactly one Proposed Action payload is required.")
         return self
+
+
+def _bound_work_completion(
+    payload: object,
+    requested: WorkCompletionActionInput,
+) -> WorkCompletionActionInput:
+    """Keep a WhatsApp assertion bound to the sender/assignment resolved at intake.
+
+    An operator may complete the proposed facts, but cannot make source WhatsApp
+    evidence look like a statement from another person or assignment. Ambiguous
+    actions must instead be captured through the normal Ops Stamp command.
+    """
+    if not isinstance(payload, dict):
+        raise ProblemDetail(
+            409,
+            "UNRESOLVED_SOURCE_EVIDENCE",
+            "Source evidence is unresolved",
+            "This WhatsApp closeout needs sender and Assignment resolution before it "
+            "can be confirmed.",
+        )
+    raw_entity_ids = payload.get("entityIds")
+    if not isinstance(raw_entity_ids, dict):
+        raise ProblemDetail(
+            409,
+            "UNRESOLVED_SOURCE_EVIDENCE",
+            "Source evidence is unresolved",
+            "This WhatsApp closeout needs sender and Assignment resolution before it "
+            "can be confirmed.",
+        )
+    entity_ids = cast(dict[str, object], raw_entity_ids)
+    raw_assignment_id = entity_ids.get("assignmentId")
+    raw_asserted_by = entity_ids.get("assertedById", entity_ids.get("workerId"))
+    raw_asserted_role = entity_ids.get("assertedRole")
+    if raw_asserted_role is None and "workerId" in entity_ids:
+        raw_asserted_role = "worker"
+    if (
+        not isinstance(raw_assignment_id, str)
+        or not isinstance(raw_asserted_by, str)
+        or raw_asserted_role not in {"worker", "hirer"}
+    ):
+        raise ProblemDetail(
+            409,
+            "UNRESOLVED_SOURCE_EVIDENCE",
+            "Source evidence is unresolved",
+            "This WhatsApp closeout needs sender and Assignment resolution before it "
+            "can be confirmed.",
+        )
+    try:
+        assignment_id = UUID(raw_assignment_id)
+        asserted_by = UUID(raw_asserted_by)
+    except ValueError as error:
+        raise ProblemDetail(
+            409,
+            "UNRESOLVED_SOURCE_EVIDENCE",
+            "Source evidence is unresolved",
+            "This WhatsApp closeout has invalid sender or Assignment resolution.",
+        ) from error
+    asserted_role = cast(Literal["worker", "hirer"], raw_asserted_role)
+    if requested.assignment_id != assignment_id:
+        raise ProblemDetail(
+            409,
+            "SOURCE_BINDING_MISMATCH",
+            "Source evidence cannot be reassigned",
+            "The Assignment must match the WhatsApp sender resolution.",
+        )
+    if (
+        requested.stamp.asserted_by not in {None, asserted_by}
+        or requested.stamp.asserted_role not in {None, asserted_role}
+    ):
+        raise ProblemDetail(
+            409,
+            "SOURCE_BINDING_MISMATCH",
+            "Source evidence cannot be reassigned",
+            "The asserted person and role must match the WhatsApp sender resolution.",
+        )
+    return WorkCompletionActionInput(
+        assignment_id=assignment_id,
+        stamp=requested.stamp.model_copy(
+            update={"asserted_by": asserted_by, "asserted_role": asserted_role}
+        ),
+    )
 
 
 def _headers(command_id: UUID, replayed: bool) -> dict[str, str]:
@@ -105,9 +197,11 @@ async def confirm_labour_request_action(
     async def handler(connection: Any) -> MutationResult:
         result = await connection.execute(
             """
-            select id, action_type, state, channel_event_id
-            from public.proposed_actions
-            where id = %s for update
+            select action.id, action.action_type, action.state, action.payload,
+                   action.channel_event_id, event.occurred_at
+            from public.proposed_actions as action
+            join public.channel_events as event on event.id = action.channel_event_id
+            where action.id = %s for update of action
             """,
             (action_id,),
         )
@@ -191,6 +285,27 @@ async def confirm_labour_request_action(
                 actor,
                 input.assignment_cancellation.assignment_id,
                 cancellation_input,
+            )
+        elif action["action_type"] == "work_completion":
+            if input.work_completion is None:
+                raise ProblemDetail(
+                    422,
+                    "INVALID_PAYLOAD",
+                    "Invalid payload",
+                    "A work completion payload is required.",
+                )
+            bound = _bound_work_completion(
+                action["payload"], input.work_completion
+            )
+            mutation = await submit_assignment_stamp_mutation(
+                connection,
+                actor,
+                bound.assignment_id,
+                bound.stamp,
+                source="whatsapp",
+                source_channel_event_id=action["channel_event_id"],
+                source_proposed_action_id=action_id,
+                occurred_at=action["occurred_at"],
             )
         else:
             raise ProblemDetail(
