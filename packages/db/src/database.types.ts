@@ -980,47 +980,107 @@ export type Database = {
           },
         ]
       }
+      exception_case_migration_archive: {
+        Row: {
+          archived_at: string
+          original_exception_case_id: string
+          reason: string
+          snapshot: Json
+        }
+        Insert: {
+          archived_at?: string
+          original_exception_case_id: string
+          reason: string
+          snapshot: Json
+        }
+        Update: {
+          archived_at?: string
+          original_exception_case_id?: string
+          reason?: string
+          snapshot?: Json
+        }
+        Relationships: []
+      }
       exception_cases: {
         Row: {
           archived_at: string | null
-          assignment_id: string | null
+          assignment_id: string
           category: string
           created_at: string
           id: string
+          interpretation: Json | null
+          opened_at: string
           opened_by_person_id: string | null
+          recorded_at: string
+          recorded_by_user_id: string | null
+          resolution_actor_kind: string | null
+          resolution_evidence: Json | null
+          resolution_outcome: string | null
+          resolution_reason: string | null
+          resolved_at: string | null
+          resolved_by_user_id: string | null
           source: string
           source_channel_event_id: string | null
           source_proposed_action_id: string | null
           state: Database["public"]["Enums"]["exception_state"]
+          summary: string
           updated_at: string
+          version: number
+          workmark_correction_id: string | null
           workmark_id: string | null
         }
         Insert: {
           archived_at?: string | null
-          assignment_id?: string | null
+          assignment_id: string
           category: string
           created_at?: string
           id?: string
+          interpretation?: Json | null
+          opened_at?: string
           opened_by_person_id?: string | null
+          recorded_at?: string
+          recorded_by_user_id?: string | null
+          resolution_actor_kind?: string | null
+          resolution_evidence?: Json | null
+          resolution_outcome?: string | null
+          resolution_reason?: string | null
+          resolved_at?: string | null
+          resolved_by_user_id?: string | null
           source: string
           source_channel_event_id?: string | null
           source_proposed_action_id?: string | null
           state?: Database["public"]["Enums"]["exception_state"]
+          summary: string
           updated_at?: string
+          version?: number
+          workmark_correction_id?: string | null
           workmark_id?: string | null
         }
         Update: {
           archived_at?: string | null
-          assignment_id?: string | null
+          assignment_id?: string
           category?: string
           created_at?: string
           id?: string
+          interpretation?: Json | null
+          opened_at?: string
           opened_by_person_id?: string | null
+          recorded_at?: string
+          recorded_by_user_id?: string | null
+          resolution_actor_kind?: string | null
+          resolution_evidence?: Json | null
+          resolution_outcome?: string | null
+          resolution_reason?: string | null
+          resolved_at?: string | null
+          resolved_by_user_id?: string | null
           source?: string
           source_channel_event_id?: string | null
           source_proposed_action_id?: string | null
           state?: Database["public"]["Enums"]["exception_state"]
+          summary?: string
           updated_at?: string
+          version?: number
+          workmark_correction_id?: string | null
           workmark_id?: string | null
         }
         Relationships: [
@@ -1067,6 +1127,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "exception_cases_workmark_correction_id_fkey"
+            columns: ["workmark_correction_id"]
+            isOneToOne: false
+            referencedRelation: "workmark_corrections"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "exception_cases_workmark_id_fkey"
             columns: ["workmark_id"]
             isOneToOne: false
@@ -1078,6 +1145,96 @@ export type Database = {
             columns: ["workmark_id"]
             isOneToOne: false
             referencedRelation: "workmarks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exception_claims: {
+        Row: {
+          asserted_by_person_id: string | null
+          asserted_role: string
+          assertion: Json
+          category: string
+          created_at: string
+          evidence_refs: Json
+          exception_case_id: string
+          id: string
+          occurred_at: string
+          recorded_by_user_id: string
+          source: string
+          source_channel_event_id: string | null
+          source_proposed_action_id: string | null
+          source_reference: string | null
+          statement: string
+        }
+        Insert: {
+          asserted_by_person_id?: string | null
+          asserted_role: string
+          assertion: Json
+          category: string
+          created_at?: string
+          evidence_refs?: Json
+          exception_case_id: string
+          id?: string
+          occurred_at?: string
+          recorded_by_user_id: string
+          source: string
+          source_channel_event_id?: string | null
+          source_proposed_action_id?: string | null
+          source_reference?: string | null
+          statement: string
+        }
+        Update: {
+          asserted_by_person_id?: string | null
+          asserted_role?: string
+          assertion?: Json
+          category?: string
+          created_at?: string
+          evidence_refs?: Json
+          exception_case_id?: string
+          id?: string
+          occurred_at?: string
+          recorded_by_user_id?: string
+          source?: string
+          source_channel_event_id?: string | null
+          source_proposed_action_id?: string | null
+          source_reference?: string | null
+          statement?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exception_claims_asserted_by_person_id_fkey"
+            columns: ["asserted_by_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exception_claims_exception_case_id_fkey"
+            columns: ["exception_case_id"]
+            isOneToOne: false
+            referencedRelation: "exception_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exception_claims_exception_case_id_fkey"
+            columns: ["exception_case_id"]
+            isOneToOne: false
+            referencedRelation: "operator_exception_queue"
+            referencedColumns: ["exception_id"]
+          },
+          {
+            foreignKeyName: "exception_claims_source_channel_event_id_fkey"
+            columns: ["source_channel_event_id"]
+            isOneToOne: false
+            referencedRelation: "channel_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exception_claims_source_proposed_action_id_fkey"
+            columns: ["source_proposed_action_id"]
+            isOneToOne: false
+            referencedRelation: "proposed_actions"
             referencedColumns: ["id"]
           },
         ]
@@ -2894,6 +3051,159 @@ export type Database = {
       }
     }
     Views: {
+      operator_exception_queue: {
+        Row: {
+          assignment_id: string | null
+          assignment_lifecycle: string | null
+          cancelled_after_travel_authorised: boolean | null
+          category: string | null
+          claim_count: number | null
+          claims: Json | null
+          ends_on: string | null
+          exception_id: string | null
+          hirer_claimant_id: string | null
+          hirer_claimant_name: string | null
+          hirer_name: string | null
+          hirer_person_id: string | null
+          job_currency: string | null
+          job_needed_at: string | null
+          job_needed_from: string | null
+          job_needed_to: string | null
+          job_rate_cents: number | null
+          job_terms: string | null
+          last_claim_at: string | null
+          latest_claim_asserted_by: string | null
+          latest_claim_assertion: Json | null
+          latest_claim_category: string | null
+          latest_claim_evidence_refs: Json | null
+          latest_claim_id: string | null
+          latest_claim_occurred_at: string | null
+          latest_claim_role: string | null
+          latest_claim_source: string | null
+          latest_claim_statement: string | null
+          opened_at: string | null
+          opened_by_person_id: string | null
+          organisation_id: string | null
+          organisation_name: string | null
+          recorded_by_user_id: string | null
+          resolution_actor_kind: string | null
+          resolution_evidence: Json | null
+          resolution_outcome: string | null
+          resolution_reason: string | null
+          resolved_at: string | null
+          resolved_by_user_id: string | null
+          site_name: string | null
+          stamp_count: number | null
+          stamps: Json | null
+          starts_on: string | null
+          state: Database["public"]["Enums"]["exception_state"] | null
+          summary: string | null
+          travel_authorised_at: string | null
+          updated_at: string | null
+          version: number | null
+          work_type: string | null
+          worker_id: string | null
+          worker_name: string | null
+          workmark_evidence: Json | null
+          workmark_evidence_state:
+            | Database["public"]["Enums"]["workmark_evidence_state"]
+            | null
+          workmark_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_hirer_person_id_fkey"
+            columns: ["hirer_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "operator_work_cards"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_candidate_summary"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_card"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_home"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_profile_preferences"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "exception_cases_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exception_cases_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "participant_contractor_assignments"
+            referencedColumns: ["assignment_id"]
+          },
+          {
+            foreignKeyName: "exception_cases_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "participant_worker_assignments"
+            referencedColumns: ["assignment_id"]
+          },
+          {
+            foreignKeyName: "exception_cases_opened_by_person_id_fkey"
+            columns: ["opened_by_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exception_claims_asserted_by_person_id_fkey"
+            columns: ["latest_claim_asserted_by"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operator_work_cards: {
         Row: {
           confirmed_workmark_count: number | null
@@ -3882,7 +4192,7 @@ export type Database = {
         | "disputed"
         | "partial"
         | "not_completed"
-      exception_state: "open" | "investigating" | "resolved" | "dismissed"
+      exception_state: "open" | "under_review" | "resolved"
       operator_role: "ops_admin" | "ops_user"
       participant_account_status: "active" | "disabled"
       participant_scope_kind: "worker" | "contractor"
@@ -4075,7 +4385,7 @@ export const Constants = {
         "partial",
         "not_completed",
       ],
-      exception_state: ["open", "investigating", "resolved", "dismissed"],
+      exception_state: ["open", "under_review", "resolved"],
       operator_role: ["ops_admin", "ops_user"],
       participant_account_status: ["active", "disabled"],
       participant_scope_kind: ["worker", "contractor"],

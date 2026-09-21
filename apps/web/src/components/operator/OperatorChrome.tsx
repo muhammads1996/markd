@@ -3,6 +3,7 @@
 import {
   Home,
   Inbox,
+  CircleAlert,
   LogOut,
   Search,
   UserPlus,
@@ -33,6 +34,12 @@ const navigation: NavigationItem[] = [
     icon: Inbox,
     label: "Inbox",
     match: (pathname) => pathname.startsWith("/operator/inbox"),
+  },
+  {
+    href: "/operator/exceptions",
+    icon: CircleAlert,
+    label: "Exceptions",
+    match: (pathname) => pathname.startsWith("/operator/exceptions"),
   },
   {
     href: "/operator/onboard",

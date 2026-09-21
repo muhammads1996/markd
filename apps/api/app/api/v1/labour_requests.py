@@ -298,7 +298,7 @@ async def _has_blocking_exception(connection: Any, assignment_id: UUID) -> bool:
         select exists(
           select 1 from public.exception_cases
           where assignment_id = %s
-            and state in ('open', 'investigating')
+            and state in ('open', 'under_review')
             and archived_at is null
         ) as blocked
         """,
