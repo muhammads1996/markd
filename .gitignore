@@ -68,3 +68,7 @@ Thumbs.db
 
 *.pyc
 __pycache__/
+
+uv.lock
+pyproject.toml
+*.tsbuildinfo
