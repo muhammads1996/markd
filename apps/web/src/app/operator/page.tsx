@@ -52,13 +52,18 @@ export default async function OperatorPage() {
               <strong>Review Inbox</strong>
               <small>Check proposed WhatsApp actions</small>
             </a>
+            <a href="/operator/exceptions">
+              <span>03</span>
+              <strong>Review Exceptions</strong>
+              <small>Keep claims, evidence and resolutions together</small>
+            </a>
             <a href="/operator/onboard">
-              <span>02</span>
+              <span>04</span>
               <strong>Add a record</strong>
               <small>Capture a worker or contractor</small>
             </a>
             <a href="/search">
-              <span>03</span>
+              <span>05</span>
               <strong>Search Work Graph</strong>
               <small>Find people, work and places</small>
             </a>

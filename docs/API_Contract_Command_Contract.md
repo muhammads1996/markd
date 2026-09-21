@@ -630,24 +630,69 @@ Body:
 
 ```json
 {
-  "type": "unpaid|disputed|no_show|contractor_cancelled|completion_dispute|verification_concern|other",
-  "summary": "string"
+  "type": "payment_dispute|attendance_dispute|completion_dispute|no_show_concern|cancelled_after_commitment|cancelled_after_travel_authorisation|ambiguous_completion|verification_trust_concern",
+  "summary": "string",
+  "workmark_id": "uuid|null",
+  "asserted_by": "uuid|null",
+  "asserted_role": "worker|hirer|operator|null",
+  "assertion": {},
+  "statement": "original participant or operator wording",
+  "source": "api|operator_ui|call|in_person",
+  "source_reference": "string|null",
+  "evidence_refs": []
 }
 ```
 
-Opening an exception is not automatically a trusted Work Graph fact.
+The authenticated participant is always resolved server-side. `asserted_by` and
+`asserted_role` are available only for authorised Ops capture on another
+participant's behalf. Opening an exception records an initial attributable
+claim; it is not automatically a trusted Work Graph fact. Channel-event,
+ProposedAction and interpretation metadata are trusted internal command
+context, never client-supplied identifiers.
 
 ## `POST /api/v1/exceptions/{exception_id}/claims`
 
 Command: `AddExceptionClaim`
 
-Preserve claimant identity, source and evidence separately from counterclaims.
+Body:
+
+```json
+{
+  "statement": "original participant or operator wording",
+  "assertion": {},
+  "asserted_by": "uuid|null",
+  "asserted_role": "worker|hirer|operator|null",
+  "source": "api|operator_ui|call|in_person",
+  "source_reference": "string|null",
+  "evidence_refs": []
+}
+```
+
+Preserve claimant identity, recorder identity, source and evidence separately
+from counterclaims. The claim category is the parent ExceptionCase category;
+participant clients cannot assert for another person. A follow-up claim
+progresses an open case to `under_review`; prior claims are append-only.
 
 ## `POST /api/v1/exceptions/{exception_id}/resolve`
 
 Command: `ResolveAssignmentException`
 
-Ops/policy-controlled. Resolution preserves the original claims and adds resolution provenance.
+Body:
+
+```json
+{
+  "outcome": "string",
+  "reason": "string",
+  "evidence": {},
+  "workmark_correction_id": "uuid|null",
+  "expected_version": 2
+}
+```
+
+Ops/policy-controlled. Resolution preserves the original claims and adds
+resolution provenance. `workmark_correction_id`, when present, references an
+already-applied FLO-114 correction; exception code never rewrites Workmark
+evidence directly.
 
 ---
 
@@ -746,6 +791,8 @@ workmark.created
 workmark.updated
 workmark.corrected
 exception.opened
+exception.claim_added
+exception.status_changed
 exception.resolved
 ```
 

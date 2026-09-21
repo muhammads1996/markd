@@ -54,3 +54,37 @@ test("keeps operator navigation and Inbox review controls usable", async ({
     await removePendingInboxItem(inboxItem);
   }
 });
+
+test("keeps the private exceptions queue usable on a phone", async ({
+  page,
+  loggedInAsOperator,
+}) => {
+  expect(loggedInAsOperator.role).toBe("ops_user");
+
+  await page.goto("/operator/exceptions");
+
+  await expect(page.getByRole("heading", { name: "Exceptions" })).toBeVisible();
+  const exception = page.getByRole("article").filter({
+    hasText: "Synthetic follow-up",
+  });
+  await expect(exception.getByText("Synthetic follow-up")).toBeVisible();
+  await expect(exception.getByRole("heading", { name: "Anele Sample" })).toBeVisible();
+  await expect(exception.getByText("Example Build", { exact: true })).toBeVisible();
+  await expect(
+    exception.getByRole("heading", { name: "Participant-separated claims" }),
+  ).toBeVisible();
+  await expect(
+    exception.getByRole("heading", { name: "Workmark and Stamp evidence" }),
+  ).toBeVisible();
+  await expect(
+    exception.getByText("Add a participant counterclaim or review note."),
+  ).toBeVisible();
+  await expect(
+    exception.getByText("Add claim / operator note"),
+  ).toBeVisible();
+  await exception.getByText("Add claim / operator note").click();
+  await expect(exception.getByRole("button", { name: "Add claim" })).toBeVisible();
+  await expect(exception.getByLabel("Source")).toHaveValue("operator_ui");
+  await expect(page.getByText("Open an exception")).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});
