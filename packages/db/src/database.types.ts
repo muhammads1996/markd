@@ -1963,6 +1963,87 @@ export type Database = {
           },
         ]
       }
+      semantic_decisions: {
+        Row: {
+          answers: Json
+          bundle_name: string
+          bundle_version: string
+          channel_event_id: string
+          created_at: string
+          decision_provider: string
+          duration_ms: number | null
+          handling_outcome: string
+          id: string
+          input_hash: string
+          language_code: string | null
+          metadata: Json
+          mode: Database["public"]["Enums"]["semantic_decision_mode"]
+          model_version: string | null
+          policy_outcome: string
+          policy_reason: string
+          proposed_action_id: string | null
+          status: Database["public"]["Enums"]["semantic_decision_status"]
+          updated_at: string
+        }
+        Insert: {
+          answers?: Json
+          bundle_name: string
+          bundle_version: string
+          channel_event_id: string
+          created_at?: string
+          decision_provider: string
+          duration_ms?: number | null
+          handling_outcome?: string
+          id?: string
+          input_hash: string
+          language_code?: string | null
+          metadata?: Json
+          mode: Database["public"]["Enums"]["semantic_decision_mode"]
+          model_version?: string | null
+          policy_outcome: string
+          policy_reason: string
+          proposed_action_id?: string | null
+          status: Database["public"]["Enums"]["semantic_decision_status"]
+          updated_at?: string
+        }
+        Update: {
+          answers?: Json
+          bundle_name?: string
+          bundle_version?: string
+          channel_event_id?: string
+          created_at?: string
+          decision_provider?: string
+          duration_ms?: number | null
+          handling_outcome?: string
+          id?: string
+          input_hash?: string
+          language_code?: string | null
+          metadata?: Json
+          mode?: Database["public"]["Enums"]["semantic_decision_mode"]
+          model_version?: string | null
+          policy_outcome?: string
+          policy_reason?: string
+          proposed_action_id?: string | null
+          status?: Database["public"]["Enums"]["semantic_decision_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "semantic_decisions_channel_event_id_fkey"
+            columns: ["channel_event_id"]
+            isOneToOne: false
+            referencedRelation: "channel_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "semantic_decisions_proposed_action_id_fkey"
+            columns: ["proposed_action_id"]
+            isOneToOne: false
+            referencedRelation: "proposed_actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sites: {
         Row: {
           archived_at: string | null
@@ -4217,6 +4298,8 @@ export type Database = {
         | "expired"
       record_status: "draft" | "active" | "inactive"
       reuse_preference: "unknown" | "would_reuse" | "would_not_reuse"
+      semantic_decision_mode: "shadow" | "active"
+      semantic_decision_status: "succeeded" | "failed"
       workmark_evidence_state:
         | "pending"
         | "corroborated"
@@ -4413,6 +4496,8 @@ export const Constants = {
       ],
       record_status: ["draft", "active", "inactive"],
       reuse_preference: ["unknown", "would_reuse", "would_not_reuse"],
+      semantic_decision_mode: ["shadow", "active"],
+      semantic_decision_status: ["succeeded", "failed"],
       workmark_evidence_state: [
         "pending",
         "corroborated",

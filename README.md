@@ -47,6 +47,9 @@ database lease/retry functions and records terminal failures for Ops.
   production execution runtime for WhatsApp, provider orchestration, and
   background work. The credentialed provider smoke sequence is documented in
   [whatsapp-openrouter-pilot-smoke.md](docs/operations/whatsapp-openrouter-pilot-smoke.md).
+- TypeSafe/Jev semantic decisioning is also FastAPI-only and defaults to off.
+  Its shadow-mode setup, safety boundaries, and multilingual evaluation are in
+  [flo-133-semantic-decision-layer.md](docs/operations/flo-133-semantic-decision-layer.md).
 
 ## Quality checks
 
@@ -56,6 +59,7 @@ corepack pnpm lint
 corepack pnpm api:lint
 corepack pnpm api:typecheck
 corepack pnpm api:test
+corepack pnpm api:test:semantic-eval -- --json
 corepack pnpm api:worker
 corepack pnpm api:openapi:check
 corepack pnpm typecheck

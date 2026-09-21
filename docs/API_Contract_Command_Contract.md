@@ -44,6 +44,17 @@ A PWA action, Ops action and validated WhatsApp action that mean the same thing 
 
 Transport adapters may normalise input, but they do not own business lifecycle state.
 
+### Semantic-decision evidence (FLO-133)
+
+The durable WhatsApp worker may ask a configured server-only
+`SemanticDecisionProvider` bounded, versioned questions after `ChannelEvent`
+persistence. Results are provider-neutral `semantic_decisions` evidence, not
+commands or canonical facts. They may inform routing or a ProposedAction draft
+only through application policy; exact data and all command/state validation
+remain deterministic. Jev cannot authorise travel, resolve an exception,
+declare payment/no-show truth, or write a Workmark. The webhook acknowledgement
+remains model-free.
+
 ---
 
 # 1. API conventions

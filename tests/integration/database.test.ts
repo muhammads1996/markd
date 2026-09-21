@@ -84,6 +84,7 @@ const domainTables = [
   "person_phone_numbers",
   "person_private_details",
   "proposed_actions",
+  "semantic_decisions",
   "sites",
   "skills",
   "verification_claims",

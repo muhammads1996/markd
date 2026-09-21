@@ -16,6 +16,7 @@
     "api:lint": "uv run --project apps/api ruff check apps/api/app apps/api/tests apps/api/run.py",
     "api:typecheck": "set MYPYPATH=apps/api&& uv run --project apps/api mypy apps/api/app apps/api/scripts apps/api/run.py",
     "api:test:providers": "uv run --project apps/api python apps/api/scripts/provider_smoke.py",
+    "api:test:semantic-eval": "uv run --project apps/api python apps/api/scripts/semantic_eval.py",
     "api:openapi": "uv run --project apps/api python apps/api/scripts/export_openapi.py",
     "api:openapi:check": "corepack pnpm api:openapi && git diff --exit-code -- docs/openapi.yaml",
     "build": "corepack pnpm --filter @markd/web build",

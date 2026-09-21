@@ -545,6 +545,14 @@ async def confirm_labour_request_action(
             "update public.proposed_actions set state = 'executed' where id = %s",
             (action_id,),
         )
+        await connection.execute(
+            """
+            update public.semantic_decisions
+            set handling_outcome = 'confirmed'
+            where proposed_action_id = %s::uuid
+            """,
+            (action_id,),
+        )
         return mutation
 
     execution = await execute_command(
@@ -634,6 +642,11 @@ async def approve_proposed_action(
             ),
         )
         row = await result.fetchone()
+        handling_outcome = (
+            "corrected"
+            if input.fields or input.entity_ids or input.resolve_ambiguity
+            else "confirmed"
+        )
         if input.action_type == "payment_issue":
             payment_input = _payment_issue_from_approval(dict(existing), input)
             mutation = await open_exception_mutation(
@@ -650,6 +663,14 @@ async def approve_proposed_action(
                 "update public.proposed_actions set state = 'executed' where id = %s",
                 (action_id,),
             )
+            await connection.execute(
+                """
+                update public.semantic_decisions
+                set handling_outcome = %s
+                where proposed_action_id = %s::uuid
+                """,
+                (handling_outcome, action_id),
+            )
             return replace(
                 mutation,
                 related_events=mutation.related_events
@@ -663,6 +684,14 @@ async def approve_proposed_action(
                     ),
                 ),
             )
+        await connection.execute(
+            """
+            update public.semantic_decisions
+            set handling_outcome = %s
+            where proposed_action_id = %s::uuid
+            """,
+            (handling_outcome, action_id),
+        )
         body = {
             "action_id": str(action_id),
             "state": "approved",
@@ -714,6 +743,14 @@ async def reject_proposed_action(
             (action_id, input.reason),
         )
         row = await result.fetchone()
+        await connection.execute(
+            """
+            update public.semantic_decisions
+            set handling_outcome = 'escalated'
+            where proposed_action_id = %s::uuid
+            """,
+            (action_id,),
+        )
         body = {
             "action_id": str(action_id),
             "state": "rejected",

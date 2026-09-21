@@ -21,6 +21,12 @@ from app.application.dispatcher import execute_command
 from app.core.auth import CurrentActor
 from app.core.config import Settings
 from app.core.problems import ProblemDetail
+from app.decisions.question_bundles import (
+    CLOSEOUT_EVIDENCE_V1,
+    EXCEPTION_TRIAGE_V1,
+    MESSAGE_ROUTING_V1,
+)
+from app.decisions.service import SemanticDecisionService, SemanticEvaluation
 from app.integrations.database import Database
 from app.integrations.language import (
     ExtractedIntent,
@@ -31,6 +37,7 @@ from app.integrations.language import (
     extract_intent,
 )
 from app.integrations.storage import download_private_object, upload_private_object
+from app.integrations.typesafe_jev import TypeSafeJevProvider
 from app.integrations.whatsapp import MetaWhatsAppCloudProvider, WhatsAppProviderError
 
 WHATSAPP_MEDIA_BUCKET = "whatsapp-media"
@@ -352,6 +359,18 @@ async def _process_message_job(
     language_code = detection.language_code if detection else None
     exact_response = _exact_assignment_response(text) if text else None
     intent: ExtractedIntent | None = extract_intent(interpretation_text, language_code)
+    semantic_evaluations = await _evaluate_semantic_decisions(
+        connection,
+        settings,
+        channel_event_id=channel_event_id,
+        text=interpretation_text,
+        language_code=language_code,
+        transcript_confidence=transcript_confidence,
+    )
+    semantic_requires_review = any(
+        evaluation.policy.route in {"confirmation_or_ops", "ops"}
+        for _, evaluation in semantic_evaluations
+    )
     if settings.openrouter_api_key and exact_response is None:
         language_provider = _openrouter_provider(settings)
         try:
@@ -380,10 +399,23 @@ async def _process_message_job(
     }
     if transcription_evidence:
         interpretation["transcriptionProvider"] = transcription_evidence
+    if semantic_evaluations:
+        interpretation["semanticDecisionEvidence"] = [
+            {
+                "bundle": bundle.name,
+                "bundleVersion": bundle.version,
+                "policyOutcome": evaluation.policy.route,
+                "policyReason": evaluation.policy.reason,
+                "status": "failed" if evaluation.failure_kind else "succeeded",
+            }
+            for bundle, evaluation in semantic_evaluations
+        ]
     if intent.evidence:
         interpretation["structuredIntentProvider"] = asdict(intent.evidence)
     entity_ids: dict[str, str] = {}
-    if database is not None:
+    if database is not None and (
+        exact_response is not None or not semantic_requires_review
+    ):
         outcome, entity_ids = await _try_execute_worker_action(
             database,
             connection,
@@ -394,13 +426,14 @@ async def _process_message_job(
         )
         if outcome is not None:
             return outcome
-    await connection.execute(
+    proposed_action_result = await connection.execute(
         """
         insert into public.proposed_actions (
           channel_event_id, action_type, ambiguity, confidence, entity_resolution,
           interpretation, model_provider, model_name, payload, risk_tier
         ) values (%s::uuid, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         on conflict (channel_event_id) where archived_at is null do nothing
+        returning id
         """,
         (
             channel_event_id,
@@ -429,7 +462,107 @@ async def _process_message_job(
             ),
         ),
     )
+    proposed_action = await proposed_action_result.fetchone()
+    if proposed_action is None:
+        existing_result = await connection.execute(
+            """
+            select id from public.proposed_actions
+            where channel_event_id = %s::uuid and archived_at is null
+            """,
+            (channel_event_id,),
+        )
+        proposed_action = await existing_result.fetchone()
+    if proposed_action is not None:
+        await connection.execute(
+            """
+            update public.semantic_decisions
+            set proposed_action_id = %s::uuid
+            where channel_event_id = %s::uuid and proposed_action_id is null
+            """,
+            (proposed_action["id"], channel_event_id),
+        )
     return "created"
+
+
+async def _evaluate_semantic_decisions(
+    connection: Any,
+    settings: Settings,
+    *,
+    channel_event_id: str,
+    text: str,
+    language_code: str | None,
+    transcript_confidence: float | None,
+) -> list[tuple[Any, SemanticEvaluation]]:
+    """Evaluate only after a ChannelEvent is persisted and leased.
+
+    Provider errors are converted into decision evidence and retain the normal
+    processing path. No semantic result is allowed to become a command here.
+    """
+    if (
+        not settings.semantic_decision_enabled
+        or settings.semantic_decision_mode == "off"
+        or settings.semantic_decision_provider != "jev"
+        or not settings.typesafe_api_key
+    ):
+        return []
+    provider = _semantic_provider(settings)
+    service = SemanticDecisionService(
+        provider,
+        mode=settings.semantic_decision_mode,
+        active_policy=settings.semantic_decision_active_policy,
+    )
+    state: dict[str, object] = {
+        "message": text,
+        "channel": "whatsapp",
+        "actorRole": "unknown",
+        "detectedLanguageCode": language_code,
+        "transcriptConfidence": transcript_confidence,
+    }
+    try:
+        routing = await service.evaluate_persisted_event(
+            connection,
+            channel_event_id=channel_event_id,
+            state=state,
+            bundle=MESSAGE_ROUTING_V1,
+            language_code=language_code,
+        )
+        evaluations: list[tuple[Any, SemanticEvaluation]] = [
+            (MESSAGE_ROUTING_V1, routing)
+        ]
+        message_class = (
+            routing.result.answers["message_class"].value
+            if routing.result and "message_class" in routing.result.answers
+            else None
+        )
+        if message_class in {"EXCEPTION", "PAYMENT"}:
+            evaluations.append(
+                (
+                    EXCEPTION_TRIAGE_V1,
+                    await service.evaluate_persisted_event(
+                        connection,
+                        channel_event_id=channel_event_id,
+                        state=state,
+                        bundle=EXCEPTION_TRIAGE_V1,
+                        language_code=language_code,
+                    ),
+                )
+            )
+        elif message_class == "CLOSEOUT":
+            evaluations.append(
+                (
+                    CLOSEOUT_EVIDENCE_V1,
+                    await service.evaluate_persisted_event(
+                        connection,
+                        channel_event_id=channel_event_id,
+                        state=state,
+                        bundle=CLOSEOUT_EVIDENCE_V1,
+                        language_code=language_code,
+                    ),
+                )
+            )
+        return evaluations
+    finally:
+        await provider.aclose()
 
 
 def _exact_assignment_response(
@@ -813,6 +946,16 @@ def _openrouter_provider(settings: Settings) -> OpenRouterProvider:
         settings.openrouter_transcription_max_tokens,
         settings.openrouter_intent_max_cost_usd,
         settings.openrouter_transcription_max_cost_usd,
+    )
+
+
+def _semantic_provider(settings: Settings) -> TypeSafeJevProvider:
+    return TypeSafeJevProvider(
+        settings.typesafe_api_key,
+        settings.semantic_decision_base_url,
+        settings.semantic_decision_model,
+        settings.semantic_decision_timeout_seconds,
+        settings.semantic_decision_max_retries,
     )
 
 

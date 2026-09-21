@@ -1,6 +1,7 @@
 from functools import lru_cache
+from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -39,9 +40,30 @@ class Settings(BaseSettings):
     openrouter_transcription_max_tokens: int = 500
     openrouter_intent_max_cost_usd: float = 0.01
     openrouter_transcription_max_cost_usd: float = 0.03
+    # TypeSafe/Jev is backend-only. Keep it off until a controlled shadow run.
+    typesafe_api_key: str = ""
+    semantic_decision_enabled: bool = False
+    semantic_decision_provider: str = "jev"
+    semantic_decision_mode: Literal["off", "shadow", "active"] = "off"
+    semantic_decision_base_url: str = "https://api.typesafe.ai"
+    semantic_decision_model: str = "jev-1.13.0"
+    semantic_decision_timeout_seconds: float = Field(default=8, gt=0, le=30)
+    semantic_decision_max_retries: int = Field(default=1, ge=0, le=3)
+    semantic_decision_active_policy: dict[str, float] = Field(default_factory=dict)
     internal_service_token: str = ""
     internal_service_token_header: str = "X-Internal-Service-Token"
     worker_poll_interval_seconds: float = Field(default=10, gt=0, le=300)
+
+    @field_validator("semantic_decision_active_policy")
+    @classmethod
+    def validate_semantic_policy_thresholds(
+        cls, policy: dict[str, float]
+    ) -> dict[str, float]:
+        if any(not 0 <= value <= 1 for value in policy.values()):
+            raise ValueError(
+                "Semantic decision policy thresholds must be between 0 and 1"
+            )
+        return policy
 
 
 @lru_cache(maxsize=1)
