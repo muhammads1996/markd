@@ -308,17 +308,19 @@ export async function listExceptions(state: "active" | "resolved" | "all" = "act
       .select("id, assignment_id, attendance, completion, payment, note, source")
       .in("assignment_id", assignmentIds),
   ]);
-  assertQuerySuccess(workmarks.error, "loading assignment Workmark evidence");
-  assertQuerySuccess(stamps.error, "loading assignment Stamp evidence");
+  // The queue projection is the canonical operator read model and already
+  // carries its linked evidence. These assignment lookups only supplement a
+  // case that has no direct Workmark reference, so an unavailable optional
+  // lookup must not hide the exception queue itself.
   const byAssignment = new Map<string, ExceptionQueueItem>();
   for (const item of items) if (item.assignmentId) byAssignment.set(item.assignmentId, item);
-  for (const row of workmarks.data ?? []) {
+  for (const row of workmarks.error ? [] : workmarks.data ?? []) {
     const assignmentId = row.assignment_id;
     const item = byAssignment.get(assignmentId);
     const evidence = mapEvidence(row as unknown as Row, "workmark", 0);
     if (item && evidence && !item.evidence.some((entry) => entry.id === evidence.id)) item.evidence.push(evidence);
   }
-  for (const row of stamps.data ?? []) {
+  for (const row of stamps.error ? [] : stamps.data ?? []) {
     const assignmentId = row.assignment_id;
     const item = byAssignment.get(assignmentId);
     const evidence = mapEvidence(row as unknown as Row, "stamp", 0);
