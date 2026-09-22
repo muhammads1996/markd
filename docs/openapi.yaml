@@ -1172,6 +1172,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/operator/tomorrow:
+    get:
+      tags:
+      - Operator projections
+      summary: Get Tomorrow
+      description: Private, derived Tomorrow projection. The date override is for
+        controlled Ops/test navigation.
+      operationId: get_tomorrow_api_v1_operator_tomorrow_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: date
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Date
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Tomorrow Api V1 Operator Tomorrow Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/assignments/{assignment_id}/stamps:
     post:
       tags:

@@ -3,6 +3,7 @@
 import {
   Home,
   Inbox,
+  CalendarDays,
   CircleAlert,
   LogOut,
   Search,
@@ -28,6 +29,12 @@ const navigation: NavigationItem[] = [
     icon: Home,
     label: "Today",
     match: (pathname) => pathname === "/operator",
+  },
+  {
+    href: "/operator/tomorrow",
+    icon: CalendarDays,
+    label: "Tomorrow",
+    match: (pathname) => pathname.startsWith("/operator/tomorrow"),
   },
   {
     href: "/operator/inbox",

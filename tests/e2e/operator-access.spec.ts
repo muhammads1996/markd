@@ -3,6 +3,7 @@ import { expect, test } from "./support/fixtures";
 const protectedRoutes = [
   "/operator",
   "/operator/inbox",
+  "/operator/tomorrow",
   "/operator/exceptions",
   "/operator/onboard",
   "/search",
