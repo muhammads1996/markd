@@ -158,13 +158,13 @@ Do not silently turn an untracked request into broad product development.
 
 # 5. Agent orchestration model
 
-Use the strongest model where architectural judgment matters.
+Use GPT-6 Sol where architectural judgment matters.
 
-Use cheaper implementation agents where the work is bounded and deterministic.
+Use GPT-6 Luna for bounded, deterministic implementation work.
 
 ## Sol responsibilities
 
-GPT-5.6 Sol should be used for:
+GPT-6 Sol should be used for:
 
 - architecture
 - schema design
@@ -182,11 +182,11 @@ GPT-5.6 Sol should be used for:
 - PR review
 - interpreting ambiguous requirements
 
-Sol should not consume large amounts of context implementing repetitive boilerplate when a cheaper agent can safely do so from an approved plan.
+Sol should not consume large amounts of context implementing repetitive boilerplate when GPT-6 Luna can safely do so from an approved plan.
 
 ## Implementation-agent responsibilities
 
-Cheaper agents may implement:
+GPT-6 Luna should implement bounded, well-specified tasks such as:
 
 - isolated UI components
 - straightforward CRUD
@@ -209,7 +209,7 @@ Implementation agents must not independently alter:
 - trust/provenance rules
 - architectural invariants
 
-If implementation reveals a required architectural change, stop and escalate to Sol.
+If implementation reveals a required architectural change, stop and escalate to GPT-6 Sol.
 
 ---
 
@@ -224,9 +224,9 @@ verification standards.
 - Timebox initial issue/repository discovery to the files and documents that
   can change the decision. Do not perform broad repository archaeology once
   the acceptance criteria and affected boundary are clear.
-- A Sol agent owns the smallest viable plan for architectural or security work;
-  delegate all bounded implementation immediately to a cheaper agent with that
-  plan. Do not make a cheaper agent rediscover the whole architecture.
+- A GPT-6 Sol agent owns the smallest viable plan for architectural or security work;
+  delegate all bounded implementation immediately to GPT-6 Luna with that
+  plan. Do not make GPT-6 Luna rediscover the whole architecture.
 - Keep implementation and review agents on separate passes. The implementer
   should report an exact blocker promptly rather than repeatedly exploring or
   expanding scope.
@@ -332,7 +332,7 @@ Fix the cause or explicitly report the unresolved failure.
 
 ## Phase E — Review
 
-After implementation, material work requires a separate GPT-5.6 Sol review of the actual diff.
+After implementation, material work requires a separate GPT-6 Sol review of the actual diff.
 
 Review against:
 
@@ -895,7 +895,7 @@ Do not bundle unrelated cleanup into feature PRs.
 
 Material implementations must receive a separate review pass.
 
-Use GPT-5.6 Sol for architecture/code review.
+Use GPT-6 Sol for architecture/code review.
 
 The reviewer should inspect:
 
@@ -1058,8 +1058,8 @@ Never invent token counts.
 
 For orchestrated work also report which work was performed by:
 
-- GPT-5.6 Sol
-- cheaper implementation agent(s)
+- GPT-6 Sol
+- GPT-6 Luna implementation agent(s)
 - deterministic tools/tests
 
 ---
