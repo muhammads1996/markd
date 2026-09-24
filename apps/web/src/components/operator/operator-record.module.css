@@ -65,6 +65,27 @@
   padding-top: var(--markd-space-lg);
   border-top: 1px solid rgb(17 19 21 / 16%);
 }
+.offerPanel {
+  padding: var(--markd-space-lg);
+  border: 1px solid var(--markd-color-obsidian);
+  background: var(--markd-color-surface);
+}
+.offerPanel button {
+  min-height: var(--markd-touch-minimum);
+  padding: var(--markd-space-sm) var(--markd-space-lg);
+  border: 1px solid var(--markd-color-obsidian);
+  background: var(--markd-color-primary-action);
+  color: var(--markd-color-text);
+  font-weight: var(--markd-font-weight-heavy);
+  cursor: pointer;
+}
+.offerPanel button:focus-visible {
+  outline: 3px solid var(--markd-color-obsidian);
+  outline-offset: 3px;
+}
+.offerPanel p[role="alert"] {
+  color: var(--markd-color-danger);
+}
 
 .page h2 {
   margin: 0 0 var(--markd-space-lg);

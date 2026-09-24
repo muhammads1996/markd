@@ -1198,9 +1198,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: true
-                title: Response Get Tomorrow Api V1 Operator Tomorrow Get
+                $ref: '#/components/schemas/TomorrowReadModel'
         '422':
           description: Validation Error
           content:
@@ -2334,6 +2332,438 @@ components:
           title: Method
       type: object
       title: StampPaymentInput
+    TomorrowAssignment:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        labour_requirement_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Labour Requirement Id
+        lifecycle:
+          type: string
+          title: Lifecycle
+        offered_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Offered At
+        worker_response:
+          type: string
+          title: Worker Response
+        contractor_confirmation:
+          type: string
+          title: Contractor Confirmation
+        travel_authorised_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Travel Authorised At
+        agreed_rate_cents:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Agreed Rate Cents
+        currency:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Currency
+        version:
+          type: integer
+          title: Version
+        reporting_mode:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reporting Mode
+        reporting_place_text:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reporting Place Text
+        reporting_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Reporting At
+        reporting_time:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reporting Time
+        landmark:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Landmark
+        instructions:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Instructions
+        worker_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Worker Name
+        availability_status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Availability Status
+        availability_conflict:
+          type: boolean
+          title: Availability Conflict
+        worker_on_my_way:
+          type: boolean
+          title: Worker On My Way
+        bucket:
+          type: string
+          title: Bucket
+        travel_ready:
+          type: boolean
+          title: Travel Ready
+        blockers:
+          items:
+            type: string
+          type: array
+          title: Blockers
+        has_open_exception:
+          type: boolean
+          title: Has Open Exception
+        open_exceptions:
+          items:
+            $ref: '#/components/schemas/TomorrowExceptionEvidence'
+          type: array
+          title: Open Exceptions
+        communication_evidence:
+          items:
+            $ref: '#/components/schemas/TomorrowCommunicationEvidence'
+          type: array
+          title: Communication Evidence
+        failed_deliveries:
+          items:
+            $ref: '#/components/schemas/TomorrowCommunicationEvidence'
+          type: array
+          title: Failed Deliveries
+        review_evidence:
+          items:
+            $ref: '#/components/schemas/TomorrowReviewEvidence'
+          type: array
+          title: Review Evidence
+      type: object
+      required:
+      - id
+      - lifecycle
+      - worker_response
+      - contractor_confirmation
+      - version
+      - availability_conflict
+      - worker_on_my_way
+      - bucket
+      - travel_ready
+      - blockers
+      - has_open_exception
+      - open_exceptions
+      - communication_evidence
+      - failed_deliveries
+      - review_evidence
+      title: TomorrowAssignment
+    TomorrowCommunicationEvidence:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        state:
+          type: string
+          title: State
+        message_kind:
+          type: string
+          title: Message Kind
+        failure_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Failure Reason
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - state
+      - message_kind
+      - created_at
+      title: TomorrowCommunicationEvidence
+    TomorrowExceptionEvidence:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        category:
+          type: string
+          title: Category
+        state:
+          type: string
+          title: State
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - category
+      - state
+      - created_at
+      title: TomorrowExceptionEvidence
+    TomorrowReadModel:
+      properties:
+        date:
+          type: string
+          format: date
+          title: Date
+        summary:
+          $ref: '#/components/schemas/TomorrowSummary'
+        requests:
+          items:
+            $ref: '#/components/schemas/TomorrowRequest'
+          type: array
+          title: Requests
+      type: object
+      required:
+      - date
+      - summary
+      - requests
+      title: TomorrowReadModel
+    TomorrowRequest:
+      properties:
+        labour_request_id:
+          type: string
+          format: uuid
+          title: Labour Request Id
+        lifecycle:
+          type: string
+          title: Lifecycle
+        hirer_name:
+          type: string
+          title: Hirer Name
+        site_area:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Site Area
+        site_text:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Site Text
+        needed_at:
+          anyOf:
+          - type: string
+            format: time
+          - type: 'null'
+          title: Needed At
+        rate_cents:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Rate Cents
+        currency:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Currency
+        terms:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Terms
+        timezone:
+          type: string
+          title: Timezone
+        requirements:
+          items:
+            $ref: '#/components/schemas/TomorrowRequirement'
+          type: array
+          title: Requirements
+        assignments:
+          items:
+            $ref: '#/components/schemas/TomorrowAssignment'
+          type: array
+          title: Assignments
+      type: object
+      required:
+      - labour_request_id
+      - lifecycle
+      - hirer_name
+      - timezone
+      - requirements
+      - assignments
+      title: TomorrowRequest
+    TomorrowRequirement:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        work_type:
+          type: string
+          title: Work Type
+        required_headcount:
+          type: integer
+          title: Required Headcount
+        covered_headcount:
+          type: integer
+          title: Covered Headcount
+        remaining_gap:
+          type: integer
+          title: Remaining Gap
+      type: object
+      required:
+      - id
+      - work_type
+      - required_headcount
+      - covered_headcount
+      - remaining_gap
+      title: TomorrowRequirement
+    TomorrowReviewEvidence:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        action_type:
+          type: string
+          title: Action Type
+        state:
+          type: string
+          title: State
+        original_text:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Original Text
+        interpretation:
+          additionalProperties: true
+          type: object
+          title: Interpretation
+        confidence:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Confidence
+        provider:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Provider
+        model:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Model
+        semantic_mode:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Semantic Mode
+        policy_outcome:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Policy Outcome
+        policy_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Policy Reason
+        decision_provider:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Decision Provider
+        model_version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Model Version
+        semantic_status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Semantic Status
+      type: object
+      required:
+      - id
+      - action_type
+      - state
+      - interpretation
+      title: TomorrowReviewEvidence
+    TomorrowSummary:
+      properties:
+        labour_requests:
+          type: integer
+          title: Labour Requests
+        positions_required:
+          type: integer
+          title: Positions Required
+        covered_positions:
+          type: integer
+          title: Covered Positions
+        open_positions:
+          type: integer
+          title: Open Positions
+        travel_ready:
+          type: integer
+          title: Travel Ready
+        waiting_worker_response:
+          type: integer
+          title: Waiting Worker Response
+        waiting_hirer_confirmation:
+          type: integer
+          title: Waiting Hirer Confirmation
+        logistics_gap:
+          type: integer
+          title: Logistics Gap
+        open_exceptions:
+          type: integer
+          title: Open Exceptions
+        communication_failures:
+          type: integer
+          title: Communication Failures
+        review_required:
+          type: integer
+          title: Review Required
+        availability_conflicts:
+          type: integer
+          title: Availability Conflicts
+      type: object
+      required:
+      - labour_requests
+      - positions_required
+      - covered_positions
+      - open_positions
+      - travel_ready
+      - waiting_worker_response
+      - waiting_hirer_confirmation
+      - logistics_gap
+      - open_exceptions
+      - communication_failures
+      - review_required
+      - availability_conflicts
+      title: TomorrowSummary
     UpdateLabourRequestInput:
       properties:
         work_date:

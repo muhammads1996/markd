@@ -59,10 +59,43 @@
   cursor: pointer;
   font-weight: var(--markd-font-weight-heavy);
 }
+.shell :is(a, button, input, select, summary):focus-visible {
+  outline: 3px solid var(--markd-color-obsidian);
+  outline-offset: 3px;
+}
 .assignment :global(.tomorrow-actions p) {
   width: 100%;
   margin: 0;
   color: #7b211d;
+}
+.assignment :global(.tomorrow-actions details) {
+  width: 100%;
+}
+.assignment :global(.tomorrow-actions summary) {
+  min-height: var(--markd-touch-minimum);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: var(--markd-font-weight-strong);
+}
+.assignment :global(.tomorrow-actions label) {
+  display: grid;
+  gap: var(--markd-space-xs);
+  margin: var(--markd-space-sm) 0;
+}
+.assignment :global(.tomorrow-actions input),
+.assignment :global(.tomorrow-actions select),
+.assignment :global(.tomorrow-actions textarea) {
+  width: 100%;
+  min-height: var(--markd-touch-minimum);
+  padding: var(--markd-space-sm);
+  border: 1px solid var(--markd-color-obsidian);
+  background: var(--markd-color-surface);
+  color: var(--markd-color-text);
+}
+.assignment :global(.tomorrow-actions details[data-danger] button) {
+  background: var(--markd-color-danger);
+  color: var(--markd-color-obsidian);
 }
 .summary {
   display: grid;
@@ -158,6 +191,29 @@
 .assignment small {
   color: var(--markd-color-text-muted);
 }
+.evidence {
+  margin: 0;
+  color: var(--markd-color-text-muted);
+  font-size: var(--markd-font-size-sm);
+}
+.logistics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--markd-space-sm);
+  margin: 0;
+}
+.logistics div {
+  min-width: 0;
+}
+.logistics dt {
+  color: var(--markd-color-text-muted);
+  font-size: var(--markd-font-size-xs);
+  text-transform: uppercase;
+}
+.logistics dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
 .blockers,
 .failure,
 .ready {
@@ -226,7 +282,7 @@
     padding: var(--markd-space-3xl);
   }
   .summary {
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
   .request {
     padding: var(--markd-space-xl);

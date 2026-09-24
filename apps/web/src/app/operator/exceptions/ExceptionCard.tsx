@@ -32,7 +32,7 @@ export function ExceptionCard({ item, claimNonce, resolveNonce }: { item: Except
   const [resolveState, resolveAction, resolvePending] = useActionState(resolveException, initialState);
   const active = item.state !== "resolved";
   return (
-    <article className={styles.card} aria-label={`${item.type} exception for ${item.workerName}`}>
+    <article id={`case-${item.id}`} className={styles.card} aria-label={`${item.type} exception for ${item.workerName}`}>
       <header className={styles.cardHeader}>
         <div>
           <p className={styles.eyebrow}>{item.type.replaceAll("_", " ")}</p>

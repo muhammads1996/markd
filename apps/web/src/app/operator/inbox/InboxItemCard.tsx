@@ -128,7 +128,7 @@ export function InboxItemCard({ item }: { item: InboxItem }) {
   );
 
   return (
-    <article className={styles.card} aria-label={`Proposed ${item.actionType}`}>
+    <article id={`proposed-action-${item.id}`} className={styles.card} aria-label={`Proposed ${item.actionType}`}>
       <header className={styles.cardHeader}>
         <span className={styles.riskBadge} data-tier={item.riskTier}>
           {riskTierLabels[item.riskTier]}

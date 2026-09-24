@@ -11,10 +11,24 @@ import styles from "./search.module.css";
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    labourRequestId?: string;
+    requirementId?: string;
+    date?: string;
+  }>;
 }) {
   if (!(await getOperatorClient())) redirect("/sign-in?reason=not-authorised");
-  const query = (await searchParams).q?.trim() ?? "";
+  const params = await searchParams;
+  const query = params.q?.trim() ?? "";
+  const offerContext =
+    params.labourRequestId && params.requirementId
+      ? {
+          labourRequestId: params.labourRequestId,
+          requirementId: params.requirementId,
+          date: params.date,
+        }
+      : null;
   const results = await searchWorkGraph(query);
 
   return (
@@ -29,6 +43,23 @@ export default async function SearchPage({
           </p>
         </header>
         <form className={styles.form} action="/search">
+          {offerContext ? (
+            <>
+              <input
+                type="hidden"
+                name="labourRequestId"
+                value={offerContext.labourRequestId}
+              />
+              <input
+                type="hidden"
+                name="requirementId"
+                value={offerContext.requirementId}
+              />
+              {offerContext.date ? (
+                <input type="hidden" name="date" value={offerContext.date} />
+              ) : null}
+            </>
+          ) : null}
           <label htmlFor="work-graph-query">
             Search the private Work Graph
           </label>
@@ -57,7 +88,13 @@ export default async function SearchPage({
               <ul className={styles.results}>
                 {results.map((result) => (
                   <li key={`${result.kind}-${result.id}`}>
-                    <Link href={result.href}>
+                    <Link
+                      href={
+                        offerContext && result.kind === "worker"
+                          ? `${result.href}?labourRequestId=${encodeURIComponent(offerContext.labourRequestId)}&requirementId=${encodeURIComponent(offerContext.requirementId)}${offerContext.date ? `&date=${encodeURIComponent(offerContext.date)}` : ""}`
+                          : result.href
+                      }
+                    >
                       <span className={styles.kind}>{result.kind}</span>
                       <strong>{result.title}</strong>
                       <small>{result.detail}</small>
