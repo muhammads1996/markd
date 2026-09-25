@@ -12,8 +12,15 @@
   align-items: flex-start;
 }
 .header {
+  flex-wrap: wrap;
   padding: var(--markd-space-lg) 0 var(--markd-space-xl);
   border-bottom: 1px solid rgb(17 19 21 / 16%);
+}
+.header > div {
+  min-width: 0;
+}
+.header > .refresh {
+  margin-left: auto;
 }
 .header h1 {
   margin: 0;
