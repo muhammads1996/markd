@@ -8,7 +8,17 @@ import {
   provenanceLabel,
 } from "../../../features/work-graph/queries";
 import styles from "../../../components/operator/operator-record.module.css";
+import { loadTomorrow } from "../../../features/tomorrow/queries";
 import { TomorrowOfferAction } from "./TomorrowOfferAction";
+
+function isWorkDate(value: string | undefined): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return (
+    !Number.isNaN(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === value
+  );
+}
 
 export default async function WorkerDetailPage({
   params,
@@ -143,47 +153,29 @@ export default async function WorkerDetailPage({
     siteArea: string | null;
     date: string;
   } | null = null;
-  if (offerParams.labourRequestId && offerParams.requirementId) {
-    const [requestResult, requirementResult] = await Promise.all([
-      supabase
-        .from("labour_requests")
-        .select("id, lifecycle, needed_from, needed_to, site_area")
-        .eq("id", offerParams.labourRequestId)
-        .maybeSingle(),
-      supabase
-        .from("labour_requirements")
-        .select("id, labour_request_id, work_type")
-        .eq("id", offerParams.requirementId)
-        .is("archived_at", null)
-        .maybeSingle(),
-    ]);
-    assertQuerySuccess(
-      requestResult.error,
-      "loading the selected Labour Request",
+  if (
+    offerParams.labourRequestId &&
+    offerParams.requirementId &&
+    isWorkDate(offerParams.date)
+  ) {
+    const board = await loadTomorrow(offerParams.date);
+    const targetRequest = board.requests.find(
+      (request) => request.labour_request_id === offerParams.labourRequestId,
     );
-    assertQuerySuccess(
-      requirementResult.error,
-      "loading the selected requirement",
+    const targetRequirement = targetRequest?.requirements.find(
+      (requirement) => requirement.id === offerParams.requirementId,
     );
-    const targetRequest = requestResult.data;
-    const targetRequirement = requirementResult.data;
     if (
+      board.date === offerParams.date &&
       targetRequest?.lifecycle === "active" &&
-      targetRequirement &&
-      targetRequirement.labour_request_id === targetRequest.id
+      targetRequirement
     ) {
-      const requestedDate = offerParams.date;
       offerTarget = {
-        requestId: targetRequest.id,
+        requestId: targetRequest.labour_request_id,
         requirementId: targetRequirement.id,
         workType: targetRequirement.work_type,
         siteArea: targetRequest.site_area,
-        date:
-          requestedDate &&
-          requestedDate >= targetRequest.needed_from &&
-          requestedDate <= targetRequest.needed_to
-            ? requestedDate
-            : targetRequest.needed_from,
+        date: board.date,
       };
     }
   }

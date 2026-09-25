@@ -68,8 +68,12 @@ test("keeps the private exceptions queue usable on a phone", async ({
     hasText: "Synthetic follow-up",
   });
   await expect(exception.getByText("Synthetic follow-up")).toBeVisible();
-  await expect(exception.getByRole("heading", { name: "Anele Sample" })).toBeVisible();
-  await expect(exception.getByText("Example Build", { exact: true })).toBeVisible();
+  await expect(
+    exception.getByRole("heading", { name: "Anele Sample" }),
+  ).toBeVisible();
+  await expect(
+    exception.getByText("Example Build", { exact: true }),
+  ).toBeVisible();
   await expect(
     exception.getByRole("heading", { name: "Participant-separated claims" }),
   ).toBeVisible();
@@ -79,11 +83,11 @@ test("keeps the private exceptions queue usable on a phone", async ({
   await expect(
     exception.getByText("Add a participant counterclaim or review note."),
   ).toBeVisible();
-  await expect(
-    exception.getByText("Add claim / operator note"),
-  ).toBeVisible();
+  await expect(exception.getByText("Add claim / operator note")).toBeVisible();
   await exception.getByText("Add claim / operator note").click();
-  await expect(exception.getByRole("button", { name: "Add claim" })).toBeVisible();
+  await expect(
+    exception.getByRole("button", { name: "Add claim" }),
+  ).toBeVisible();
   await expect(exception.getByLabel("Source")).toHaveValue("operator_ui");
   await expect(page.getByText("Open an exception")).toBeVisible();
   await expectNoHorizontalOverflow(page);

@@ -413,8 +413,19 @@ async def _process_message_job(
     if intent.evidence:
         interpretation["structuredIntentProvider"] = asdict(intent.evidence)
     entity_ids: dict[str, str] = {}
-    if database is not None and (
-        exact_response is not None or not semantic_requires_review
+    if database is not None and intent.action_type in {
+        "work_completion",
+        "payment_issue",
+    }:
+        # Bind trust/economic assertions to immutable sender and assignment
+        # evidence even when semantic review prevents command execution.
+        entity_ids = await _resolve_closeout_entities(
+            connection, event, channel_event_id
+        )
+    if (
+        database is not None
+        and intent.action_type not in {"work_completion", "payment_issue"}
+        and (exact_response is not None or not semantic_requires_review)
     ):
         outcome, entity_ids = await _try_execute_worker_action(
             database,

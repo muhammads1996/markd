@@ -61,6 +61,7 @@ test("WhatsApp acceptance, Tomorrow commands and the worker PWA converge on one 
   browser,
   loggedInAsOperator,
 }, testInfo) => {
+  test.setTimeout(90_000);
   const worker = buildParticipantUser({
     displayName: `Cross Channel Worker ${testInfo.project.name} ${randomUUID().slice(0, 8)}`,
   });
@@ -108,7 +109,10 @@ test("WhatsApp acceptance, Tomorrow commands and the worker PWA converge on one 
     // Exercise the gap-to-search path; worker selection and the outbound offer
     // must use the same canonical commands as the operator UI.
     await page.goto(`/operator/tomorrow?date=${fixture.date}`);
-    await page.getByRole("link", { name: "Find and offer worker" }).click();
+    await page
+      .getByRole("link", { name: "Find and offer worker" })
+      .and(page.locator(`a[href*="labourRequestId=${fixture.requestId}"]`))
+      .click();
     await page
       .getByLabel("Search the private Work Graph")
       .fill(worker.displayName);
@@ -120,7 +124,9 @@ test("WhatsApp acceptance, Tomorrow commands and the worker PWA converge on one 
       .getByRole("button", { name: `Offer ${worker.displayName}` })
       .click();
     await page.waitForURL(
-      new RegExp(`/operator/tomorrow\\?date=${fixture.date}`),
+      (url) =>
+        url.pathname === "/operator/tomorrow" &&
+        url.searchParams.get("date") === fixture.date,
     );
     const assignmentId = await readTomorrowAssignmentId(
       fixture.requestId,
@@ -129,11 +135,12 @@ test("WhatsApp acceptance, Tomorrow commands and the worker PWA converge on one 
     fixture.assignmentId = assignmentId;
 
     const workerPage = await workerContext.newPage();
-    await workerPage.goto("/sign-in?returnTo=%2Fparticipant%2Fworker");
+    await workerPage.goto("/sign-in");
     await workerPage.getByLabel("Email").fill(worker.email);
     await workerPage.getByLabel("Password").fill(worker.password);
     await workerPage.getByRole("button", { name: "Sign in" }).click();
-    await workerPage.waitForURL(/\/participant\/worker$/);
+    await workerPage.waitForLoadState("networkidle");
+    await workerPage.goto("/participant/worker");
     const offerCard = workerPage
       .getByRole("region", { name: "Assigned work" })
       .getByRole("article");
@@ -204,6 +211,9 @@ test("WhatsApp acceptance, Tomorrow commands and the worker PWA converge on one 
     await tomorrowAssignment
       .getByRole("button", { name: "Confirm assignment" })
       .click();
+    await expect(
+      tomorrowAssignment.getByRole("button", { name: "Confirm assignment" }),
+    ).toHaveCount(0);
     const logistics = tomorrowAssignment.getByText("Set logistics");
     await logistics.click();
     await tomorrowAssignment

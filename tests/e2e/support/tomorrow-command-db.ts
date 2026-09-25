@@ -41,8 +41,11 @@ export async function provisionTomorrowCommandFixture(
     organisationId: randomUUID(),
     contactId: randomUUID(),
     hirerPersonId: randomUUID(),
-    // NANP 555-0100..0199 is reserved for fictional use; never target a real worker.
-    phone: `+121255501${String(dateOffset).padStart(2, "0")}`,
+    // Keep each run's phone distinct; fixture webhooks use this value directly
+    // and never deliver to a provider.
+    phone: `+1212555${String(
+      Number.parseInt(randomUUID().slice(0, 8), 16) % 1_000_000,
+    ).padStart(6, "0")}`,
     providerMessageId: `wamid.playwright.${randomUUID().replaceAll("-", "")}`,
     worker,
     operatorCommandKeys: [],
@@ -296,7 +299,8 @@ async def main():
     finally:
         await database.close()
 
-asyncio.run(main())
+with asyncio.Runner(loop_factory=asyncio.SelectorEventLoop) as runner:
+    runner.run(main())
 `;
   await runApiPython(python, [providerMessageId]);
 }
@@ -328,7 +332,8 @@ async def main():
     finally:
         await database.close()
 
-asyncio.run(main())
+with asyncio.Runner(loop_factory=asyncio.SelectorEventLoop) as runner:
+    runner.run(main())
 `;
   await runApiPython(python, []);
 }

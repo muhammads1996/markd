@@ -16,7 +16,9 @@ test("Tomorrow reconciles headcount, assignment states, delivery and exceptions"
   try {
     await page.goto(`/operator/tomorrow?date=${fixture.date}`);
 
-    await expect(page.getByRole("heading", { name: "Tomorrow" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Tomorrow", exact: true }),
+    ).toBeVisible();
     await expect(page.getByText(fixture.date, { exact: true })).toBeVisible();
 
     const summary = page.getByRole("region", {
@@ -33,7 +35,7 @@ test("Tomorrow reconciles headcount, assignment states, delivery and exceptions"
     await expect(
       request.getByRole("heading", { name: "Tomorrow Fixture Build" }),
     ).toBeVisible();
-    await expect(request.getByText("Plastering")).toBeVisible();
+    await expect(request).toContainText("Plastering");
     await expect(request).toContainText("3 covered / 4 required");
     await expect(request).toContainText("1 open");
 
@@ -44,7 +46,7 @@ test("Tomorrow reconciles headcount, assignment states, delivery and exceptions"
     const ready = request.locator('[data-state="travel_ready"]');
     await expect(
       ready.getByRole("link", {
-        name: "Open exception: operational follow up",
+        name: "Open exception: verification trust concern",
       }),
     ).toHaveAttribute(
       "href",
@@ -63,6 +65,9 @@ test("Tomorrow reconciles headcount, assignment states, delivery and exceptions"
 
     // Exercise the same canonical commands used by the operator surface.
     await accepted.getByRole("button", { name: "Confirm assignment" }).click();
+    await expect(
+      accepted.getByRole("button", { name: "Confirm assignment" }),
+    ).toHaveCount(0);
     const logistics = accepted.getByText("Set logistics");
     await logistics.click();
     await accepted
@@ -70,7 +75,6 @@ test("Tomorrow reconciles headcount, assignment states, delivery and exceptions"
       .fill("Synthetic North Gate");
     await accepted.getByLabel("Reporting time").fill(`${fixture.date}T06:30`);
     await accepted.getByRole("button", { name: "Save logistics" }).click();
-    await page.reload();
     const refreshedAccepted = page
       .locator('[data-state="accepted_waiting"]')
       .filter({

@@ -11,7 +11,6 @@ dependencies = [
   "python-multipart>=0.0.20,<1.0",
   "pydantic-settings>=2.10,<3.0",
   "uvicorn[standard]>=0.35,<1.0",
-  "typesafe-sdk>=0.7.0",
 ]
 
 [dependency-groups]

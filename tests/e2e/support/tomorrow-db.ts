@@ -128,9 +128,14 @@ export async function provisionTomorrowScenario(
         ],
       );
       await client.query(
-        `insert into public.exception_cases(id, assignment_id, state, category, source)
-         values ($1, $2, 'open', 'operational_follow_up', 'playwright synthetic fixture')`,
-        [fixture.exceptionId, fixture.assignmentIds[1]],
+        `insert into public.exception_cases(
+           id, assignment_id, state, category, summary, source, recorded_by_user_id
+         ) values (
+           $1, $2, 'open', 'verification_trust_concern',
+           'Synthetic follow-up requires operator review',
+           'playwright synthetic fixture', $3
+         )`,
+        [fixture.exceptionId, fixture.assignmentIds[1], operatorUserId],
       );
 
       await client.query(
@@ -160,8 +165,8 @@ export async function provisionTomorrowScenario(
            source_table, source_record_id, idempotency_key, state, failure_reason
          ) values (
            $1, 'whatsapp', '+12125550101', 'assignment.travel_authorised',
-           'Synthetic travel-ready confirmation', 'domain_events', $2,
-           'domain-event:' || $2::text, 'failed', 'Synthetic provider delivery failure'
+           'Synthetic travel-ready confirmation', 'domain_events', $2::uuid,
+           'domain-event:' || $2::uuid::text, 'failed', 'Synthetic provider delivery failure'
          )`,
         [fixture.channelDeliveryId, fixture.domainEventId],
       );

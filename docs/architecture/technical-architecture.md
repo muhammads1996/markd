@@ -133,6 +133,7 @@ for actual generation/normalisation; Ops resolves uncertainty. Provider-neutral
 decision evidence is stored separately from domain truth. Production defaults
 to off/shadow and requires calibrated per-language/use-case policy for any
 active low-risk route.
+
 - `LanguageDetectionProvider`
 - `StructuredIntentProvider`
 - `TranslationProvider`
