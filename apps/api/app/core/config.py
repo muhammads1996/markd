@@ -22,7 +22,9 @@ class Settings(BaseSettings):
     supabase_jwt_audience: str = "authenticated"
     api_database_min_size: int = 1
     api_database_max_size: int = 10
-    allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    allowed_origins: list[str] = Field(
+        default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000"]
+    )
     whatsapp_verify_token: str = ""
     whatsapp_app_secret: str = ""
     whatsapp_access_token: str = ""
