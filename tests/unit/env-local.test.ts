@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   parseSupabasePublicEnv,
+  writeCiApiEnv,
   writeLocalEnv,
 } from "../../scripts/env-local.ts";
 
@@ -23,6 +24,22 @@ afterEach(async () => {
       .splice(0)
       .map((directory) => rm(directory, { force: true, recursive: true })),
   );
+});
+
+describe("CI API environment", () => {
+  it("creates a private synthetic webhook secret without overwriting an existing file", async () => {
+    const directory = await createTemporaryDirectory();
+    const outputPath = join(directory, ".env");
+
+    await writeCiApiEnv(outputPath);
+    const contents = await readFile(outputPath, "utf8");
+    expect(contents).toMatch(/^WHATSAPP_APP_SECRET=[0-9a-f]{64}\n$/);
+
+    await expect(writeCiApiEnv(outputPath)).rejects.toMatchObject({
+      code: "EEXIST",
+    });
+    await expect(readFile(outputPath, "utf8")).resolves.toBe(contents);
+  });
 });
 
 describe("local Supabase public environment", () => {

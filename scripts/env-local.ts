@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { resolve } from "node:path";
@@ -73,6 +74,15 @@ export async function writeLocalEnv(
   }
 }
 
+export async function writeCiApiEnv(outputPath: string): Promise<void> {
+  const secret = randomBytes(32).toString("hex");
+  await writeFile(outputPath, `WHATSAPP_APP_SECRET=${secret}\n`, {
+    encoding: "utf8",
+    flag: "wx",
+    mode: 0o600,
+  });
+}
+
 function readLocalSupabaseStatus(): string {
   const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
   const cliPath = resolve(
@@ -91,6 +101,10 @@ async function main(): Promise<void> {
   const values = parseSupabasePublicEnv(readLocalSupabaseStatus());
   await writeLocalEnv(outputPath, values);
   console.log("Created apps/web/.env.local with local public Supabase values.");
+  if (process.env.GITHUB_ACTIONS === "true") {
+    await writeCiApiEnv(resolve(repositoryRoot, "apps/api/.env"));
+    console.log("Created apps/api/.env with a synthetic CI webhook secret.");
+  }
 }
 
 const entryPoint = process.argv[1];
