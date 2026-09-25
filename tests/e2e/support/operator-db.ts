@@ -62,6 +62,23 @@ export async function provisionOperatorUser(
 
 export async function removeOperatorUser(userId: string): Promise<void> {
   await withClient(async (client) => {
+    // Keep the synthetic identity when immutable audit history records it.
+    // Deleting that history would break provenance and its operator FK.
+    const audit = await client.query<{ referenced: boolean }>(
+      `select exists (
+         select 1 from public.audit_events where operator_account_id = $1
+       ) as referenced`,
+      [userId],
+    );
+    if (audit.rows[0]?.referenced) {
+      await client.query(
+        `update public.operator_accounts
+         set archived_at = timezone('utc', now())
+         where user_id = $1`,
+        [userId],
+      );
+      return;
+    }
     await client.query(
       `delete from public.operator_accounts where user_id = $1`,
       [userId],

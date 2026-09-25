@@ -25,7 +25,7 @@ export default async function ContractorDetailPage({
   ] = await Promise.all([
     supabase
       .from("organisations")
-      .select("id, display_name, legal_name")
+      .select("id, display_name")
       .eq("id", organisationId)
       .is("archived_at", null)
       .maybeSingle(),
@@ -92,7 +92,6 @@ export default async function ContractorDetailPage({
         <header className={styles.header}>
           <p>Contractor record</p>
           <h1>{organisation.display_name}</h1>
-          <span>{organisation.legal_name}</span>
         </header>
         <section>
           <h2>Known labour network</h2>

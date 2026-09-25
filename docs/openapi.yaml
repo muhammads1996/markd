@@ -837,6 +837,173 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workers/{worker_id}/availability/{work_date}:
+    put:
+      tags:
+      - Workers
+      summary: Set Worker Availability
+      operationId: set_worker_availability_api_v1_workers__worker_id__availability__work_date__put
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: worker_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Worker Id
+      - name: work_date
+        in: path
+        required: true
+        schema:
+          type: string
+          format: date
+          title: Work Date
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetWorkerAvailabilityInput'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/exceptions/{exception_id}/claims:
+    post:
+      tags:
+      - Exceptions
+      summary: Add Exception Claim
+      operationId: add_exception_claim_api_v1_exceptions__exception_id__claims_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: exception_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Exception Id
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExceptionClaimInput'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/exceptions/{exception_id}/resolve:
+    post:
+      tags:
+      - Exceptions
+      summary: Resolve Exception
+      operationId: resolve_exception_api_v1_exceptions__exception_id__resolve_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: exception_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Exception Id
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveExceptionInput'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/assignments/{assignment_id}/exceptions:
+    post:
+      tags:
+      - Assignment exceptions
+      summary: Open Assignment Exception
+      operationId: open_assignment_exception_api_v1_assignments__assignment_id__exceptions_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: assignment_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Assignment Id
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenExceptionInput'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/onboarding/workers/{worker_id}/portrait:
     post:
       tags:
@@ -1005,6 +1172,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/operator/tomorrow:
+    get:
+      tags:
+      - Operator projections
+      summary: Get Tomorrow
+      description: Private, derived Tomorrow projection. The date override is for
+        controlled Ops/test navigation.
+      operationId: get_tomorrow_api_v1_operator_tomorrow_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: date
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Date
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TomorrowReadModel'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/assignments/{assignment_id}/stamps:
     post:
       tags:
@@ -1093,6 +1293,7 @@ components:
           type: string
           enum:
           - worker_availability
+          - assignment_response
           - labour_request
           - assignment_confirmation
           - assignment_cancellation
@@ -1260,30 +1461,7 @@ components:
             - hirer
           - type: 'null'
           title: Asserted Role
-        source:
-          type: string
-          maxLength: 120
-          minLength: 1
-          title: Source
-          default: api
-        source_channel_event_id:
-          anyOf:
-          - type: string
-            format: uuid
-          - type: 'null'
-          title: Source Channel Event Id
-        source_proposed_action_id:
-          anyOf:
-          - type: string
-            format: uuid
-          - type: 'null'
-          title: Source Proposed Action Id
-        occurred_at:
-          anyOf:
-          - type: string
-            format: date-time
-          - type: 'null'
-          title: Occurred At
+      additionalProperties: false
       type: object
       title: AssignmentStampInput
     AuthoriseAssignmentTravelInput:
@@ -1425,6 +1603,14 @@ components:
           anyOf:
           - $ref: '#/components/schemas/CancelAssignmentActionInput'
           - type: 'null'
+        work_completion:
+          anyOf:
+          - $ref: '#/components/schemas/WorkCompletionActionInput'
+          - type: 'null'
+        payment_issue:
+          anyOf:
+          - $ref: '#/components/schemas/PaymentIssueActionInput'
+          - type: 'null'
       type: object
       title: ConfirmProposedActionInput
     ContractorConfirmationInput:
@@ -1457,30 +1643,7 @@ components:
             minimum: 1.0
           - type: 'null'
           title: Expected Version
-        source:
-          type: string
-          maxLength: 120
-          minLength: 1
-          title: Source
-          default: api
-        source_channel_event_id:
-          anyOf:
-          - type: string
-            format: uuid
-          - type: 'null'
-          title: Source Channel Event Id
-        source_proposed_action_id:
-          anyOf:
-          - type: string
-            format: uuid
-          - type: 'null'
-          title: Source Proposed Action Id
-        occurred_at:
-          anyOf:
-          - type: string
-            format: date-time
-          - type: 'null'
-          title: Occurred At
+      additionalProperties: false
       type: object
       required:
       - reason
@@ -1518,6 +1681,24 @@ components:
             - disputed
           - type: 'null'
           title: Payment State
+        amount_minor:
+          anyOf:
+          - type: integer
+            minimum: 0.0
+          - type: 'null'
+          title: Amount Minor
+        currency:
+          anyOf:
+          - type: string
+            pattern: ^[A-Z]{3}$
+          - type: 'null'
+          title: Currency
+        payment_method:
+          anyOf:
+          - type: string
+            maxLength: 80
+          - type: 'null'
+          title: Payment Method
         worker_reuse_preference:
           anyOf:
           - type: string
@@ -1620,6 +1801,7 @@ components:
           type: array
           minItems: 1
           title: Requirements
+      additionalProperties: false
       type: object
       required:
       - work_date
@@ -1637,6 +1819,55 @@ components:
       required:
       - queued
       title: DeliveryQueueReceipt
+    ExceptionClaimInput:
+      properties:
+        asserted_by:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Asserted By
+        asserted_role:
+          anyOf:
+          - type: string
+            enum:
+            - worker
+            - hirer
+            - operator
+          - type: 'null'
+          title: Asserted Role
+        assertion:
+          additionalProperties: true
+          type: object
+          title: Assertion
+        statement:
+          type: string
+          maxLength: 4000
+          minLength: 1
+          title: Statement
+        source:
+          type: string
+          maxLength: 120
+          minLength: 1
+          title: Source
+          default: api
+        source_reference:
+          anyOf:
+          - type: string
+            maxLength: 1000
+          - type: 'null'
+          title: Source Reference
+        evidence_refs:
+          items:
+            type: string
+          type: array
+          maxItems: 50
+          title: Evidence Refs
+      additionalProperties: false
+      type: object
+      required:
+      - statement
+      title: ExceptionClaimInput
     HTTPValidationError:
       properties:
         detail:
@@ -1673,6 +1904,87 @@ components:
           title: Expected Version
       type: object
       title: OfferAssignmentInput
+    OpenExceptionInput:
+      properties:
+        category:
+          type: string
+          enum:
+          - payment_dispute
+          - attendance_dispute
+          - completion_dispute
+          - no_show_concern
+          - cancelled_after_commitment
+          - cancelled_after_travel_authorisation
+          - ambiguous_completion
+          - verification_trust_concern
+          title: Category
+        summary:
+          type: string
+          maxLength: 4000
+          minLength: 1
+          title: Summary
+        workmark_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Workmark Id
+        claim:
+          anyOf:
+          - $ref: '#/components/schemas/ExceptionClaimInput'
+          - type: 'null'
+        asserted_by:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Asserted By
+        asserted_role:
+          anyOf:
+          - type: string
+            enum:
+            - worker
+            - hirer
+            - operator
+          - type: 'null'
+          title: Asserted Role
+        assertion:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Assertion
+        statement:
+          anyOf:
+          - type: string
+            maxLength: 4000
+            minLength: 1
+          - type: 'null'
+          title: Statement
+        source:
+          type: string
+          maxLength: 120
+          minLength: 1
+          title: Source
+          default: api
+        source_reference:
+          anyOf:
+          - type: string
+            maxLength: 1000
+          - type: 'null'
+          title: Source Reference
+        evidence_refs:
+          items:
+            type: string
+          type: array
+          maxItems: 50
+          title: Evidence Refs
+      additionalProperties: false
+      type: object
+      required:
+      - category
+      - summary
+      title: OpenExceptionInput
     OrganisationInput:
       properties:
         organisation_name:
@@ -1776,6 +2088,72 @@ components:
       - currency
       - basis
       title: PayInput
+    PaymentIssueActionInput:
+      properties:
+        assignment_id:
+          type: string
+          format: uuid
+          title: Assignment Id
+        category:
+          type: string
+          enum:
+          - payment_dispute
+          - attendance_dispute
+          - completion_dispute
+          - no_show_concern
+          - cancelled_after_commitment
+          - cancelled_after_travel_authorisation
+          - ambiguous_completion
+          - verification_trust_concern
+          title: Category
+          default: payment_dispute
+        summary:
+          type: string
+          maxLength: 4000
+          minLength: 1
+          title: Summary
+          default: Payment issue reported
+        workmark_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Workmark Id
+        statement:
+          type: string
+          maxLength: 4000
+          minLength: 1
+          title: Statement
+          default: Payment issue reported
+        assertion:
+          additionalProperties: true
+          type: object
+          title: Assertion
+        asserted_by:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Asserted By
+        asserted_role:
+          anyOf:
+          - type: string
+            enum:
+            - worker
+            - hirer
+            - operator
+          - type: 'null'
+          title: Asserted Role
+        evidence_refs:
+          items:
+            type: string
+          type: array
+          maxItems: 50
+          title: Evidence Refs
+      type: object
+      required:
+      - assignment_id
+      title: PaymentIssueActionInput
     QueueDeliveryInput:
       properties:
         recipient_phone_number:
@@ -1845,6 +2223,39 @@ components:
       - work_type
       - headcount
       title: RequirementInput
+    ResolveExceptionInput:
+      properties:
+        outcome:
+          type: string
+          maxLength: 120
+          minLength: 1
+          title: Outcome
+        reason:
+          type: string
+          maxLength: 4000
+          minLength: 1
+          title: Reason
+        evidence:
+          additionalProperties: true
+          type: object
+          title: Evidence
+        workmark_correction_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Workmark Correction Id
+        expected_version:
+          type: integer
+          minimum: 1.0
+          title: Expected Version
+      additionalProperties: false
+      type: object
+      required:
+      - outcome
+      - reason
+      - expected_version
+      title: ResolveExceptionInput
     RespondToAssignmentInput:
       properties:
         response:
@@ -1864,6 +2275,31 @@ components:
       required:
       - response
       title: RespondToAssignmentInput
+    SetWorkerAvailabilityInput:
+      properties:
+        status:
+          type: string
+          enum:
+          - available
+          - unavailable
+          - unknown
+          title: Status
+        note:
+          anyOf:
+          - type: string
+            maxLength: 2000
+          - type: 'null'
+          title: Note
+        expected_version:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: Expected Version
+      type: object
+      required:
+      - status
+      title: SetWorkerAvailabilityInput
     StampPaymentInput:
       properties:
         state:
@@ -1896,6 +2332,438 @@ components:
           title: Method
       type: object
       title: StampPaymentInput
+    TomorrowAssignment:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        labour_requirement_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Labour Requirement Id
+        lifecycle:
+          type: string
+          title: Lifecycle
+        offered_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Offered At
+        worker_response:
+          type: string
+          title: Worker Response
+        contractor_confirmation:
+          type: string
+          title: Contractor Confirmation
+        travel_authorised_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Travel Authorised At
+        agreed_rate_cents:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Agreed Rate Cents
+        currency:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Currency
+        version:
+          type: integer
+          title: Version
+        reporting_mode:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reporting Mode
+        reporting_place_text:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reporting Place Text
+        reporting_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Reporting At
+        reporting_time:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reporting Time
+        landmark:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Landmark
+        instructions:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Instructions
+        worker_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Worker Name
+        availability_status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Availability Status
+        availability_conflict:
+          type: boolean
+          title: Availability Conflict
+        worker_on_my_way:
+          type: boolean
+          title: Worker On My Way
+        bucket:
+          type: string
+          title: Bucket
+        travel_ready:
+          type: boolean
+          title: Travel Ready
+        blockers:
+          items:
+            type: string
+          type: array
+          title: Blockers
+        has_open_exception:
+          type: boolean
+          title: Has Open Exception
+        open_exceptions:
+          items:
+            $ref: '#/components/schemas/TomorrowExceptionEvidence'
+          type: array
+          title: Open Exceptions
+        communication_evidence:
+          items:
+            $ref: '#/components/schemas/TomorrowCommunicationEvidence'
+          type: array
+          title: Communication Evidence
+        failed_deliveries:
+          items:
+            $ref: '#/components/schemas/TomorrowCommunicationEvidence'
+          type: array
+          title: Failed Deliveries
+        review_evidence:
+          items:
+            $ref: '#/components/schemas/TomorrowReviewEvidence'
+          type: array
+          title: Review Evidence
+      type: object
+      required:
+      - id
+      - lifecycle
+      - worker_response
+      - contractor_confirmation
+      - version
+      - availability_conflict
+      - worker_on_my_way
+      - bucket
+      - travel_ready
+      - blockers
+      - has_open_exception
+      - open_exceptions
+      - communication_evidence
+      - failed_deliveries
+      - review_evidence
+      title: TomorrowAssignment
+    TomorrowCommunicationEvidence:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        state:
+          type: string
+          title: State
+        message_kind:
+          type: string
+          title: Message Kind
+        failure_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Failure Reason
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - state
+      - message_kind
+      - created_at
+      title: TomorrowCommunicationEvidence
+    TomorrowExceptionEvidence:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        category:
+          type: string
+          title: Category
+        state:
+          type: string
+          title: State
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - category
+      - state
+      - created_at
+      title: TomorrowExceptionEvidence
+    TomorrowReadModel:
+      properties:
+        date:
+          type: string
+          format: date
+          title: Date
+        summary:
+          $ref: '#/components/schemas/TomorrowSummary'
+        requests:
+          items:
+            $ref: '#/components/schemas/TomorrowRequest'
+          type: array
+          title: Requests
+      type: object
+      required:
+      - date
+      - summary
+      - requests
+      title: TomorrowReadModel
+    TomorrowRequest:
+      properties:
+        labour_request_id:
+          type: string
+          format: uuid
+          title: Labour Request Id
+        lifecycle:
+          type: string
+          title: Lifecycle
+        hirer_name:
+          type: string
+          title: Hirer Name
+        site_area:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Site Area
+        site_text:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Site Text
+        needed_at:
+          anyOf:
+          - type: string
+            format: time
+          - type: 'null'
+          title: Needed At
+        rate_cents:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Rate Cents
+        currency:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Currency
+        terms:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Terms
+        timezone:
+          type: string
+          title: Timezone
+        requirements:
+          items:
+            $ref: '#/components/schemas/TomorrowRequirement'
+          type: array
+          title: Requirements
+        assignments:
+          items:
+            $ref: '#/components/schemas/TomorrowAssignment'
+          type: array
+          title: Assignments
+      type: object
+      required:
+      - labour_request_id
+      - lifecycle
+      - hirer_name
+      - timezone
+      - requirements
+      - assignments
+      title: TomorrowRequest
+    TomorrowRequirement:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        work_type:
+          type: string
+          title: Work Type
+        required_headcount:
+          type: integer
+          title: Required Headcount
+        covered_headcount:
+          type: integer
+          title: Covered Headcount
+        remaining_gap:
+          type: integer
+          title: Remaining Gap
+      type: object
+      required:
+      - id
+      - work_type
+      - required_headcount
+      - covered_headcount
+      - remaining_gap
+      title: TomorrowRequirement
+    TomorrowReviewEvidence:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        action_type:
+          type: string
+          title: Action Type
+        state:
+          type: string
+          title: State
+        original_text:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Original Text
+        interpretation:
+          additionalProperties: true
+          type: object
+          title: Interpretation
+        confidence:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Confidence
+        provider:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Provider
+        model:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Model
+        semantic_mode:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Semantic Mode
+        policy_outcome:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Policy Outcome
+        policy_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Policy Reason
+        decision_provider:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Decision Provider
+        model_version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Model Version
+        semantic_status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Semantic Status
+      type: object
+      required:
+      - id
+      - action_type
+      - state
+      - interpretation
+      title: TomorrowReviewEvidence
+    TomorrowSummary:
+      properties:
+        labour_requests:
+          type: integer
+          title: Labour Requests
+        positions_required:
+          type: integer
+          title: Positions Required
+        covered_positions:
+          type: integer
+          title: Covered Positions
+        open_positions:
+          type: integer
+          title: Open Positions
+        travel_ready:
+          type: integer
+          title: Travel Ready
+        waiting_worker_response:
+          type: integer
+          title: Waiting Worker Response
+        waiting_hirer_confirmation:
+          type: integer
+          title: Waiting Hirer Confirmation
+        logistics_gap:
+          type: integer
+          title: Logistics Gap
+        open_exceptions:
+          type: integer
+          title: Open Exceptions
+        communication_failures:
+          type: integer
+          title: Communication Failures
+        review_required:
+          type: integer
+          title: Review Required
+        availability_conflicts:
+          type: integer
+          title: Availability Conflicts
+      type: object
+      required:
+      - labour_requests
+      - positions_required
+      - covered_positions
+      - open_positions
+      - travel_ready
+      - waiting_worker_response
+      - waiting_hirer_confirmation
+      - logistics_gap
+      - open_exceptions
+      - communication_failures
+      - review_required
+      - availability_conflicts
+      title: TomorrowSummary
     UpdateLabourRequestInput:
       properties:
         work_date:
@@ -1989,6 +2857,19 @@ components:
       - inbound_messages
       - delivery_statuses
       title: WebhookReceipt
+    WorkCompletionActionInput:
+      properties:
+        assignment_id:
+          type: string
+          format: uuid
+          title: Assignment Id
+        stamp:
+          $ref: '#/components/schemas/AssignmentStampInput'
+      type: object
+      required:
+      - assignment_id
+      - stamp
+      title: WorkCompletionActionInput
     WorkerBeginResponse:
       properties:
         worker_id:

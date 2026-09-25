@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { Client } from "pg";
 
 import type { ParticipantUserFixtureData } from "./test-data";
@@ -16,6 +18,22 @@ async function withClient<T>(work: (client: Client) => Promise<T>): Promise<T> {
     await client.end();
   }
 }
+
+export type ParticipantAssignmentFixture = {
+  assignmentId: string;
+  labourRequestId: string;
+  labourRequirementId: string;
+  organisationId: string;
+};
+
+export type AssignmentCloseoutState = {
+  stampCount: number;
+  workmarkCount: number;
+  workmarkAssignmentId: string | null;
+  workmarkWorkerId: string | null;
+  stampAssignmentId: string | null;
+  stampWorkerId: string | null;
+};
 
 export async function provisionParticipantUser(
   user: ParticipantUserFixtureData,
@@ -56,6 +74,180 @@ export async function provisionParticipantUser(
         user.scope === "contractor" ? user.organisationContactId : null,
       ],
     );
+  });
+}
+
+export async function provisionParticipantWorkerAssignment(
+  user: ParticipantUserFixtureData,
+): Promise<ParticipantAssignmentFixture> {
+  if (user.scope !== "worker") {
+    throw new Error(
+      "A worker assignment fixture requires a worker participant.",
+    );
+  }
+
+  const fixture = {
+    assignmentId: randomUUID(),
+    labourRequestId: randomUUID(),
+    labourRequirementId: randomUUID(),
+    organisationId: randomUUID(),
+  };
+
+  await withClient(async (client) => {
+    await client.query("begin");
+    try {
+      await client.query(
+        `insert into public.organisations(id, legal_name, display_name)
+         values ($1, $2, $2)`,
+        [fixture.organisationId, `Playwright closeout ${fixture.assignmentId}`],
+      );
+      await client.query(
+        `insert into public.labour_requests(
+          id, organisation_id, needed_from, needed_to, headcount, site_area
+        ) values ($1, $2, '2026-09-20', '2026-09-20', 1, 'Playwright test area')`,
+        [fixture.labourRequestId, fixture.organisationId],
+      );
+      await client.query(
+        `insert into public.labour_requirements(
+          id, labour_request_id, work_type, headcount
+        ) values ($1, $2, 'Playwright closeout work', 1)`,
+        [fixture.labourRequirementId, fixture.labourRequestId],
+      );
+      await client.query(
+        `insert into public.assignments(
+          id, labour_request_id, labour_requirement_id, worker_id, organisation_id,
+          starts_on, ends_on, lifecycle, worker_response, contractor_confirmation,
+          offered_at, reporting_mode, reporting_place_text, reporting_at,
+          travel_authorised_at, source, version
+        ) values (
+          $1, $2, $3, $4, $5, '2026-09-20', '2026-09-20', 'active',
+          'accepted', 'confirmed', now(), 'site', 'Playwright test area', now(),
+          now(), 'playwright', 1
+        )`,
+        [
+          fixture.assignmentId,
+          fixture.labourRequestId,
+          fixture.labourRequirementId,
+          user.personId,
+          fixture.organisationId,
+        ],
+      );
+      await client.query("commit");
+    } catch (error) {
+      await client.query("rollback");
+      throw error;
+    }
+  });
+
+  return fixture;
+}
+
+export async function readAssignmentCloseoutState(
+  assignmentId: string,
+): Promise<AssignmentCloseoutState> {
+  return withClient(async (client) => {
+    const result = await client.query<AssignmentCloseoutState>(
+      `select
+        (select count(*)::integer from public.assignment_stamps
+          where assignment_id = $1) as "stampCount",
+        (select count(*)::integer from public.workmarks
+          where assignment_id = $1) as "workmarkCount",
+        (select assignment_id::text from public.workmarks
+          where assignment_id = $1) as "workmarkAssignmentId",
+        (select worker_id::text from public.workmarks
+          where assignment_id = $1) as "workmarkWorkerId",
+        (select assignment_id::text from public.assignment_stamps
+          where assignment_id = $1) as "stampAssignmentId",
+        (select asserted_by_person_id::text from public.assignment_stamps
+          where assignment_id = $1) as "stampWorkerId"`,
+      [assignmentId],
+    );
+    const row = result.rows[0];
+    if (row === undefined)
+      throw new Error("Closeout state query returned no row.");
+    return row;
+  });
+}
+
+export async function removeParticipantWorkerAssignment(
+  user: ParticipantUserFixtureData,
+  fixture: ParticipantAssignmentFixture,
+): Promise<void> {
+  await withClient(async (client) => {
+    await client.query("begin");
+    try {
+      await client.query("set local session_replication_role = 'replica'");
+      await client.query(
+        `delete from private.outbox_messages
+         where domain_event_id in (
+           select id from private.domain_events
+           where command_execution_id in (
+             select id from private.command_executions where actor_user_id = $1
+           )
+         )`,
+        [user.id],
+      );
+      await client.query(
+        `delete from private.domain_events
+         where command_execution_id in (
+           select id from private.command_executions where actor_user_id = $1
+         )`,
+        [user.id],
+      );
+      await client.query(
+        "delete from private.command_executions where actor_user_id = $1",
+        [user.id],
+      );
+      await client.query(
+        `delete from public.audit_events
+         where actor_id = $1 or record_id = any($2::uuid[])`,
+        [
+          user.personId,
+          [
+            fixture.assignmentId,
+            fixture.labourRequestId,
+            fixture.labourRequirementId,
+            fixture.organisationId,
+          ],
+        ],
+      );
+      await client.query(
+        `delete from public.workmark_corrections
+         where workmark_id in (
+           select id from public.workmarks where assignment_id = $1
+         )`,
+        [fixture.assignmentId],
+      );
+      await client.query(
+        "delete from public.assignment_stamps where assignment_id = $1",
+        [fixture.assignmentId],
+      );
+      await client.query(
+        "delete from public.assignment_acknowledgements where assignment_id = $1",
+        [fixture.assignmentId],
+      );
+      await client.query(
+        "delete from public.workmarks where assignment_id = $1",
+        [fixture.assignmentId],
+      );
+      await client.query("delete from public.assignments where id = $1", [
+        fixture.assignmentId,
+      ]);
+      await client.query(
+        "delete from public.labour_requirements where id = $1",
+        [fixture.labourRequirementId],
+      );
+      await client.query("delete from public.labour_requests where id = $1", [
+        fixture.labourRequestId,
+      ]);
+      await client.query("delete from public.organisations where id = $1", [
+        fixture.organisationId,
+      ]);
+      await client.query("commit");
+    } catch (error) {
+      await client.query("rollback");
+      throw error;
+    }
   });
 }
 

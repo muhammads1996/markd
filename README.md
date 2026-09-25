@@ -47,6 +47,9 @@ database lease/retry functions and records terminal failures for Ops.
   production execution runtime for WhatsApp, provider orchestration, and
   background work. The credentialed provider smoke sequence is documented in
   [whatsapp-openrouter-pilot-smoke.md](docs/operations/whatsapp-openrouter-pilot-smoke.md).
+- TypeSafe/Jev semantic decisioning is also FastAPI-only and defaults to off.
+  Its shadow-mode setup, safety boundaries, and multilingual evaluation are in
+  [flo-133-semantic-decision-layer.md](docs/operations/flo-133-semantic-decision-layer.md).
 
 ## Quality checks
 
@@ -56,6 +59,7 @@ corepack pnpm lint
 corepack pnpm api:lint
 corepack pnpm api:typecheck
 corepack pnpm api:test
+corepack pnpm api:test:semantic-eval -- --json
 corepack pnpm api:worker
 corepack pnpm api:openapi:check
 corepack pnpm typecheck
@@ -91,6 +95,13 @@ corepack pnpm db:stop
 - Remote linking, pushes, production migrations, schema design, RLS, auth, and storage policies are outside FLO-123.
 
 The integration suite uses `postgresql://postgres:postgres@127.0.0.1:54322/postgres` by default. Set `SUPABASE_DB_URL` to test another local connection explicitly.
+
+## Manual local testing
+
+The [local manual test guide](docs/operations/local-manual-test-guide.md)
+covers synthetic local operator credentials, every worker and contractor
+preview view, seeded operator Work Graph records, deterministic WhatsApp tests,
+and the guarded Meta/OpenRouter smoke sequence.
 
 ## Workspace layout
 

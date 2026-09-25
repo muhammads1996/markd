@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
@@ -22,6 +23,7 @@ from app.integrations.whatsapp import (
 )
 
 router = APIRouter(tags=["WhatsApp"])
+logger = logging.getLogger("uvicorn.error")
 
 
 class QueueDeliveryInput(BaseModel):
@@ -59,7 +61,9 @@ async def verify_whatsapp_webhook(
         mode, token, challenge, settings.whatsapp_verify_token
     )
     if verified_challenge is None:
+        logger.warning("WhatsApp webhook verification rejected")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    logger.info("WhatsApp webhook verification accepted")
     return PlainTextResponse(verified_challenge)
 
 
@@ -81,6 +85,7 @@ async def receive_whatsapp_webhook(
 ) -> JSONResponse:
     body = await request.body()
     if not verify_webhook_signature(body, signature, settings.whatsapp_app_secret):
+        logger.warning("WhatsApp webhook rejected: invalid signature")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid signature"
         )
@@ -128,10 +133,16 @@ async def receive_whatsapp_webhook(
             if not inbound_messages and not delivery_statuses:
                 await _persist_unsupported_event(connection, payload, body)
     except RuntimeError as error:
+        logger.exception("WhatsApp webhook evidence persistence failed")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Webhook evidence persistence failed",
         ) from error
+    logger.info(
+        "WhatsApp webhook received: inbound_messages=%d delivery_statuses=%d",
+        len(inbound_messages),
+        len(delivery_statuses),
+    )
     return JSONResponse(
         {
             "received": True,

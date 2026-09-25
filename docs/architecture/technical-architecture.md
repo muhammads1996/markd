@@ -119,6 +119,22 @@ Interfaces:
 
 - `TranscriptionProvider`
 - `LanguageDetectionProvider`
+- `TranslationProvider`
+- `SemanticDecisionProvider`
+- `GenerativeProvider`
+
+### Semantic decision layer (FLO-133 addendum)
+
+FastAPI owns semantic-provider orchestration after durable `ChannelEvent`
+persistence. Jev is an adapter behind `SemanticDecisionProvider`, not a source
+of truth or command executor. Code remains first for exact values and policy;
+Jev is limited to bounded classification; a generative provider is fallback
+for actual generation/normalisation; Ops resolves uncertainty. Provider-neutral
+decision evidence is stored separately from domain truth. Production defaults
+to off/shadow and requires calibrated per-language/use-case policy for any
+active low-risk route.
+
+- `LanguageDetectionProvider`
 - `StructuredIntentProvider`
 - `TranslationProvider`
 

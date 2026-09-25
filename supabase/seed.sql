@@ -69,5 +69,5 @@ insert into public.channel_events (id, channel, provider_event_id, sender_phone_
   ('72000000-0000-4000-8000-000000000001', 'whatsapp', 'synthetic-event-1', '+27820000002', '{"synthetic":true}');
 insert into public.proposed_actions (id, channel_event_id, action_type, risk_tier, payload, state) values
   ('73000000-0000-4000-8000-000000000001', '72000000-0000-4000-8000-000000000001', 'propose_workmark', 'operational', '{"synthetic":true}', 'approved');
-insert into public.exception_cases (id, assignment_id, category, opened_by_person_id, source) values
-  ('74000000-0000-4000-8000-000000000001', '62000000-0000-4000-8000-000000000001', 'synthetic follow-up', '10000000-0000-4000-8000-000000000002', 'synthetic seed');
+insert into public.exception_cases (id, assignment_id, category, summary, opened_by_person_id, source) values
+  ('74000000-0000-4000-8000-000000000001', '62000000-0000-4000-8000-000000000001', 'payment_dispute', 'Synthetic follow-up', '10000000-0000-4000-8000-000000000002', 'synthetic seed');

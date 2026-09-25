@@ -10,7 +10,10 @@ import { WorkerProfilePage } from "../pages/worker-profile-page";
 import { provisionOperatorUser, removeOperatorUser } from "./operator-db";
 import {
   provisionParticipantUser,
+  provisionParticipantWorkerAssignment,
   removeParticipantUser,
+  removeParticipantWorkerAssignment,
+  type ParticipantAssignmentFixture,
 } from "./participant-db";
 import {
   buildOperatorUser,
@@ -30,6 +33,7 @@ type Fixtures = {
   contractorProfilePage: ContractorProfilePage;
   participantPage: ParticipantPage;
   participantUser: ParticipantUserFixtureData;
+  participantAssignment: ParticipantAssignmentFixture;
   loggedInAsParticipant: ParticipantUserFixtureData;
 };
 
@@ -75,6 +79,15 @@ export const test = base.extend<Fixtures>({
       await use(user);
     } finally {
       await removeParticipantUser(user);
+    }
+  },
+  participantAssignment: async ({ participantUser }, use) => {
+    const assignment =
+      await provisionParticipantWorkerAssignment(participantUser);
+    try {
+      await use(assignment);
+    } finally {
+      await removeParticipantWorkerAssignment(participantUser, assignment);
     }
   },
 

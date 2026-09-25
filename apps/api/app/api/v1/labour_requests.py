@@ -298,7 +298,7 @@ async def _has_blocking_exception(connection: Any, assignment_id: UUID) -> bool:
         select exists(
           select 1 from public.exception_cases
           where assignment_id = %s
-            and state in ('open', 'investigating')
+            and state in ('open', 'under_review')
             and archived_at is null
         ) as blocked
         """,
@@ -449,7 +449,7 @@ async def create_assignments_mutation(
                      %s, %s, 1
               from public.labour_requests where id = %s
             on conflict (labour_request_id, labour_requirement_id, worker_id)
-              where lifecycle = 'active'
+              where lifecycle = 'active' and labour_requirement_id is not null
             do update set worker_id = excluded.worker_id
             returning id, version
             """,

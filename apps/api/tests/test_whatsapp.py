@@ -4,6 +4,7 @@ import json
 import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -308,6 +309,33 @@ class DirectProcessingConnection(ProcessingConnection):
         return FakeResult()
 
 
+class SourceBindingConnection(ProcessingConnection):
+    worker_id = "99999999-9999-4999-8999-999999999999"
+    assignment_id = "88888888-8888-4888-8888-888888888888"
+
+    async def execute(
+        self, query: str, params: tuple[Any, ...] | None = None
+    ) -> FakeResult:
+        self.calls.append((query, params))
+        if (
+            "from public.channel_events as event" in query
+            and "worker_profiles" in query
+        ):
+            return RowsResult([{"worker_id": self.worker_id}])
+        if (
+            "from public.channel_events as event" in query
+            and "organisation_contacts" in query
+        ):
+            return RowsResult([])
+        if "from public.assignments" in query and "select id" in query:
+            return RowsResult([{"id": self.assignment_id}])
+        if "from public.channel_events" in query:
+            return FakeResult(self.event)
+        if "insert into public.proposed_actions" in query:
+            return FakeResult({"id": "77777777-7777-4777-8777-777777777777"})
+        return FakeResult()
+
+
 class AssignmentResponseConvergenceConnection(DirectProcessingConnection):
     def __init__(self) -> None:
         super().__init__()
@@ -569,7 +597,9 @@ async def test_whatsapp_terminal_conflict_is_not_drafted(
     )
 
     assignment_lookup = next(
-        query for query, _ in connection.calls if "select id from public.assignments" in query
+        query
+        for query, _ in connection.calls
+        if "select id from public.assignments" in query
     )
     assert outcome == "conflicted"
     assert "worker_response" not in assignment_lookup
@@ -639,6 +669,88 @@ async def test_ambiguous_assignment_response_remains_proposed_action(
     assert not any(
         "select id from public.assignments" in query for query, _ in connection.calls
     )
+
+
+@pytest.mark.parametrize("action_type", ["work_completion", "payment_issue"])
+async def test_semantic_review_keeps_source_binding_for_baseline_actions(
+    action_type: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    connection = SourceBindingConnection()
+    monkeypatch.setattr(
+        whatsapp_worker,
+        "extract_intent",
+        lambda *_: ExtractedIntent(action_type, {}, 0.91, "clear"),
+    )
+
+    async def require_review(*args: Any, **kwargs: Any) -> list[Any]:
+        return [
+            (
+                SimpleNamespace(name="review-test", version="1"),
+                SimpleNamespace(
+                    policy=SimpleNamespace(route="ops", reason="test policy"),
+                    failure_kind=None,
+                ),
+            )
+        ]
+
+    async def cannot_execute(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("baseline assertions must remain proposed actions")
+
+    monkeypatch.setattr(whatsapp_worker, "_evaluate_semantic_decisions", require_review)
+    monkeypatch.setattr(whatsapp_worker, "execute_command", cannot_execute)
+
+    outcome = await _process_message_job(
+        connection,
+        connection.event["id"],
+        Settings(openrouter_api_key=""),
+        FakeDatabase(connection),
+    )
+    action_call = next(
+        params
+        for query, params in connection.calls
+        if "insert into public.proposed_actions" in query
+    )
+
+    assert outcome == "created"
+    assert action_call is not None
+    assert action_call[8].obj["entityIds"] == {
+        "workerId": connection.worker_id,
+        "assertedById": connection.worker_id,
+        "assertedRole": "worker",
+        "assignmentId": connection.assignment_id,
+    }
+
+
+async def test_payment_issue_normal_intake_keeps_source_binding(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connection = SourceBindingConnection()
+    monkeypatch.setattr(
+        whatsapp_worker,
+        "extract_intent",
+        lambda *_: ExtractedIntent("payment_issue", {}, 0.91, "clear"),
+    )
+
+    outcome = await _process_message_job(
+        connection,
+        connection.event["id"],
+        Settings(openrouter_api_key=""),
+        FakeDatabase(connection),
+    )
+    action_call = next(
+        params
+        for query, params in connection.calls
+        if "insert into public.proposed_actions" in query
+    )
+
+    assert outcome == "created"
+    assert action_call is not None
+    assert action_call[8].obj["entityIds"] == {
+        "workerId": connection.worker_id,
+        "assertedById": connection.worker_id,
+        "assertedRole": "worker",
+        "assignmentId": connection.assignment_id,
+    }
 
 
 async def test_ambiguous_assignment_response_is_not_directly_executable() -> None:
@@ -1039,6 +1151,26 @@ async def test_openrouter_retries_the_configured_fallback_model() -> None:
     async def handler(request: Request) -> Response:
         body = json.loads(request.content)
         requested_models.append(body["model"])
+        fields = body["response_format"]["json_schema"]["schema"]["properties"][
+            "fields"
+        ]
+        assert fields["required"] == [
+            "availability",
+            "headcount",
+            "attendance",
+            "completion",
+            "reuse_preference",
+            "payment_state",
+            "amount_minor",
+            "currency",
+            "payment_method",
+        ]
+        assert fields["properties"]["attendance"]["enum"] == [
+            "attended",
+            "no_show",
+            "unknown",
+            None,
+        ]
         if body["model"] == "primary-model":
             return Response(503)
         return Response(

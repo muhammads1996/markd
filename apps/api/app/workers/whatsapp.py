@@ -4,6 +4,7 @@ from dataclasses import asdict
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal, cast
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 from psycopg.types.json import Jsonb
@@ -20,6 +21,12 @@ from app.application.dispatcher import execute_command
 from app.core.auth import CurrentActor
 from app.core.config import Settings
 from app.core.problems import ProblemDetail
+from app.decisions.question_bundles import (
+    CLOSEOUT_EVIDENCE_V1,
+    EXCEPTION_TRIAGE_V1,
+    MESSAGE_ROUTING_V1,
+)
+from app.decisions.service import SemanticDecisionService, SemanticEvaluation
 from app.integrations.database import Database
 from app.integrations.language import (
     ExtractedIntent,
@@ -30,6 +37,7 @@ from app.integrations.language import (
     extract_intent,
 )
 from app.integrations.storage import download_private_object, upload_private_object
+from app.integrations.typesafe_jev import TypeSafeJevProvider
 from app.integrations.whatsapp import MetaWhatsAppCloudProvider, WhatsAppProviderError
 
 WHATSAPP_MEDIA_BUCKET = "whatsapp-media"
@@ -351,6 +359,18 @@ async def _process_message_job(
     language_code = detection.language_code if detection else None
     exact_response = _exact_assignment_response(text) if text else None
     intent: ExtractedIntent | None = extract_intent(interpretation_text, language_code)
+    semantic_evaluations = await _evaluate_semantic_decisions(
+        connection,
+        settings,
+        channel_event_id=channel_event_id,
+        text=interpretation_text,
+        language_code=language_code,
+        transcript_confidence=transcript_confidence,
+    )
+    semantic_requires_review = any(
+        evaluation.policy.route in {"confirmation_or_ops", "ops"}
+        for _, evaluation in semantic_evaluations
+    )
     if settings.openrouter_api_key and exact_response is None:
         language_provider = _openrouter_provider(settings)
         try:
@@ -379,10 +399,34 @@ async def _process_message_job(
     }
     if transcription_evidence:
         interpretation["transcriptionProvider"] = transcription_evidence
+    if semantic_evaluations:
+        interpretation["semanticDecisionEvidence"] = [
+            {
+                "bundle": bundle.name,
+                "bundleVersion": bundle.version,
+                "policyOutcome": evaluation.policy.route,
+                "policyReason": evaluation.policy.reason,
+                "status": "failed" if evaluation.failure_kind else "succeeded",
+            }
+            for bundle, evaluation in semantic_evaluations
+        ]
     if intent.evidence:
         interpretation["structuredIntentProvider"] = asdict(intent.evidence)
     entity_ids: dict[str, str] = {}
-    if database is not None:
+    if database is not None and intent.action_type in {
+        "work_completion",
+        "payment_issue",
+    }:
+        # Bind trust/economic assertions to immutable sender and assignment
+        # evidence even when semantic review prevents command execution.
+        entity_ids = await _resolve_closeout_entities(
+            connection, event, channel_event_id
+        )
+    if (
+        database is not None
+        and intent.action_type not in {"work_completion", "payment_issue"}
+        and (exact_response is not None or not semantic_requires_review)
+    ):
         outcome, entity_ids = await _try_execute_worker_action(
             database,
             connection,
@@ -393,13 +437,14 @@ async def _process_message_job(
         )
         if outcome is not None:
             return outcome
-    await connection.execute(
+    proposed_action_result = await connection.execute(
         """
         insert into public.proposed_actions (
           channel_event_id, action_type, ambiguity, confidence, entity_resolution,
           interpretation, model_provider, model_name, payload, risk_tier
         ) values (%s::uuid, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         on conflict (channel_event_id) where archived_at is null do nothing
+        returning id
         """,
         (
             channel_event_id,
@@ -417,10 +462,118 @@ async def _process_message_job(
                     "entityIds": entity_ids,
                 }
             ),
-            "operational" if intent.evidence else "informational",
+            (
+                "trust"
+                if intent.action_type == "work_completion"
+                else "economic"
+                if intent.action_type == "payment_issue"
+                else "operational"
+                if intent.evidence
+                else "informational"
+            ),
         ),
     )
+    proposed_action = await proposed_action_result.fetchone()
+    if proposed_action is None:
+        existing_result = await connection.execute(
+            """
+            select id from public.proposed_actions
+            where channel_event_id = %s::uuid and archived_at is null
+            """,
+            (channel_event_id,),
+        )
+        proposed_action = await existing_result.fetchone()
+    if proposed_action is not None:
+        await connection.execute(
+            """
+            update public.semantic_decisions
+            set proposed_action_id = %s::uuid
+            where channel_event_id = %s::uuid and proposed_action_id is null
+            """,
+            (proposed_action["id"], channel_event_id),
+        )
     return "created"
+
+
+async def _evaluate_semantic_decisions(
+    connection: Any,
+    settings: Settings,
+    *,
+    channel_event_id: str,
+    text: str,
+    language_code: str | None,
+    transcript_confidence: float | None,
+) -> list[tuple[Any, SemanticEvaluation]]:
+    """Evaluate only after a ChannelEvent is persisted and leased.
+
+    Provider errors are converted into decision evidence and retain the normal
+    processing path. No semantic result is allowed to become a command here.
+    """
+    if (
+        not settings.semantic_decision_enabled
+        or settings.semantic_decision_mode == "off"
+        or settings.semantic_decision_provider != "jev"
+        or not settings.typesafe_api_key
+    ):
+        return []
+    provider = _semantic_provider(settings)
+    service = SemanticDecisionService(
+        provider,
+        mode=settings.semantic_decision_mode,
+        active_policy=settings.semantic_decision_active_policy,
+    )
+    state: dict[str, object] = {
+        "message": text,
+        "channel": "whatsapp",
+        "actorRole": "unknown",
+        "detectedLanguageCode": language_code,
+        "transcriptConfidence": transcript_confidence,
+    }
+    try:
+        routing = await service.evaluate_persisted_event(
+            connection,
+            channel_event_id=channel_event_id,
+            state=state,
+            bundle=MESSAGE_ROUTING_V1,
+            language_code=language_code,
+        )
+        evaluations: list[tuple[Any, SemanticEvaluation]] = [
+            (MESSAGE_ROUTING_V1, routing)
+        ]
+        message_class = (
+            routing.result.answers["message_class"].value
+            if routing.result and "message_class" in routing.result.answers
+            else None
+        )
+        if message_class in {"EXCEPTION", "PAYMENT"}:
+            evaluations.append(
+                (
+                    EXCEPTION_TRIAGE_V1,
+                    await service.evaluate_persisted_event(
+                        connection,
+                        channel_event_id=channel_event_id,
+                        state=state,
+                        bundle=EXCEPTION_TRIAGE_V1,
+                        language_code=language_code,
+                    ),
+                )
+            )
+        elif message_class == "CLOSEOUT":
+            evaluations.append(
+                (
+                    CLOSEOUT_EVIDENCE_V1,
+                    await service.evaluate_persisted_event(
+                        connection,
+                        channel_event_id=channel_event_id,
+                        state=state,
+                        bundle=CLOSEOUT_EVIDENCE_V1,
+                        language_code=language_code,
+                    ),
+                )
+            )
+        return evaluations
+    finally:
+        await provider.aclose()
 
 
 def _exact_assignment_response(
@@ -475,6 +628,100 @@ async def _resolve_active_participant_workers(
     return [dict(worker) for worker in await result.fetchall()]
 
 
+async def _resolve_closeout_workers(
+    connection: Any, channel_event_id: str
+) -> list[dict[str, Any]]:
+    result = await connection.execute(
+        """
+        select worker.person_id as worker_id
+        from public.channel_events as event
+        join public.person_phone_numbers as phone
+          on phone.phone_number = event.sender_phone_number
+         and phone.archived_at is null
+        join public.worker_profiles as worker
+          on worker.person_id = phone.person_id
+         and worker.archived_at is null and worker.record_status = 'active'
+        where event.id = %s::uuid
+        """,
+        (channel_event_id,),
+    )
+    return [dict(worker) for worker in await result.fetchall()]
+
+
+async def _resolve_closeout_hirers(
+    connection: Any, channel_event_id: str
+) -> list[dict[str, Any]]:
+    result = await connection.execute(
+        """
+        select distinct contact.person_id as asserted_by_id, contact.organisation_id
+        from public.channel_events as event
+        join public.person_phone_numbers as phone
+          on phone.phone_number = event.sender_phone_number
+         and phone.archived_at is null
+        join public.organisation_contacts as contact
+          on contact.person_id = phone.person_id and contact.archived_at is null
+        where event.id = %s::uuid
+        """,
+        (channel_event_id,),
+    )
+    return [dict(hirer) for hirer in await result.fetchall()]
+
+
+async def _resolve_closeout_entities(
+    connection: Any,
+    event: dict[str, Any],
+    channel_event_id: str,
+) -> dict[str, str]:
+    workers = await _resolve_closeout_workers(connection, channel_event_id)
+    hirers = await _resolve_closeout_hirers(connection, channel_event_id)
+    closeout_date = event["occurred_at"].astimezone(
+        ZoneInfo("Africa/Johannesburg")
+    ).date()
+    entity_ids: dict[str, str]
+    assignment_query: str
+    assignment_params: tuple[object, ...]
+    if len(workers) == 1 and not hirers:
+        worker_id = UUID(str(workers[0]["worker_id"]))
+        entity_ids = {
+            "workerId": str(worker_id),
+            "assertedById": str(worker_id),
+            "assertedRole": "worker",
+        }
+        assignment_query = "worker_id = %s"
+        assignment_params = (worker_id, closeout_date, closeout_date)
+    elif len(hirers) == 1 and not workers:
+        hirer = hirers[0]
+        entity_ids = {
+            "assertedById": str(hirer["asserted_by_id"]),
+            "assertedRole": "hirer",
+            "organisationId": str(hirer["organisation_id"]),
+        }
+        assignment_query = "organisation_id = %s"
+        assignment_params = (
+            hirer["organisation_id"],
+            closeout_date,
+            closeout_date,
+        )
+    else:
+        return {}
+    result = await connection.execute(
+        f"""
+        select id
+        from public.assignments
+        where {assignment_query}
+          and lifecycle in ('active', 'completed', 'no_show')
+          and ends_on between %s::date - 14 and %s::date
+        order by ends_on desc, created_at desc
+        limit 2
+        """,
+        assignment_params,
+    )
+    assignments = await result.fetchall()
+    if len(assignments) == 1:
+        entity_ids["assignmentId"] = str(assignments[0]["id"])
+    return entity_ids
+
+
 async def _try_execute_worker_action(
     database: Database,
     connection: Any,
@@ -485,6 +732,10 @@ async def _try_execute_worker_action(
     exact_assignment_response: bool,
 ) -> tuple[str | None, dict[str, str]]:
     workers = await _resolve_active_participant_workers(connection, channel_event_id)
+    if intent.action_type == "work_completion":
+        return None, await _resolve_closeout_entities(
+            connection, event, channel_event_id
+        )
     if len(workers) != 1:
         return None, {}
     worker = workers[0]
@@ -706,6 +957,16 @@ def _openrouter_provider(settings: Settings) -> OpenRouterProvider:
         settings.openrouter_transcription_max_tokens,
         settings.openrouter_intent_max_cost_usd,
         settings.openrouter_transcription_max_cost_usd,
+    )
+
+
+def _semantic_provider(settings: Settings) -> TypeSafeJevProvider:
+    return TypeSafeJevProvider(
+        settings.typesafe_api_key,
+        settings.semantic_decision_base_url,
+        settings.semantic_decision_model,
+        settings.semantic_decision_timeout_seconds,
+        settings.semantic_decision_max_retries,
     )
 
 

@@ -8,15 +8,33 @@ import {
   provenanceLabel,
 } from "../../../features/work-graph/queries";
 import styles from "../../../components/operator/operator-record.module.css";
+import { loadTomorrow } from "../../../features/tomorrow/queries";
+import { TomorrowOfferAction } from "./TomorrowOfferAction";
+
+function isWorkDate(value: string | undefined): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return (
+    !Number.isNaN(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === value
+  );
+}
 
 export default async function WorkerDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ workerId: string }>;
+  searchParams: Promise<{
+    labourRequestId?: string;
+    requirementId?: string;
+    date?: string;
+  }>;
 }) {
   const supabase = await getOperatorClient();
   if (!supabase) redirect("/sign-in?reason=not-authorised");
   const { workerId } = await params;
+  const offerParams = await searchParams;
   const [
     cardResult,
     workmarksResult,
@@ -128,6 +146,39 @@ export default async function WorkerDetailPage({
   const crewCards = new Map(
     (crewCardsResult.data ?? []).map((row) => [row.worker_id, row]),
   );
+  let offerTarget: {
+    requestId: string;
+    requirementId: string;
+    workType: string;
+    siteArea: string | null;
+    date: string;
+  } | null = null;
+  if (
+    offerParams.labourRequestId &&
+    offerParams.requirementId &&
+    isWorkDate(offerParams.date)
+  ) {
+    const board = await loadTomorrow(offerParams.date);
+    const targetRequest = board.requests.find(
+      (request) => request.labour_request_id === offerParams.labourRequestId,
+    );
+    const targetRequirement = targetRequest?.requirements.find(
+      (requirement) => requirement.id === offerParams.requirementId,
+    );
+    if (
+      board.date === offerParams.date &&
+      targetRequest?.lifecycle === "active" &&
+      targetRequirement
+    ) {
+      offerTarget = {
+        requestId: targetRequest.labour_request_id,
+        requirementId: targetRequirement.id,
+        workType: targetRequirement.work_type,
+        siteArea: targetRequest.site_area,
+        date: board.date,
+      };
+    }
+  }
 
   return (
     <OperatorChrome>
@@ -145,6 +196,20 @@ export default async function WorkerDetailPage({
           <h1>{card.preferred_name || card.display_name}</h1>
           <span>{card.confirmed_workmark_count ?? 0} confirmed Workmarks</span>
         </header>
+        {offerTarget ? (
+          <section aria-label="Tomorrow offer" className={styles.offerPanel}>
+            <h2>Offer for {offerTarget.date}</h2>
+            <p>
+              {offerTarget.workType} ·{" "}
+              {offerTarget.siteArea ?? "Site to confirm"}
+            </p>
+            <TomorrowOfferAction
+              workerId={workerId}
+              workerName={card.preferred_name || card.display_name}
+              target={offerTarget}
+            />
+          </section>
+        ) : null}
         <section>
           <h2>Work history</h2>
           {workmarks.length === 0 ? (

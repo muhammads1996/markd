@@ -66,7 +66,9 @@ const domainTables = [
   "channel_media_assets",
   "channel_processing_jobs",
   "crew_links",
+  "exception_case_migration_archive",
   "exception_cases",
+  "exception_claims",
   "labour_requests",
   "labour_requirements",
   "languages",
@@ -82,6 +84,7 @@ const domainTables = [
   "person_phone_numbers",
   "person_private_details",
   "proposed_actions",
+  "semantic_decisions",
   "sites",
   "skills",
   "verification_claims",
@@ -308,6 +311,230 @@ describe("local Supabase database", () => {
       { table_name: "assignment_stamps", record_id: stampId },
       { table_name: "workmark_corrections", record_id: correctionId },
     ]);
+    await client.query("rollback");
+  });
+
+  it("keeps Assignment Stamp assertions, Workmark edges, and typed provenance attributable", async () => {
+    const client = new Client({ connectionString: localDatabaseUrl });
+    clients.push(client);
+    await client.connect();
+    await client.query("begin");
+    await createOperator(client, operatorAdminId, "ops_admin");
+
+    await expect(
+      client.query(
+        `insert into public.assignment_stamps(
+          assignment_id, workmark_id, asserted_by_person_id, recorded_by_user_id,
+          asserted_role, source, source_channel_event_id, source_proposed_action_id
+        ) values (
+          '62000000-0000-4000-8000-000000000001',
+          '40000000-0000-4000-8000-000000000002',
+          '10000000-0000-4000-8000-000000000002', $1,
+          'hirer', 'integration test',
+          '72000000-0000-4000-8000-000000000001',
+          '73000000-0000-4000-8000-000000000001'
+        )`,
+        [operatorAdminId],
+      ),
+    ).resolves.toBeDefined();
+    await expect(
+      client.query(
+        `insert into public.assignment_stamps(
+          assignment_id, workmark_id, recorded_by_user_id, asserted_role, source
+        ) values (
+          '62000000-0000-4000-8000-000000000001',
+          '40000000-0000-4000-8000-000000000002', $1, 'operator',
+          'integration test'
+        )`,
+        [operatorAdminId],
+      ),
+    ).resolves.toBeDefined();
+
+    await client.query("savepoint mismatched_stamp_workmark");
+    await expect(
+      client.query(
+        `insert into public.assignment_stamps(
+          assignment_id, workmark_id, asserted_by_person_id, recorded_by_user_id,
+          asserted_role, source
+        ) values (
+          '62000000-0000-4000-8000-000000000001',
+          '40000000-0000-4000-8000-000000000001',
+          '10000000-0000-4000-8000-000000000001', $1, 'worker',
+          'integration test'
+        )`,
+        [operatorAdminId],
+      ),
+    ).rejects.toThrow("must belong to its assignment");
+    await client.query("rollback to savepoint mismatched_stamp_workmark");
+
+    await client.query("savepoint wrong_worker_assertion");
+    await expect(
+      client.query(
+        `insert into public.assignment_stamps(
+          assignment_id, workmark_id, asserted_by_person_id, recorded_by_user_id,
+          asserted_role, source
+        ) values (
+          '62000000-0000-4000-8000-000000000001',
+          '40000000-0000-4000-8000-000000000002',
+          '10000000-0000-4000-8000-000000000003', $1, 'worker',
+          'integration test'
+        )`,
+        [operatorAdminId],
+      ),
+    ).rejects.toThrow("must be made by the assigned worker");
+    await client.query("rollback to savepoint wrong_worker_assertion");
+
+    await client.query("savepoint wrong_hirer_assertion");
+    await expect(
+      client.query(
+        `insert into public.assignment_stamps(
+          assignment_id, workmark_id, asserted_by_person_id, recorded_by_user_id,
+          asserted_role, source
+        ) values (
+          '62000000-0000-4000-8000-000000000001',
+          '40000000-0000-4000-8000-000000000002',
+          '10000000-0000-4000-8000-000000000003', $1, 'hirer',
+          'integration test'
+        )`,
+        [operatorAdminId],
+      ),
+    ).rejects.toThrow(
+      "must be made by the assignment hirer or an active organisation contact",
+    );
+    await client.query("rollback to savepoint wrong_hirer_assertion");
+
+    const unrelatedEvent = await client.query<{ id: string }>(
+      `insert into public.channel_events(channel, provider_event_id, payload)
+       values ('whatsapp', 'flo-114-stamp-provenance-mismatch', '{}')
+       returning id`,
+    );
+    await client.query("savepoint mismatched_stamp_provenance");
+    await expect(
+      client.query(
+        `insert into public.assignment_stamps(
+          assignment_id, workmark_id, asserted_by_person_id, recorded_by_user_id,
+          asserted_role, source, source_channel_event_id, source_proposed_action_id
+        ) values (
+          '62000000-0000-4000-8000-000000000001',
+          '40000000-0000-4000-8000-000000000002',
+          '10000000-0000-4000-8000-000000000001', $1, 'worker',
+          'integration test', $2,
+          '73000000-0000-4000-8000-000000000001'
+        )`,
+        [operatorAdminId, unrelatedEvent.rows[0]?.id],
+      ),
+    ).rejects.toThrow("must agree");
+    await client.query("rollback to savepoint mismatched_stamp_provenance");
+
+    await expect(
+      client.query(
+        `insert into public.workmark_corrections(
+          workmark_id, reason, changes, recorded_by_user_id, source,
+          source_channel_event_id, source_proposed_action_id
+        ) values (
+          '40000000-0000-4000-8000-000000000002',
+          'integration correction', '{"payment":"pending"}', $1,
+          'integration test',
+          '72000000-0000-4000-8000-000000000001',
+          '73000000-0000-4000-8000-000000000001'
+        )`,
+        [operatorAdminId],
+      ),
+    ).resolves.toBeDefined();
+    await client.query("savepoint mismatched_correction_provenance");
+    await expect(
+      client.query(
+        `insert into public.workmark_corrections(
+          workmark_id, reason, changes, recorded_by_user_id, source,
+          source_channel_event_id, source_proposed_action_id
+        ) values (
+          '40000000-0000-4000-8000-000000000002',
+          'integration correction', '{"payment":"pending"}', $1,
+          'integration test', $2,
+          '73000000-0000-4000-8000-000000000001'
+        )`,
+        [operatorAdminId, unrelatedEvent.rows[0]?.id],
+      ),
+    ).rejects.toThrow("must agree");
+    await client.query(
+      "rollback to savepoint mismatched_correction_provenance",
+    );
+    await client.query("rollback");
+  });
+
+  it("keeps corrected Workmarks in derived Work Graph projections", async () => {
+    const client = new Client({ connectionString: localDatabaseUrl });
+    clients.push(client);
+    await client.connect();
+    await client.query("begin");
+
+    await client.query(
+      `update public.workmarks set lifecycle = 'corrected'
+       where id = '40000000-0000-4000-8000-000000000001'`,
+    );
+    const correctedOnlySkill = await client.query<{ id: string; name: string }>(
+      `insert into public.skills(name)
+       values ('Corrected-only evidence')
+       returning id, name`,
+    );
+    await client.query(
+      `insert into public.workmark_skills(workmark_id, skill_id)
+       values ('40000000-0000-4000-8000-000000000001', $1)`,
+      [correctedOnlySkill.rows[0]?.id],
+    );
+
+    const relationship = await client.query<{
+      confirmed_workmark_count: number;
+    }>(
+      `select confirmed_workmark_count
+       from public.worker_organisation_relationships
+       where worker_id = '10000000-0000-4000-8000-000000000001'`,
+    );
+    expect(relationship.rows[0]?.confirmed_workmark_count).toBe(2);
+
+    const skillEvidence = await client.query<{
+      confirmed_workmark_count: number;
+    }>(
+      `select confirmed_workmark_count
+       from public.worker_organisation_skill_summary
+       where worker_id = '10000000-0000-4000-8000-000000000001'
+         and skill_id = '30000000-0000-4000-8000-000000000001'`,
+    );
+    expect(skillEvidence.rows[0]?.confirmed_workmark_count).toBe(1);
+
+    const operatorCard = await client.query<{
+      confirmed_workmark_count: number;
+    }>(
+      `select confirmed_workmark_count
+       from public.operator_work_cards
+       where worker_id = '10000000-0000-4000-8000-000000000001'`,
+    );
+    expect(operatorCard.rows[0]?.confirmed_workmark_count).toBe(2);
+
+    const participantWork = await client.query<{ workmark_id: string }>(
+      `select workmark_id from public.participant_worker_work
+       where workmark_id = '40000000-0000-4000-8000-000000000001'`,
+    );
+    expect(participantWork.rows).toEqual([
+      { workmark_id: "40000000-0000-4000-8000-000000000001" },
+    ]);
+
+    await createOperator(client, operatorAdminId, "ops_admin");
+    await becomeAuthenticatedOperator(client, operatorAdminId);
+    const searchResults = await client.query<{
+      result_kind: string;
+      result_id: string;
+    }>("select result_kind, result_id from public.search_work_graph($1, 40)", [
+      correctedOnlySkill.rows[0]?.name,
+    ]);
+    expect(searchResults.rows).toEqual(
+      expect.arrayContaining([
+        {
+          result_kind: "worker",
+          result_id: "10000000-0000-4000-8000-000000000001",
+        },
+      ]),
+    );
     await client.query("rollback");
   });
 

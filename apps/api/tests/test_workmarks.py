@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -62,7 +63,7 @@ class StampConnection:
             "lifecycle": "active",
             "worker_response": "accepted",
             "contractor_confirmation": "confirmed",
-            "travel_authorised_at": None,
+            "travel_authorised_at": datetime(2026, 9, 18, tzinfo=UTC),
             "version": 1,
         }
         if "insert into private.command_executions" in query:
@@ -92,6 +93,10 @@ class StampConnection:
                 ]
             )
         if "select id from public.assignment_stamps" in query:
+            return RowsResult(
+                [{"id": uuid.UUID("41000000-0000-4000-8000-000000000001")}]
+            )
+        if "insert into public.assignment_stamps" in query:
             return RowsResult(
                 [{"id": uuid.UUID("41000000-0000-4000-8000-000000000001")}]
             )
@@ -220,6 +225,58 @@ async def test_correction_resolves_conflict_without_rewriting_stamps() -> None:
     assert aggregate["attendance"] == "attended"
 
 
+async def test_verified_correction_of_unknown_evidence_is_operator_resolved() -> None:
+    aggregate = _aggregate(
+        [stamp("worker")],
+        [{"changes": {"attendance": "attended", "completion": "completed"}}],
+    )
+
+    assert aggregate["evidence_state"] == "operator_resolved"
+    assert aggregate["authoritative_fields"] == {"attendance", "completion"}
+
+
+async def test_later_counterclaim_reopens_a_resolved_workmark_field() -> None:
+    corrected_at = datetime(2026, 9, 20, 10, tzinfo=UTC)
+    earlier = stamp("worker", attendance="attended")
+    earlier["created_at"] = corrected_at - timedelta(minutes=1)
+    later = stamp("hirer", attendance="no_show")
+    later["created_at"] = corrected_at + timedelta(minutes=1)
+
+    aggregate = _aggregate(
+        [earlier, later],
+        [{"created_at": corrected_at, "changes": {"attendance": "attended"}}],
+    )
+
+    assert aggregate["evidence_state"] == "conflicted"
+    assert aggregate["conflicting_fields"] == {"attendance"}
+
+
+async def test_unrelated_correction_does_not_authorise_one_sided_outcome() -> None:
+    aggregate = _aggregate(
+        [stamp("worker", attendance="attended", completion="completed")],
+        [{"changes": {"payment_state": "pending"}}],
+    )
+
+    assert aggregate["evidence_state"] == "pending"
+    assert aggregate["authoritative_fields"] == {"payment"}
+    assert "attendance" not in aggregate["authoritative_fields"]
+    assert "completion" not in aggregate["authoritative_fields"]
+
+
+async def test_same_party_conflict_remains_conflicting() -> None:
+    aggregate = _aggregate(
+        [
+            stamp("worker", attendance="attended"),
+            stamp("worker", attendance="no_show"),
+        ],
+        [],
+    )
+
+    assert aggregate["evidence_state"] == "conflicted"
+    assert aggregate["attendance"] == "unknown"
+    assert aggregate["conflicting_fields"] == {"attendance"}
+
+
 async def test_participant_cannot_assert_another_person_identity() -> None:
     actor = CurrentActor(
         user_id=uuid.UUID("44444444-4444-4444-8444-444444444444"),
@@ -290,6 +347,35 @@ async def test_stamp_on_existing_version_one_workmark_is_an_update() -> None:
     )
 
     assert result.event_type == "workmark.updated"
+
+
+async def test_active_assignment_stamp_requires_travel_ready() -> None:
+    connection = StampConnection()
+    original_execute = connection.execute
+
+    async def not_ready_assignment(
+        query: str, params: tuple[object, ...] | None = None
+    ) -> RowsResult:
+        result = await original_execute(query, params)
+        if "from public.assignments" in query:
+            assert result.rows
+            result.rows[0]["travel_authorised_at"] = None
+        return result
+
+    connection.execute = not_ready_assignment  # type: ignore[method-assign]
+    with pytest.raises(ProblemDetail) as error:
+        await submit_assignment_stamp_mutation(
+            connection,
+            CurrentActor(
+                user_id=uuid.UUID("44444444-4444-4444-8444-444444444444"),
+                claims={"operator": {"role": "ops_user"}},
+            ),
+            uuid.UUID("88888888-8888-4888-8888-888888888888"),
+            AssignmentStampInput(attendance="attended"),
+            source="ops",
+        )
+
+    assert error.value.code == "WORK_NOT_TRAVEL_READY"
 
 
 async def test_stamp_route_uses_canonical_workmark_resource() -> None:

@@ -25,7 +25,11 @@ def _jwks_url(supabase_url: str) -> str:
 
 
 async def _decode_token(token: str, settings: Settings) -> dict[str, Any]:
-    if settings.supabase_jwt_secret:
+    header = jwt.get_unverified_header(token)
+    algorithm = header.get("alg")
+    if algorithm == "HS256":
+        if not settings.supabase_jwt_secret:
+            raise jwt.InvalidTokenError("HS256 signing secret is not configured")
         return jwt.decode(
             token,
             settings.supabase_jwt_secret,
@@ -33,18 +37,16 @@ async def _decode_token(token: str, settings: Settings) -> dict[str, Any]:
             audience=settings.supabase_jwt_audience,
         )
 
+    if algorithm not in {"ES256", "RS256"}:
+        raise jwt.InvalidAlgorithmError("unsupported signing algorithm")
     async with httpx.AsyncClient(timeout=5) as client:
         response = await client.get(_jwks_url(settings.supabase_url))
         response.raise_for_status()
         keys = response.json().get("keys", [])
 
-    header = jwt.get_unverified_header(token)
     key_data = next((key for key in keys if key.get("kid") == header.get("kid")), None)
     if key_data is None:
         raise jwt.InvalidTokenError("signing key was not found")
-    algorithm = header.get("alg")
-    if algorithm not in {"ES256", "RS256"}:
-        raise jwt.InvalidAlgorithmError("unsupported signing algorithm")
     key = (
         jwt.algorithms.ECAlgorithm.from_jwk(key_data)
         if algorithm.startswith("ES")

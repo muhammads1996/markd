@@ -25,6 +25,11 @@ from app.api.v1.labour_requests import (
     respond_to_assignment_mutation,
     set_assignment_logistics_mutation,
 )
+from app.api.v1.proposed_actions import (
+    WorkCompletionActionInput,
+    _bound_work_completion,
+)
+from app.api.v1.workmarks import AssignmentStampInput
 from app.core.auth import CurrentActor
 from app.core.config import Settings
 from app.core.problems import ProblemDetail
@@ -66,6 +71,8 @@ class FakeConnection:
                     "channel_event_id": uuid.UUID(
                         "77777777-7777-4777-8777-777777777777"
                     ),
+                    "occurred_at": datetime(2026, 9, 18, tzinfo=UTC),
+                    "payload": {},
                 }
             )
         if "from public.assignments" in query:
@@ -118,6 +125,33 @@ class FakeDatabase:
                 return None
 
         return Transaction()
+
+
+async def test_whatsapp_closeout_confirmation_cannot_reassign_source_evidence() -> None:
+    bound_assignment = uuid.UUID("88888888-8888-4888-8888-888888888888")
+    bound_worker = uuid.UUID("99999999-9999-4999-8999-999999999999")
+    requested = WorkCompletionActionInput(
+        assignment_id=bound_assignment,
+        stamp=AssignmentStampInput(
+            attendance="attended",
+            asserted_by=uuid.UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+            asserted_role="hirer",
+        ),
+    )
+
+    with pytest.raises(ProblemDetail) as error:
+        _bound_work_completion(
+            {
+                "entityIds": {
+                    "assignmentId": str(bound_assignment),
+                    "assertedById": str(bound_worker),
+                    "assertedRole": "worker",
+                }
+            },
+            requested,
+        )
+
+    assert error.value.code == "SOURCE_BINDING_MISMATCH"
 
 
 class TravelFakeConnection:
@@ -636,9 +670,7 @@ async def test_contractor_cannot_reject_currently_travel_authorised_assignment()
     assert "authorisation must be revoked" in error.value.detail.lower()
 
 
-async def test_contractor_confirmation_pwa_source_and_no_op() -> (
-    None
-):
+async def test_contractor_confirmation_pwa_source_and_no_op() -> None:
     assignment = _travel_assignment(contractor_confirmation="pending")
     connection = TravelFakeConnection(assignment)
 
@@ -660,9 +692,7 @@ async def test_contractor_confirmation_pwa_source_and_no_op() -> (
     assert no_op.event_type is None
 
 
-async def test_contractor_cancellation_pwa_source_and_no_op() -> (
-    None
-):
+async def test_contractor_cancellation_pwa_source_and_no_op() -> None:
     assignment = _travel_assignment()
     connection = TravelFakeConnection(assignment)
 

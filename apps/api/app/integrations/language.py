@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, replace
 from time import perf_counter
 from typing import Any, Literal, cast
@@ -189,7 +190,9 @@ class OpenRouterProvider:
                 },
                 {
                     "role": "user",
-                    "content": {"detectedLanguage": language_code, "message": text},
+                    "content": json.dumps(
+                        {"detectedLanguage": language_code, "message": text}
+                    ),
                 },
             ],
         )
@@ -281,7 +284,9 @@ class OpenRouterProvider:
                 )
                 if response.status_code >= 400:
                     raise OpenRouterProviderError(
-                        f"OpenRouter request failed with status {response.status_code}",
+                        "OpenRouter request failed with status "
+                        f"{response.status_code}: "
+                        f"{response.text}",
                         _retryable_status(response.status_code),
                     )
                 value, cost = _openrouter_value(response)
@@ -318,9 +323,15 @@ def _intent_schema() -> dict[str, Any]:
     return {
         "type": "object",
         "additionalProperties": False,
-        "required": ["actionType", "fields", "confidence", "ambiguity"],
+        "required": [
+            "actionType",
+            "fields",
+            "confidence",
+            "ambiguity",
+        ],
         "properties": {
             "actionType": {
+                "type": ["string", "null"],
                 "enum": [
                     "worker_availability",
                     "assignment_response",
@@ -331,16 +342,79 @@ def _intent_schema() -> dict[str, Any]:
                     "payment_issue",
                     "historical_work_relationship_claim",
                     None,
-                ]
+                ],
             },
             "fields": {
                 "type": "object",
-                "additionalProperties": {
-                    "type": ["string", "number", "boolean", "null"]
+                "additionalProperties": False,
+                "required": [
+                    "availability",
+                    "headcount",
+                    "attendance",
+                    "completion",
+                    "reuse_preference",
+                    "payment_state",
+                    "amount_minor",
+                    "currency",
+                    "payment_method",
+                ],
+                "properties": {
+                    "availability": {
+                        "type": ["string", "null"],
+                    },
+                    "headcount": {
+                        "type": ["integer", "null"],
+                    },
+                    "attendance": {
+                        "type": ["string", "null"],
+                        "enum": ["attended", "no_show", "unknown", None],
+                    },
+                    "completion": {
+                        "type": ["string", "null"],
+                        "enum": [
+                            "completed",
+                            "partial",
+                            "not_completed",
+                            "unknown",
+                            None,
+                        ],
+                    },
+                    "reuse_preference": {
+                        "type": ["string", "null"],
+                        "enum": ["yes", "no", "unknown", None],
+                    },
+                    "payment_state": {
+                        "type": ["string", "null"],
+                        "enum": [
+                            "unknown",
+                            "pending",
+                            "paid",
+                            "partial",
+                            "disputed",
+                            None,
+                        ],
+                    },
+                    "amount_minor": {"type": ["integer", "null"], "minimum": 0},
+                    "currency": {
+                        "type": ["string", "null"],
+                        "pattern": "^[A-Z]{3}$",
+                    },
+                    "payment_method": {"type": ["string", "null"]},
                 },
             },
-            "confidence": {"type": "number", "minimum": 0, "maximum": 1},
-            "ambiguity": {"enum": ["clear", "ambiguous", "unresolved"]},
+            "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+            },
+            "ambiguity": {
+                "type": "string",
+                "enum": [
+                    "clear",
+                    "ambiguous",
+                    "unresolved",
+                ],
+            },
         },
     }
 
