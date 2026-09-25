@@ -27,18 +27,38 @@ afterEach(async () => {
 });
 
 describe("CI API environment", () => {
-  it("creates a private synthetic webhook secret without overwriting an existing file", async () => {
+  it("creates private local database and webhook settings without overwriting an existing file", async () => {
     const directory = await createTemporaryDirectory();
     const outputPath = join(directory, ".env");
+    const statusOutput =
+      'DB_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"';
 
-    await writeCiApiEnv(outputPath);
+    await writeCiApiEnv(outputPath, statusOutput);
     const contents = await readFile(outputPath, "utf8");
-    expect(contents).toMatch(/^WHATSAPP_APP_SECRET=[0-9a-f]{64}\n$/);
+    expect(contents).toMatch(
+      /^SUPABASE_DB_URL=postgresql:\/\/postgres:postgres@127\.0\.0\.1:54322\/postgres\nWHATSAPP_APP_SECRET=[0-9a-f]{64}\n$/,
+    );
 
-    await expect(writeCiApiEnv(outputPath)).rejects.toMatchObject({
-      code: "EEXIST",
-    });
+    await expect(writeCiApiEnv(outputPath, statusOutput)).rejects.toMatchObject(
+      {
+        code: "EEXIST",
+      },
+    );
     await expect(readFile(outputPath, "utf8")).resolves.toBe(contents);
+  });
+
+  it("rejects missing or nonlocal database URLs", async () => {
+    const directory = await createTemporaryDirectory();
+    const outputPath = join(directory, ".env");
+    await expect(
+      writeCiApiEnv(outputPath, "API_URL=http://127.0.0.1:54321"),
+    ).rejects.toThrow("DB_URL");
+    await expect(
+      writeCiApiEnv(
+        outputPath,
+        "DB_URL=postgresql://postgres:postgres@db.example.com:5432/postgres",
+      ),
+    ).rejects.toThrow("local PostgreSQL");
   });
 });
 

@@ -74,13 +74,34 @@ export async function writeLocalEnv(
   }
 }
 
-export async function writeCiApiEnv(outputPath: string): Promise<void> {
+export async function writeCiApiEnv(
+  outputPath: string,
+  statusOutput: string,
+): Promise<void> {
+  const databaseUrl = statusOutput
+    .split(/\r?\n/u)
+    .map((line) => /^DB_URL=(.*)$/u.exec(line.trim())?.[1])
+    .find((value): value is string => value !== undefined);
+  if (!databaseUrl)
+    throw new Error("Local Supabase status did not include DB_URL.");
+  const unquotedDatabaseUrl = unquote(databaseUrl);
+  const parsedDatabaseUrl = new URL(unquotedDatabaseUrl);
+  if (
+    !["postgres:", "postgresql:"].includes(parsedDatabaseUrl.protocol) ||
+    !["127.0.0.1", "localhost"].includes(parsedDatabaseUrl.hostname)
+  ) {
+    throw new Error("CI API database URL must point to local PostgreSQL.");
+  }
   const secret = randomBytes(32).toString("hex");
-  await writeFile(outputPath, `WHATSAPP_APP_SECRET=${secret}\n`, {
-    encoding: "utf8",
-    flag: "wx",
-    mode: 0o600,
-  });
+  await writeFile(
+    outputPath,
+    `SUPABASE_DB_URL=${unquotedDatabaseUrl}\nWHATSAPP_APP_SECRET=${secret}\n`,
+    {
+      encoding: "utf8",
+      flag: "wx",
+      mode: 0o600,
+    },
+  );
 }
 
 function readLocalSupabaseStatus(): string {
@@ -98,12 +119,13 @@ function readLocalSupabaseStatus(): string {
 async function main(): Promise<void> {
   const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
   const outputPath = resolve(repositoryRoot, "apps/web/.env.local");
-  const values = parseSupabasePublicEnv(readLocalSupabaseStatus());
+  const statusOutput = readLocalSupabaseStatus();
+  const values = parseSupabasePublicEnv(statusOutput);
   await writeLocalEnv(outputPath, values);
   console.log("Created apps/web/.env.local with local public Supabase values.");
   if (process.env.GITHUB_ACTIONS === "true") {
-    await writeCiApiEnv(resolve(repositoryRoot, "apps/api/.env"));
-    console.log("Created apps/api/.env with a synthetic CI webhook secret.");
+    await writeCiApiEnv(resolve(repositoryRoot, "apps/api/.env"), statusOutput);
+    console.log("Created apps/api/.env for local CI services.");
   }
 }
 
