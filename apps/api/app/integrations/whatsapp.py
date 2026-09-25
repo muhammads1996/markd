@@ -4,7 +4,7 @@ import hmac
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
-from typing import Any, Literal, cast
+from typing import Any, Literal
 from urllib.parse import quote, urlparse
 
 import httpx
@@ -313,7 +313,7 @@ def _normalize_media(message: dict[str, Any]) -> list[InboundMedia]:
             return [
                 InboundMedia(
                     provider_media_id=media_id,
-                    media_type=cast(MediaType, media_type),
+                    media_type=media_type,
                     mime_type=mime_type if isinstance(mime_type, str) else None,
                 )
             ]

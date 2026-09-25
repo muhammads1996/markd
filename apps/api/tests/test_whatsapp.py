@@ -295,8 +295,11 @@ class DirectProcessingConnection(ProcessingConnection):
             return RowsResult(
                 [
                     {
-                        "auth_user_id": "44444444-4444-4444-8444-444444444444",
+                        "event_id": self.event["id"],
+                        "person_id": "99999999-9999-4999-8999-999999999999",
                         "worker_id": "99999999-9999-4999-8999-999999999999",
+                        "organisation_contact_id": None,
+                        "organisation_id": None,
                     }
                 ]
             )
@@ -317,16 +320,18 @@ class SourceBindingConnection(ProcessingConnection):
         self, query: str, params: tuple[Any, ...] | None = None
     ) -> FakeResult:
         self.calls.append((query, params))
-        if (
-            "from public.channel_events as event" in query
-            and "worker_profiles" in query
-        ):
-            return RowsResult([{"worker_id": self.worker_id}])
-        if (
-            "from public.channel_events as event" in query
-            and "organisation_contacts" in query
-        ):
-            return RowsResult([])
+        if "from public.channel_events as event" in query:
+            return RowsResult(
+                [
+                    {
+                        "event_id": self.event["id"],
+                        "person_id": self.worker_id,
+                        "worker_id": self.worker_id,
+                        "organisation_contact_id": None,
+                        "organisation_id": None,
+                    }
+                ]
+            )
         if "from public.assignments" in query and "select id" in query:
             return RowsResult([{"id": self.assignment_id}])
         if "from public.channel_events" in query:
@@ -334,6 +339,30 @@ class SourceBindingConnection(ProcessingConnection):
         if "insert into public.proposed_actions" in query:
             return FakeResult({"id": "77777777-7777-4777-8777-777777777777"})
         return FakeResult()
+
+
+class HirerProcessingConnection(DirectProcessingConnection):
+    contact_id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    person_id = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+    organisation_id = "55555555-5555-4555-8555-555555555555"
+
+    async def execute(
+        self, query: str, params: tuple[Any, ...] | None = None
+    ) -> FakeResult:
+        if "from public.channel_events as event" in query:
+            self.calls.append((query, params))
+            return RowsResult(
+                [
+                    {
+                        "event_id": self.event["id"],
+                        "person_id": self.person_id,
+                        "worker_id": None,
+                        "organisation_contact_id": self.contact_id,
+                        "organisation_id": self.organisation_id,
+                    }
+                ]
+            )
+        return await super().execute(query, params)
 
 
 class AssignmentResponseConvergenceConnection(DirectProcessingConnection):
@@ -367,8 +396,11 @@ class AssignmentResponseConvergenceConnection(DirectProcessingConnection):
             return RowsResult(
                 [
                     {
-                        "auth_user_id": "44444444-4444-4444-8444-444444444444",
+                        "event_id": self.event["id"],
+                        "person_id": "99999999-9999-4999-8999-999999999999",
                         "worker_id": "99999999-9999-4999-8999-999999999999",
+                        "organisation_contact_id": None,
+                        "organisation_id": None,
                     }
                 ]
             )
@@ -625,6 +657,21 @@ async def test_exact_assignment_response_supports_worker_offer_templates(
     assert _exact_assignment_response(reply) == response
 
 
+@pytest.mark.parametrize(
+    ("message", "expected"),
+    [
+        ("AVAILABLE TODAY", ("today", "available")),
+        ("NOT AVAILABLE TOMORROW", ("tomorrow", "unavailable")),
+        ("Ek is beskikbaar more", ("tomorrow", "available")),
+        ("Ndiyakwazi ukusebenza ngomso", ("tomorrow", "available")),
+    ],
+)
+async def test_exact_availability_is_deterministic_across_pilot_languages(
+    message: str, expected: tuple[str, str]
+) -> None:
+    assert whatsapp_worker._exact_availability(message) == expected
+
+
 async def test_ambiguous_assignment_response_remains_proposed_action(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -676,6 +723,9 @@ async def test_semantic_review_keeps_source_binding_for_baseline_actions(
     action_type: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     connection = SourceBindingConnection()
+    connection.event["payload"]["entry"][0]["changes"][0]["value"]["messages"][0][
+        "text"
+    ]["body"] = "The job is done and payment is pending"
     monkeypatch.setattr(
         whatsapp_worker,
         "extract_intent",
@@ -725,6 +775,9 @@ async def test_payment_issue_normal_intake_keeps_source_binding(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     connection = SourceBindingConnection()
+    connection.event["payload"]["entry"][0]["changes"][0]["value"]["messages"][0][
+        "text"
+    ]["body"] = "I have not been paid"
     monkeypatch.setattr(
         whatsapp_worker,
         "extract_intent",
@@ -751,6 +804,98 @@ async def test_payment_issue_normal_intake_keeps_source_binding(
         "assertedRole": "worker",
         "assignmentId": connection.assignment_id,
     }
+
+
+async def test_app_less_hirer_labour_request_draft_binds_contact() -> None:
+    connection = HirerProcessingConnection()
+    connection.event["payload"]["entry"][0]["changes"][0]["value"]["messages"][0][
+        "text"
+    ]["body"] = "Need 2 workers tomorrow"
+
+    outcome = await _process_message_job(
+        connection,
+        connection.event["id"],
+        Settings(openrouter_api_key=""),
+        FakeDatabase(connection),
+    )
+    action = next(
+        params
+        for query, params in connection.calls
+        if "insert into public.proposed_actions" in query
+    )
+
+    assert outcome == "created"
+    assert action[1] == "labour_request"
+    assert action[8].obj["fields"]["headcount"] == 2
+    assert action[8].obj["entityIds"] == {
+        "assertedById": connection.person_id,
+        "assertedRole": "hirer",
+        "organisationContactId": connection.contact_id,
+        "organisationId": connection.organisation_id,
+    }
+    assert not any(
+        "insert into private.command_executions" in query
+        for query, _ in connection.calls
+    )
+
+
+async def test_hirer_confirmation_draft_binds_one_active_assignment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connection = HirerProcessingConnection()
+    connection.event["payload"]["entry"][0]["changes"][0]["value"]["messages"][0][
+        "text"
+    ]["body"] = "We confirm the job"
+    monkeypatch.setattr(
+        whatsapp_worker,
+        "extract_intent",
+        lambda *_: ExtractedIntent("assignment_confirmation", {}, 0.9, "clear"),
+    )
+
+    outcome = await _process_message_job(
+        connection,
+        connection.event["id"],
+        Settings(openrouter_api_key=""),
+        FakeDatabase(connection),
+    )
+    action = next(
+        params
+        for query, params in connection.calls
+        if "insert into public.proposed_actions" in query
+    )
+
+    assert outcome == "created"
+    assert action[8].obj["entityIds"] == {
+        "assertedById": connection.person_id,
+        "assertedRole": "hirer",
+        "organisationContactId": connection.contact_id,
+        "organisationId": connection.organisation_id,
+        "assignmentId": connection.assignment_ids[0],
+    }
+
+
+async def test_hirer_logistics_statement_routes_to_bound_ops_draft() -> None:
+    connection = HirerProcessingConnection()
+    connection.event["payload"]["entry"][0]["changes"][0]["value"]["messages"][0][
+        "text"
+    ]["body"] = "Meet at the site gate at 7"
+
+    outcome = await _process_message_job(
+        connection,
+        connection.event["id"],
+        Settings(openrouter_api_key=""),
+        FakeDatabase(connection),
+    )
+    action = next(
+        params
+        for query, params in connection.calls
+        if "insert into public.proposed_actions" in query
+    )
+
+    assert outcome == "created"
+    assert action[1] == "assignment_logistics"
+    assert action[8].obj["entityIds"]["assignmentId"] == connection.assignment_ids[0]
+    assert action[8].obj["entityIds"]["organisationContactId"] == connection.contact_id
 
 
 async def test_ambiguous_assignment_response_is_not_directly_executable() -> None:
@@ -844,8 +989,8 @@ async def test_resolved_availability_executes_canonical_mutation(
 async def test_availability_date_uses_the_immutable_event_timestamp() -> None:
     occurred_at = datetime(2026, 9, 16, 23, 30, tzinfo=UTC)
 
-    assert _availability_work_date("today", occurred_at) == date(2026, 9, 16)
-    assert _availability_work_date("tomorrow", occurred_at) == date(2026, 9, 17)
+    assert _availability_work_date("today", occurred_at) == date(2026, 9, 17)
+    assert _availability_work_date("tomorrow", occurred_at) == date(2026, 9, 18)
 
 
 class OutboxConnection:

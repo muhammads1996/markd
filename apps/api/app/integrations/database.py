@@ -48,17 +48,18 @@ class Database:
     @asynccontextmanager
     async def transaction(
         self,
-        actor_user_id: UUID,
+        actor_user_id: UUID | None,
         correlation_id: str,
     ) -> AsyncIterator[AsyncConnection[Any]]:
         if self._pool is None:
             raise RuntimeError("API database is not configured")
         async with self._pool.connection() as connection:
             async with connection.transaction():
-                await connection.execute(
-                    "select set_config('request.jwt.claim.sub', %s, true)",
-                    (str(actor_user_id),),
-                )
+                if actor_user_id is not None:
+                    await connection.execute(
+                        "select set_config('request.jwt.claim.sub', %s, true)",
+                        (str(actor_user_id),),
+                    )
                 await connection.execute(
                     "select set_config('app.correlation_id', %s, true)",
                     (correlation_id,),
@@ -68,7 +69,7 @@ class Database:
     @asynccontextmanager
     async def read_transaction(
         self,
-        actor_user_id: UUID,
+        actor_user_id: UUID | None,
         correlation_id: str,
     ) -> AsyncIterator[AsyncConnection[Any]]:
         async with self.transaction(actor_user_id, correlation_id) as connection:

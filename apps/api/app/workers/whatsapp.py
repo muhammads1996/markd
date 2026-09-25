@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import asdict
-from datetime import UTC, date, datetime, timedelta
+from dataclasses import asdict, replace
+from datetime import date, datetime, timedelta
 from typing import Any, Literal, cast
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -14,11 +14,13 @@ from app.api.v1.availability import (
     set_worker_availability_mutation,
 )
 from app.api.v1.labour_requests import (
+    CancelAssignmentInput,
     RespondToAssignmentInput,
+    cancel_assignment_mutation,
     respond_to_assignment_mutation,
 )
+from app.application.channel_actors import ChannelPrincipal, resolve_channel_principal
 from app.application.dispatcher import execute_command
-from app.core.auth import CurrentActor
 from app.core.config import Settings
 from app.core.problems import ProblemDetail
 from app.decisions.question_bundles import (
@@ -358,6 +360,8 @@ async def _process_message_job(
         )
     language_code = detection.language_code if detection else None
     exact_response = _exact_assignment_response(text) if text else None
+    exact_availability = _exact_availability(text) if text else None
+    exact_withdrawal = _exact_withdrawal(text) if text else False
     intent: ExtractedIntent | None = extract_intent(interpretation_text, language_code)
     semantic_evaluations = await _evaluate_semantic_decisions(
         connection,
@@ -371,7 +375,12 @@ async def _process_message_job(
         evaluation.policy.route in {"confirmation_or_ops", "ops"}
         for _, evaluation in semantic_evaluations
     )
-    if settings.openrouter_api_key and exact_response is None:
+    if (
+        settings.openrouter_api_key
+        and exact_response is None
+        and exact_availability is None
+        and not exact_withdrawal
+    ):
         language_provider = _openrouter_provider(settings)
         try:
             intent = await language_provider.extract_intent(
@@ -383,6 +392,16 @@ async def _process_message_job(
         intent = ExtractedIntent(
             "assignment_response", {"response": exact_response}, 1.0, "clear"
         )
+    elif exact_availability is not None:
+        availability, status = exact_availability
+        intent = ExtractedIntent(
+            "worker_availability",
+            {"availability": availability, "status": status},
+            1.0,
+            "clear",
+        )
+    elif exact_withdrawal:
+        intent = ExtractedIntent("assignment_cancellation", {}, 1.0, "clear")
     if intent is None or not _valid_intent(intent):
         return "skipped"
     ambiguity = (
@@ -412,7 +431,12 @@ async def _process_message_job(
         ]
     if intent.evidence:
         interpretation["structuredIntentProvider"] = asdict(intent.evidence)
-    entity_ids: dict[str, str] = {}
+    principal = (
+        await resolve_channel_principal(connection, channel_event_id)
+        if database is not None
+        else None
+    )
+    entity_ids: dict[str, str] = principal.entity_ids() if principal else {}
     if database is not None and intent.action_type in {
         "work_completion",
         "payment_issue",
@@ -420,21 +444,38 @@ async def _process_message_job(
         # Bind trust/economic assertions to immutable sender and assignment
         # evidence even when semantic review prevents command execution.
         entity_ids = await _resolve_closeout_entities(
-            connection, event, channel_event_id
+            connection, event, channel_event_id, principal
         )
+    elif principal is not None and intent.action_type in {
+        "assignment_confirmation",
+        "assignment_logistics",
+        "assignment_cancellation",
+    }:
+        assignment_id = await _resolve_active_assignment(connection, principal)
+        if assignment_id is not None:
+            entity_ids["assignmentId"] = str(assignment_id)
     if (
         database is not None
         and intent.action_type not in {"work_completion", "payment_issue"}
-        and (exact_response is not None or not semantic_requires_review)
+        and (
+            exact_response is not None
+            or exact_availability is not None
+            or exact_withdrawal
+            or not semantic_requires_review
+        )
     ):
-        outcome, entity_ids = await _try_execute_worker_action(
+        outcome, attempted_entities = await _try_execute_worker_action(
             database,
             connection,
             event,
             intent,
             channel_event_id,
             exact_assignment_response=exact_response is not None,
+            exact_availability=exact_availability is not None,
+            exact_withdrawal=exact_withdrawal,
+            principal=principal,
         )
+        entity_ids.update(attempted_entities)
         if outcome is not None:
             return outcome
     proposed_action_result = await connection.execute(
@@ -598,90 +639,77 @@ def _exact_assignment_response(
 def _availability_work_date(
     availability: Literal["today", "tomorrow"], occurred_at: datetime
 ) -> date:
-    return occurred_at.astimezone(UTC).date() + timedelta(
+    return occurred_at.astimezone(ZoneInfo("Africa/Johannesburg")).date() + timedelta(
         days=1 if availability == "tomorrow" else 0
     )
 
 
-async def _resolve_active_participant_workers(
-    connection: Any, channel_event_id: str
-) -> list[dict[str, Any]]:
-    result = await connection.execute(
-        """
-        select account.auth_user_id, worker.person_id as worker_id
-        from public.channel_events as event
-        join public.person_phone_numbers as phone
-          on phone.phone_number = event.sender_phone_number
-         and phone.archived_at is null
-        join public.participant_accounts as account
-          on account.person_id = phone.person_id and account.status = 'active'
-                join public.participant_account_scopes as scope
-                    on scope.auth_user_id = account.auth_user_id
-                 and scope.scope_kind = 'worker'
-        join public.worker_profiles as worker
-          on worker.person_id = account.person_id
-         and worker.archived_at is null and worker.record_status = 'active'
-        where event.id = %s::uuid
-        """,
-        (channel_event_id,),
+def _exact_availability(
+    text: str,
+) -> tuple[Literal["today", "tomorrow"], Literal["available", "unavailable"]] | None:
+    normalized = " ".join(text.upper().split())
+    translated: dict[
+        str,
+        tuple[Literal["today", "tomorrow"], Literal["available", "unavailable"]],
+    ] = {
+        "EK IS BESKIKBAAR VANDAG": ("today", "available"),
+        "EK IS BESKIKBAAR MORE": ("tomorrow", "available"),
+        "EK IS BESKIKBAAR MÔRE": ("tomorrow", "available"),
+        "NDIYAKWAZI UKUSEBENZA NAMHLANJE": ("today", "available"),
+        "NDIYAKWAZI UKUSEBENZA NGOMSO": ("tomorrow", "available"),
+    }
+    if normalized in translated:
+        return translated[normalized]
+    for day in ("TODAY", "TOMORROW"):
+        if normalized in {f"AVAILABLE {day}", f"I AM AVAILABLE {day}"}:
+            return cast(Literal["today", "tomorrow"], day.lower()), "available"
+        if normalized in {f"UNAVAILABLE {day}", f"NOT AVAILABLE {day}"}:
+            return cast(Literal["today", "tomorrow"], day.lower()), "unavailable"
+    return None
+
+
+def _exact_withdrawal(text: str) -> bool:
+    return " ".join(text.upper().split()) in {"WITHDRAW", "CANCEL MY ASSIGNMENT"}
+
+
+async def _resolve_active_assignment(
+    connection: Any, principal: ChannelPrincipal
+) -> UUID | None:
+    column = "worker_id" if principal.role == "worker" else "organisation_id"
+    value = (
+        principal.person_id if principal.role == "worker" else principal.organisation_id
     )
-    return [dict(worker) for worker in await result.fetchall()]
-
-
-async def _resolve_closeout_workers(
-    connection: Any, channel_event_id: str
-) -> list[dict[str, Any]]:
     result = await connection.execute(
-        """
-        select worker.person_id as worker_id
-        from public.channel_events as event
-        join public.person_phone_numbers as phone
-          on phone.phone_number = event.sender_phone_number
-         and phone.archived_at is null
-        join public.worker_profiles as worker
-          on worker.person_id = phone.person_id
-         and worker.archived_at is null and worker.record_status = 'active'
-        where event.id = %s::uuid
+        f"""
+        select id from public.assignments
+        where {column} = %s and lifecycle = 'active' and offered_at is not null
+        order by offered_at desc limit 2
         """,
-        (channel_event_id,),
+        (value,),
     )
-    return [dict(worker) for worker in await result.fetchall()]
-
-
-async def _resolve_closeout_hirers(
-    connection: Any, channel_event_id: str
-) -> list[dict[str, Any]]:
-    result = await connection.execute(
-        """
-        select distinct contact.person_id as asserted_by_id, contact.organisation_id
-        from public.channel_events as event
-        join public.person_phone_numbers as phone
-          on phone.phone_number = event.sender_phone_number
-         and phone.archived_at is null
-        join public.organisation_contacts as contact
-          on contact.person_id = phone.person_id and contact.archived_at is null
-        where event.id = %s::uuid
-        """,
-        (channel_event_id,),
-    )
-    return [dict(hirer) for hirer in await result.fetchall()]
+    assignments = await result.fetchall()
+    return UUID(str(assignments[0]["id"])) if len(assignments) == 1 else None
 
 
 async def _resolve_closeout_entities(
     connection: Any,
     event: dict[str, Any],
     channel_event_id: str,
+    principal: ChannelPrincipal | None = None,
 ) -> dict[str, str]:
-    workers = await _resolve_closeout_workers(connection, channel_event_id)
-    hirers = await _resolve_closeout_hirers(connection, channel_event_id)
-    closeout_date = event["occurred_at"].astimezone(
-        ZoneInfo("Africa/Johannesburg")
-    ).date()
+    principal = principal or await resolve_channel_principal(
+        connection, channel_event_id
+    )
+    if principal is None:
+        return {}
+    closeout_date = (
+        event["occurred_at"].astimezone(ZoneInfo("Africa/Johannesburg")).date()
+    )
     entity_ids: dict[str, str]
     assignment_query: str
     assignment_params: tuple[object, ...]
-    if len(workers) == 1 and not hirers:
-        worker_id = UUID(str(workers[0]["worker_id"]))
+    if principal.role == "worker":
+        worker_id = principal.person_id
         entity_ids = {
             "workerId": str(worker_id),
             "assertedById": str(worker_id),
@@ -689,21 +717,19 @@ async def _resolve_closeout_entities(
         }
         assignment_query = "worker_id = %s"
         assignment_params = (worker_id, closeout_date, closeout_date)
-    elif len(hirers) == 1 and not workers:
-        hirer = hirers[0]
+    else:
         entity_ids = {
-            "assertedById": str(hirer["asserted_by_id"]),
+            "assertedById": str(principal.person_id),
             "assertedRole": "hirer",
-            "organisationId": str(hirer["organisation_id"]),
+            "organisationId": str(principal.organisation_id),
+            "organisationContactId": str(principal.organisation_contact_id),
         }
         assignment_query = "organisation_id = %s"
         assignment_params = (
-            hirer["organisation_id"],
+            principal.organisation_id,
             closeout_date,
             closeout_date,
         )
-    else:
-        return {}
     result = await connection.execute(
         f"""
         select id
@@ -730,24 +756,21 @@ async def _try_execute_worker_action(
     channel_event_id: str,
     *,
     exact_assignment_response: bool,
+    exact_availability: bool = False,
+    exact_withdrawal: bool = False,
+    principal: ChannelPrincipal | None = None,
 ) -> tuple[str | None, dict[str, str]]:
-    workers = await _resolve_active_participant_workers(connection, channel_event_id)
-    if intent.action_type == "work_completion":
-        return None, await _resolve_closeout_entities(
-            connection, event, channel_event_id
-        )
-    if len(workers) != 1:
-        return None, {}
-    worker = workers[0]
-    worker_id = UUID(str(worker["worker_id"]))
-    actor = CurrentActor(
-        user_id=UUID(str(worker["auth_user_id"])),
-        claims={
-            "participant_person_id": str(worker_id),
-            "worker_scope": True,
-            "contractor_contacts": [],
-        },
+    principal = principal or await resolve_channel_principal(
+        connection, channel_event_id
     )
+    if intent.action_type in {"work_completion", "payment_issue"}:
+        return None, await _resolve_closeout_entities(
+            connection, event, channel_event_id, principal
+        )
+    if principal is None or principal.role != "worker":
+        return None, {}
+    worker_id = principal.person_id
+    actor = principal.command_actor()
     event_id = UUID(str(event["id"]))
     provider_message_id = event.get("provider_message_id")
     if not isinstance(provider_message_id, str) or not provider_message_id.strip():
@@ -760,24 +783,16 @@ async def _try_execute_worker_action(
         if response not in {"accepted", "declined", "call_me"}:
             return None, {"workerId": str(worker_id)}
         assignment_response = cast(Literal["accepted", "declined", "call_me"], response)
-        result = await connection.execute(
-            """
-            select id from public.assignments
-            where worker_id = %s and lifecycle = 'active' and offered_at is not null
-            order by offered_at desc
-            """,
-            (worker_id,),
-        )
-        assignments = await result.fetchall()
-        if len(assignments) != 1:
+        assignment_id = await _resolve_active_assignment(connection, principal)
+        if assignment_id is None:
             return None, {"workerId": str(worker_id)}
-        assignment_id = UUID(str(assignments[0]["id"]))
+        resolved_assignment_id = assignment_id
 
         async def handler(command_connection: Any) -> Any:
             return await respond_to_assignment_mutation(
                 command_connection,
                 actor,
-                assignment_id,
+                resolved_assignment_id,
                 RespondToAssignmentInput(response=assignment_response),
                 source_channel="whatsapp",
                 source_channel_event_id=event_id,
@@ -816,8 +831,53 @@ async def _try_execute_worker_action(
             "assignmentId": str(assignment_id),
         }
 
+    if intent.action_type == "assignment_cancellation":
+        if not exact_withdrawal:
+            return None, {"workerId": str(worker_id)}
+        assignment_id = await _resolve_active_assignment(connection, principal)
+        if assignment_id is None:
+            return None, {"workerId": str(worker_id)}
+
+        async def cancellation_handler(command_connection: Any) -> Any:
+            await command_connection.execute(
+                "select set_config('app.source_channel_event_id', %s, true)",
+                (str(event_id),),
+            )
+            mutation = await cancel_assignment_mutation(
+                command_connection,
+                actor,
+                assignment_id,
+                CancelAssignmentInput(reason_code="worker_withdrew"),
+            )
+            return replace(
+                mutation,
+                source_channel="whatsapp",
+                source_channel_event_id=event_id,
+            )
+
+        try:
+            await execute_command(
+                database,
+                actor,
+                str(event_id),
+                "CancelAssignment",
+                f"wa:{provider_message_id}:cancel-assignment",
+                {"assignment_id": str(assignment_id), "reason_code": "worker_withdrew"},
+                cancellation_handler,
+            )
+        except (HTTPException, ProblemDetail):
+            return None, {
+                "workerId": str(worker_id),
+                "assignmentId": str(assignment_id),
+            }
+        return "executed", {
+            "workerId": str(worker_id),
+            "assignmentId": str(assignment_id),
+        }
+
     if (
         intent.action_type != "worker_availability"
+        or not exact_availability
         or intent.ambiguity != "clear"
         or intent.confidence < 0.8
         or intent.fields.get("availability") not in {"today", "tomorrow"}
@@ -834,7 +894,14 @@ async def _try_execute_worker_action(
             actor,
             worker_id,
             work_date,
-            SetWorkerAvailabilityInput(status="available"),
+            SetWorkerAvailabilityInput(
+                status=(
+                    "unavailable"
+                    if exact_availability
+                    and intent.fields.get("status") == "unavailable"
+                    else "available"
+                )
+            ),
             source="whatsapp",
             source_channel_event_id=event_id,
         )
@@ -849,7 +916,12 @@ async def _try_execute_worker_action(
             {
                 "worker_id": str(worker_id),
                 "work_date": work_date.isoformat(),
-                "status": "available",
+                "status": (
+                    "unavailable"
+                    if exact_availability
+                    and intent.fields.get("status") == "unavailable"
+                    else "available"
+                ),
             },
             availability_handler,
         )
@@ -862,10 +934,23 @@ def _assignment_delivery_body(
     event_type: str, worker_response: object | None = None
 ) -> str | None:
     if event_type == "assignment.worker_responded":
-        return "Accepted. DO NOT TRAVEL YET." if worker_response == "accepted" else None
+        if not isinstance(worker_response, str):
+            return None
+        return {
+            "accepted": "Accepted. WAITING. DO NOT TRAVEL YET.",
+            "declined": "Declined. We have recorded your response.",
+            "call_me": "Call-me request received. We will contact you. DO NOT TRAVEL.",
+        }.get(worker_response)
     return {
+        "assignment.offered": (
+            "Work offer from MARKD. Reply YES, NO, or CALL ME. "
+            "DO NOT TRAVEL until MARKD confirms travel."
+        ),
         "assignment.travel_authorised": "WORK CONFIRMED. GO to the reporting point.",
         "assignment.travel_revoked": "Work details changed. DO NOT TRAVEL.",
+        "assignment.logistics_updated": (
+            "Work details changed. DO NOT TRAVEL until confirmed."
+        ),
         "assignment.cancelled": "Work cancelled. DO NOT TRAVEL.",
         "labour_request.cancelled": "Work cancelled. DO NOT TRAVEL.",
     }.get(event_type)

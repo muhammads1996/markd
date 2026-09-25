@@ -15,8 +15,11 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 @dataclass(frozen=True)
 class CurrentActor:
-    user_id: UUID
+    user_id: UUID | None
     claims: dict[str, Any]
+    channel_event_id: UUID | None = None
+    person_id: UUID | None = None
+    organisation_contact_id: UUID | None = None
 
 
 @lru_cache(maxsize=4)

@@ -1296,6 +1296,7 @@ components:
           - assignment_response
           - labour_request
           - assignment_confirmation
+          - assignment_logistics
           - assignment_cancellation
           - work_completion
           - payment_issue
@@ -1351,6 +1352,66 @@ components:
       - name
       - phone
       title: AssignmentContactInput
+    AssignmentLogisticsActionInput:
+      properties:
+        reporting_mode:
+          type: string
+          enum:
+          - site
+          - pickup
+          title: Reporting Mode
+        place_text:
+          type: string
+          maxLength: 500
+          minLength: 1
+          title: Place Text
+        reporting_at:
+          type: string
+          format: date-time
+          title: Reporting At
+        pickup_point_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Pickup Point Id
+        location_pin:
+          anyOf:
+          - $ref: '#/components/schemas/LocationPinInput'
+          - type: 'null'
+        landmark:
+          anyOf:
+          - type: string
+            maxLength: 500
+          - type: 'null'
+          title: Landmark
+        instructions:
+          anyOf:
+          - type: string
+            maxLength: 1000
+          - type: 'null'
+          title: Instructions
+        contact:
+          anyOf:
+          - $ref: '#/components/schemas/AssignmentContactInput'
+          - type: 'null'
+        expected_version:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: Expected Version
+        assignment_id:
+          type: string
+          format: uuid
+          title: Assignment Id
+      type: object
+      required:
+      - reporting_mode
+      - place_text
+      - reporting_at
+      - assignment_id
+      title: AssignmentLogisticsActionInput
     AssignmentLogisticsInput:
       properties:
         reporting_mode:
@@ -1598,6 +1659,10 @@ components:
         assignment_confirmation:
           anyOf:
           - $ref: '#/components/schemas/ConfirmAssignmentActionInput'
+          - type: 'null'
+        assignment_logistics:
+          anyOf:
+          - $ref: '#/components/schemas/AssignmentLogisticsActionInput'
           - type: 'null'
         assignment_cancellation:
           anyOf:

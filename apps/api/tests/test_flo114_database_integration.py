@@ -507,7 +507,7 @@ async def test_flo114_whatsapp_hirer_closeout_resolves_attributable_assignment(
         async with local_database.service_transaction() as connection:
             contact_result = await connection.execute(
                 """
-                select contact.person_id, contact.organisation_id
+                select contact.id, contact.person_id, contact.organisation_id
                 from public.assignments as assignment
                 join public.organisation_contacts as contact
                   on contact.organisation_id = assignment.organisation_id
@@ -564,6 +564,7 @@ async def test_flo114_whatsapp_hirer_closeout_resolves_attributable_assignment(
             "assertedById": str(contact["person_id"]),
             "assertedRole": "hirer",
             "organisationId": str(contact["organisation_id"]),
+            "organisationContactId": str(contact["id"]),
             "assignmentId": str(assignment_id),
         }
     finally:

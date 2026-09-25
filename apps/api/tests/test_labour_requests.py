@@ -72,7 +72,25 @@ class FakeConnection:
                         "77777777-7777-4777-8777-777777777777"
                     ),
                     "occurred_at": datetime(2026, 9, 18, tzinfo=UTC),
-                    "payload": {},
+                    "payload": {
+                        "entityIds": (
+                            {
+                                "organisationId": (
+                                    "55555555-5555-4555-8555-555555555555"
+                                ),
+                                "organisationContactId": (
+                                    "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                                ),
+                                "assertedById": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+                                "assertedRole": "hirer",
+                            }
+                            if self.proposed_action_type == "labour_request"
+                            else {
+                                "assignmentId": "88888888-8888-4888-8888-888888888888",
+                                "assertedRole": "hirer",
+                            }
+                        )
+                    },
                 }
             )
         if "from public.assignments" in query:
@@ -366,6 +384,7 @@ async def test_confirmed_proposed_action_uses_labour_request_command_policy() ->
                     "contractor_organisation_id": (
                         "55555555-5555-4555-8555-555555555555"
                     ),
+                    "contractor_contact_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
                     "work_date": "2026-09-18",
                     "timezone": "Africa/Johannesburg",
                     "site_area": "Woodstock, Cape Town",
@@ -522,9 +541,8 @@ async def test_assignment_confirmation_proposed_action_uses_canonical_mutation()
     None
 ):
     application = create_app(Settings(supabase_db_url="postgresql://test"))
-    application.dependency_overrides[get_database] = lambda: FakeDatabase(
-        "assignment_confirmation"
-    )
+    database = FakeDatabase("assignment_confirmation")
+    application.dependency_overrides[get_database] = lambda: database
     application.dependency_overrides[get_operator_actor] = lambda: CurrentActor(
         user_id=uuid.UUID("44444444-4444-4444-8444-444444444444"),
         claims={"operator": {"role": "ops_user", "person_id": None}},
@@ -550,6 +568,63 @@ async def test_assignment_confirmation_proposed_action_uses_canonical_mutation()
         "id": "88888888-8888-4888-8888-888888888888",
         "version": 2,
     }
+    assert database.last_connection is not None
+    event_params = next(
+        params
+        for query, params in database.last_connection.calls
+        if "insert into private.domain_events" in query
+    )
+    assert event_params is not None
+    assert event_params[9:12] == (
+        "whatsapp",
+        uuid.UUID("77777777-7777-4777-8777-777777777777"),
+        uuid.UUID("66666666-6666-4666-8666-666666666666"),
+    )
+
+
+async def test_hirer_logistics_proposed_action_uses_canonical_mutation() -> None:
+    application = create_app(Settings(supabase_db_url="postgresql://test"))
+    database = FakeDatabase("assignment_logistics")
+    application.dependency_overrides[get_database] = lambda: database
+    application.dependency_overrides[get_operator_actor] = lambda: CurrentActor(
+        user_id=uuid.UUID("44444444-4444-4444-8444-444444444444"),
+        claims={"operator": {"role": "ops_user", "person_id": None}},
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        response = await client.post(
+            "/api/v1/proposed-actions/66666666-6666-4666-8666-666666666666/confirm",
+            headers={"Idempotency-Key": "confirm-logistics-action-1"},
+            json={
+                "assignment_logistics": {
+                    "assignment_id": "88888888-8888-4888-8888-888888888888",
+                    "reporting_mode": "site",
+                    "place_text": "Site gate",
+                    "reporting_at": "2026-09-18T07:00:00+02:00",
+                }
+            },
+        )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["resource"]["type"] == "assignment"
+    assert database.last_connection is not None
+    assert any(
+        "update public.assignments" in query
+        for query, _ in database.last_connection.calls
+    )
+    event_params = next(
+        params
+        for query, params in database.last_connection.calls
+        if "insert into private.domain_events" in query
+    )
+    assert event_params is not None
+    assert event_params[9:12] == (
+        "whatsapp",
+        uuid.UUID("77777777-7777-4777-8777-777777777777"),
+        uuid.UUID("66666666-6666-4666-8666-666666666666"),
+    )
 
 
 async def test_travel_authorisation_requires_complete_logistics() -> None:

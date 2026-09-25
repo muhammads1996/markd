@@ -15,6 +15,7 @@ from app.api.v1.labour_requests import (
     RespondToAssignmentInput,
     respond_to_assignment_mutation,
 )
+from app.application.channel_actors import resolve_channel_principal
 from app.application.dispatcher import execute_command
 from app.core.auth import CurrentActor
 from app.core.config import Settings
@@ -166,13 +167,13 @@ async def _provision_worker_assignment(
                             'Test area', 'active'
                         )
             """,
-                        (
-                                labour_request_id,
-                                organisation_id,
-                                contact_id,
-                                date(2026, 9, 20),
-                                date(2026, 9, 20),
-                        ),
+            (
+                labour_request_id,
+                organisation_id,
+                contact_id,
+                date(2026, 9, 20),
+                date(2026, 9, 20),
+            ),
         )
         await connection.execute(
             """
@@ -214,9 +215,7 @@ async def _provision_worker_assignment(
     }
 
 
-async def _cleanup(
-    database: Database, fixture: dict[str, UUID | str | None]
-) -> None:
+async def _cleanup(database: Database, fixture: dict[str, UUID | str | None]) -> None:
     marker = f"flo130-{fixture['test_id']}"
     async with database.service_transaction() as connection:
         await connection.execute(
@@ -268,6 +267,41 @@ async def _cleanup(
             (fixture["actor_id"],),
         )
         await connection.execute(
+            """
+            delete from private.outbox_messages
+            where domain_event_id in (
+              select event.id from private.domain_events as event
+              join private.command_executions as command
+                on command.id = event.command_execution_id
+              join public.channel_events as source
+                on source.id = command.source_channel_event_id
+              where source.provider_event_id like %s
+            )
+            """,
+            (f"{marker}%",),
+        )
+        await connection.execute(
+            """
+            delete from private.domain_events
+            where command_execution_id in (
+              select command.id from private.command_executions as command
+              join public.channel_events as source
+                on source.id = command.source_channel_event_id
+              where source.provider_event_id like %s
+            )
+            """,
+            (f"{marker}%",),
+        )
+        await connection.execute(
+            """
+            delete from private.command_executions
+            where source_channel_event_id in (
+              select id from public.channel_events where provider_event_id like %s
+            )
+            """,
+            (f"{marker}%",),
+        )
+        await connection.execute(
             "delete from public.availability_signals where worker_id = %s",
             (fixture["worker_id"],),
         )
@@ -298,15 +332,49 @@ async def _cleanup(
         )
         await connection.execute(
             """
-            delete from public.organisation_contacts
-            where organisation_id in (
+            update public.organisation_contacts as contact
+            set archived_at = timezone('utc', now())
+            where contact.organisation_id in (
               select id from public.organisations where legal_name = %s
+            )
+            and exists (
+              select 1 from private.channel_actor_evidence as evidence
+              where evidence.organisation_contact_id = contact.id
             )
             """,
             (f"Organisation {marker}",),
         )
         await connection.execute(
-            "delete from public.organisations where legal_name = %s",
+            """
+            delete from public.organisation_contacts as contact
+            where contact.organisation_id in (
+              select id from public.organisations where legal_name = %s
+            ) and not exists (
+              select 1 from private.channel_actor_evidence as evidence
+              where evidence.organisation_contact_id = contact.id
+            )
+            """,
+            (f"Organisation {marker}",),
+        )
+        await connection.execute(
+            """
+            update public.organisations as organisation
+            set archived_at = timezone('utc', now())
+            where organisation.legal_name = %s and exists (
+              select 1 from private.channel_actor_evidence as evidence
+              where evidence.organisation_id = organisation.id
+            )
+            """,
+            (f"Organisation {marker}",),
+        )
+        await connection.execute(
+            """
+            delete from public.organisations as organisation
+            where organisation.legal_name = %s and not exists (
+              select 1 from private.channel_actor_evidence as evidence
+              where evidence.organisation_id = organisation.id
+            )
+            """,
             (f"Organisation {marker}",),
         )
         await connection.execute(
@@ -320,6 +388,10 @@ async def _cleanup(
         await connection.execute(
             "delete from public.person_phone_numbers where id = %s",
             (fixture["phone_id"],),
+        )
+        await connection.execute(
+            "delete from public.worker_participation_preferences where worker_id = %s",
+            (fixture["worker_id"],),
         )
         await connection.execute(
             "delete from public.worker_profiles where person_id = %s",
@@ -379,6 +451,7 @@ async def test_flo130_worker_commands_against_local_supabase(
     assignment_correlation_id = f"flo130-pwa-{test_id}"
 
     try:
+
         async def respond_handler(connection: Any) -> Any:
             return await respond_to_assignment_mutation(
                 connection,
@@ -426,6 +499,8 @@ async def test_flo130_worker_commands_against_local_supabase(
         assert provenance == {
             "command_id": str(execution.command_id),
             "actor_user_id": str(actor.user_id),
+            "actor_person_id": None,
+            "actor_organisation_contact_id": None,
             "correlation_id": assignment_correlation_id,
             "source_channel": "pwa",
             "source_channel_event_id": None,
@@ -436,9 +511,7 @@ async def test_flo130_worker_commands_against_local_supabase(
         accepted_event = await _insert_channel_event(
             local_database, fixture, "accepted"
         )
-        assert accepted_event["occurred_at"] == datetime(
-            2026, 9, 16, 12, 0, tzinfo=UTC
-        )
+        assert accepted_event["occurred_at"] == datetime(2026, 9, 16, 12, 0, tzinfo=UTC)
         async with local_database.service_transaction() as connection:
             outcome, entity_ids = await _try_execute_worker_action(
                 local_database,
@@ -560,5 +633,256 @@ async def test_flo130_worker_commands_against_local_supabase(
         assert availability_signal == {"id": availability_id, "status": "available"}
         assert availability_outbox_state["state"] == "pending"
         assert availability_outbox_state["last_error"] is not None
+    finally:
+        await _cleanup(local_database, fixture)
+
+
+async def test_whatsapp_only_worker_commands_without_auth_account(
+    local_database: Database,
+) -> None:
+    test_id = uuid4()
+    fixture = await _provision_worker_assignment(local_database, test_id)
+    worker_id = UUID(str(fixture["worker_id"]))
+    assignment_id = UUID(str(fixture["assignment_id"]))
+    try:
+        async with local_database.service_transaction() as connection:
+            await connection.execute(
+                "delete from public.participant_account_scopes where auth_user_id = %s",
+                (fixture["actor_id"],),
+            )
+            await connection.execute(
+                "delete from public.participant_accounts where auth_user_id = %s",
+                (fixture["actor_id"],),
+            )
+            await connection.execute(
+                "delete from auth.users where id = %s", (fixture["actor_id"],)
+            )
+            await connection.execute(
+                """
+                insert into public.worker_participation_preferences
+                  (worker_id, app_participation)
+                values (%s, 'whatsapp_only')
+                """,
+                (worker_id,),
+            )
+        offer_response = await _insert_channel_event(
+            local_database, fixture, "app-less-accept"
+        )
+        for expected_outcome in ("executed", "executed"):
+            async with local_database.service_transaction() as connection:
+                outcome, entities = await _try_execute_worker_action(
+                    local_database,
+                    connection,
+                    offer_response,
+                    ExtractedIntent(
+                        "assignment_response", {"response": "accepted"}, 1.0, "clear"
+                    ),
+                    str(offer_response["id"]),
+                    exact_assignment_response=True,
+                )
+                assert outcome == expected_outcome
+                assert entities["assignmentId"] == str(assignment_id)
+
+        availability_event = await _insert_channel_event(
+            local_database, fixture, "app-less-availability"
+        )
+        async with local_database.service_transaction() as connection:
+            outcome, _ = await _try_execute_worker_action(
+                local_database,
+                connection,
+                availability_event,
+                ExtractedIntent(
+                    "worker_availability",
+                    {"availability": "tomorrow", "status": "available"},
+                    1.0,
+                    "clear",
+                ),
+                str(availability_event["id"]),
+                exact_assignment_response=False,
+                exact_availability=True,
+            )
+            assert outcome == "executed"
+            assignment = await _fetchone(
+                connection,
+                """
+                select worker_response, travel_authorised_at from public.assignments
+                where id = %s
+                """,
+                (assignment_id,),
+            )
+            availability = await _fetchone(
+                connection,
+                """
+                select status, source, recorded_by_user_id, source_channel_event_id
+                from public.availability_signals where worker_id = %s
+                """,
+                (worker_id,),
+            )
+            result = await connection.execute(
+                """
+                select command.actor_user_id, command.actor_person_id,
+                       command.source_channel_event_id,
+                       event.actor_person_id, event.source_channel
+                from private.command_executions as command
+                join private.domain_events as event
+                  on event.command_execution_id = command.id
+                where command.source_channel_event_id = %s
+                """,
+                (offer_response["id"],),
+            )
+            command_events = await result.fetchall()
+            command_count = await _fetchone(
+                connection,
+                """
+                select count(*) as count from private.command_executions
+                where source_channel_event_id = %s
+                """,
+                (offer_response["id"],),
+            )
+        assert assignment == {
+            "worker_response": "accepted",
+            "travel_authorised_at": None,
+        }
+        assert availability == {
+            "status": "available",
+            "source": "whatsapp",
+            "recorded_by_user_id": None,
+            "source_channel_event_id": availability_event["id"],
+        }
+        assert command_count["count"] == 1
+        assert len(command_events) == 1
+        assert command_events[0]["actor_user_id"] is None
+        assert command_events[0]["actor_person_id"] == worker_id
+        assert command_events[0]["source_channel_event_id"] == offer_response["id"]
+        assert command_events[0]["source_channel"] == "whatsapp"
+    finally:
+        await _cleanup(local_database, fixture)
+
+
+async def test_delayed_whatsapp_message_keeps_intake_owner_after_reassignment(
+    local_database: Database,
+) -> None:
+    fixture = await _provision_worker_assignment(local_database, uuid4())
+    new_worker_id = uuid4()
+    new_phone_id = uuid4()
+    event = await _insert_channel_event(local_database, fixture, "before-reassignment")
+    try:
+        async with local_database.service_transaction() as connection:
+            await connection.execute(
+                "update public.person_phone_numbers "
+                "set archived_at = now() where id = %s",
+                (fixture["phone_id"],),
+            )
+            await connection.execute(
+                "insert into public.people (id, display_name) "
+                "values (%s, 'Next owner')",
+                (new_worker_id,),
+            )
+            await connection.execute(
+                "insert into public.worker_profiles (person_id) values (%s)",
+                (new_worker_id,),
+            )
+            await connection.execute(
+                """
+                insert into public.person_phone_numbers
+                  (id, person_id, phone_number, is_primary)
+                values (%s, %s, %s, true)
+                """,
+                (new_phone_id, new_worker_id, fixture["phone_number"]),
+            )
+            principal = await resolve_channel_principal(connection, str(event["id"]))
+            assert principal is not None
+            assert principal.person_id == fixture["worker_id"]
+            outcome, entities = await _try_execute_worker_action(
+                local_database,
+                connection,
+                event,
+                ExtractedIntent(
+                    "assignment_response", {"response": "accepted"}, 1.0, "clear"
+                ),
+                str(event["id"]),
+                exact_assignment_response=True,
+            )
+            assignment = await _fetchone(
+                connection,
+                "select worker_id, worker_response "
+                "from public.assignments where id = %s",
+                (fixture["assignment_id"],),
+            )
+        assert outcome == "executed"
+        assert entities["workerId"] == str(fixture["worker_id"])
+        assert assignment == {
+            "worker_id": fixture["worker_id"],
+            "worker_response": "accepted",
+        }
+    finally:
+        async with local_database.service_transaction() as connection:
+            await connection.execute(
+                "delete from public.person_phone_numbers where id = %s", (new_phone_id,)
+            )
+            await connection.execute(
+                "delete from public.worker_profiles where person_id = %s",
+                (new_worker_id,),
+            )
+            await connection.execute(
+                "delete from public.people where id = %s", (new_worker_id,)
+            )
+        await _cleanup(local_database, fixture)
+
+
+async def test_dual_role_phone_cannot_execute_whatsapp_command(
+    local_database: Database,
+) -> None:
+    fixture = await _provision_worker_assignment(local_database, uuid4())
+    try:
+        async with local_database.service_transaction() as connection:
+            assignment = await _fetchone(
+                connection,
+                "select organisation_id from public.assignments where id = %s",
+                (fixture["assignment_id"],),
+            )
+            await connection.execute(
+                """
+                insert into public.organisation_contacts
+                  (organisation_id, person_id)
+                values (%s, %s)
+                """,
+                (assignment["organisation_id"], fixture["worker_id"]),
+            )
+            grants = await _fetchone(
+                connection,
+                """
+                select has_schema_privilege('authenticated', 'private', 'USAGE')
+                         as schema_usage,
+                       has_table_privilege(
+                         'authenticated', 'private.channel_actor_evidence', 'SELECT'
+                       ) as can_read_evidence
+                """,
+                (),
+            )
+        assert grants == {"schema_usage": False, "can_read_evidence": False}
+
+        event = await _insert_channel_event(local_database, fixture, "dual-role")
+        async with local_database.service_transaction() as connection:
+            principal = await resolve_channel_principal(connection, str(event["id"]))
+            outcome, entities = await _try_execute_worker_action(
+                local_database,
+                connection,
+                event,
+                ExtractedIntent(
+                    "assignment_response", {"response": "accepted"}, 1.0, "clear"
+                ),
+                str(event["id"]),
+                exact_assignment_response=True,
+            )
+            assignment_state = await _fetchone(
+                connection,
+                "select worker_response from public.assignments where id = %s",
+                (fixture["assignment_id"],),
+            )
+        assert principal is None
+        assert outcome is None
+        assert entities == {}
+        assert assignment_state["worker_response"] == "pending"
     finally:
         await _cleanup(local_database, fixture)

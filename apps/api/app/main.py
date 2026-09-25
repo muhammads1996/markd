@@ -1,3 +1,4 @@
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -46,7 +47,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     database = Database(resolved_settings)
 
     @asynccontextmanager
-    async def lifespan(application: FastAPI):
+    async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         await database.open()
         application.state.database = database
         yield

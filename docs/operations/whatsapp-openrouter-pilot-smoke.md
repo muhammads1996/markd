@@ -36,6 +36,39 @@ and server-only provider configuration. `whatsapp-media` is a private storage
 bucket; source media can only be signed for an active operator for at most five
 minutes through `/api/operator/channel-media/<asset-id>`.
 
+## WhatsApp participant identity boundary
+
+An authenticated Meta webhook establishes the source of an inbound
+`ChannelEvent`; it does not establish a PWA login. For a worker command, the
+webhook transaction captures the sender's normalized phone ownership and
+active role in immutable channel actor evidence. Processing uses that
+snapshot, so a delayed message cannot be attributed to a later phone owner.
+The worker proceeds only when the event resolved to one active worker. A
+hirer event similarly binds one active OrganisationContact and Organisation
+and stays Ops-reviewed for labour requests, confirmations, and logistics.
+The channel-scoped actor does not require or create a
+`participant_account`, Supabase Auth user, browser session, or headless PWA
+identity. Phone numbers remain contact evidence, not permanent primary IDs.
+
+If ownership is missing, shared, duplicated, inactive, or otherwise ambiguous,
+the worker must leave the event for Ops and must not execute a participant
+command. Events from before the snapshot migration also require Ops review.
+Semantic interpretation may help identify the requested action, but
+it cannot establish identity or grant permission. Resolved WhatsApp actions
+still pass through the same canonical command policy and state transitions as
+PWA/Ops actions; the event and resulting command provenance must retain the
+source channel/event and resolved actor/entity. Provider message deduplication
+keeps replays from executing the same action twice.
+
+For a controlled worker pilot, verify that an active WhatsApp-only worker with
+no participant account can respond to one unambiguous offered Assignment with
+the exact supported response. Acceptance is an acknowledgement only: the
+Assignment remains **WAITING FOR CONFIRMATION — DO NOT TRAVEL YET** until the
+canonical confirmation flow authorizes travel. Repeat with a shared/duplicate
+phone ownership fixture and confirm it routes to Ops without changing the
+Assignment. Worker availability and closeout/Stamp assertions use the same
+canonical domain commands/policy as other capture channels.
+
 ## Live smoke sequence
 
 1. In Meta, verify the webhook challenge. Confirm that a correct token returns

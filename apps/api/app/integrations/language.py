@@ -13,6 +13,7 @@ ActionType = Literal[
     "assignment_response",
     "labour_request",
     "assignment_confirmation",
+    "assignment_logistics",
     "assignment_cancellation",
     "work_completion",
     "payment_issue",
@@ -25,6 +26,7 @@ ACTION_TYPES: tuple[ActionType, ...] = (
     "assignment_response",
     "labour_request",
     "assignment_confirmation",
+    "assignment_logistics",
     "assignment_cancellation",
     "work_completion",
     "payment_issue",
@@ -138,6 +140,17 @@ def extract_intent(
                 0.8 if headcount is not None else 0.55,
                 "clear" if headcount is not None else "ambiguous",
             )
+    if any(
+        phrase in normalized
+        for phrase in (
+            "meet at",
+            "report at",
+            "pickup at",
+            "pick up at",
+            "site address",
+        )
+    ):
+        return ExtractedIntent("assignment_logistics", {}, 0.55, "ambiguous")
     return None
 
 
@@ -337,6 +350,7 @@ def _intent_schema() -> dict[str, Any]:
                     "assignment_response",
                     "labour_request",
                     "assignment_confirmation",
+                    "assignment_logistics",
                     "assignment_cancellation",
                     "work_completion",
                     "payment_issue",
@@ -454,7 +468,7 @@ def _parse_intent(value: dict[str, Any] | None) -> ExtractedIntent | None:
     ):
         return None
     return ExtractedIntent(
-        cast(ActionType, action_type),
+        action_type,
         cast(dict[str, str | int | float | bool | None], fields),
         float(confidence),
         cast(Ambiguity, ambiguity),

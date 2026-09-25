@@ -68,17 +68,32 @@ async def execute_command(
 ) -> CommandExecution:
     if not idempotency_key.strip():
         raise HTTPException(status_code=400, detail="Idempotency-Key is required")
+    if actor.user_id is None and (
+        actor.channel_event_id is None or actor.person_id is None
+    ):
+        raise HTTPException(
+            status_code=403, detail="An attributed channel actor is required"
+        )
     payload_hash = request_hash(command_name, payload)
     async with database.transaction(actor.user_id, correlation_id) as connection:
         result = await connection.execute(
             """
             insert into private.command_executions
-              (actor_user_id, command_name, idempotency_key, request_hash)
-            values (%s, %s, %s, %s)
-            on conflict (actor_user_id, idempotency_key) do nothing
+              (actor_user_id, actor_person_id, actor_organisation_contact_id,
+               source_channel_event_id, command_name, idempotency_key, request_hash)
+            values (%s, %s, %s, %s, %s, %s, %s)
+            on conflict do nothing
             returning id
             """,
-            (actor.user_id, command_name, idempotency_key, payload_hash),
+            (
+                actor.user_id,
+                actor.person_id,
+                actor.organisation_contact_id,
+                actor.channel_event_id,
+                command_name,
+                idempotency_key,
+                payload_hash,
+            ),
         )
         created = await result.fetchone()
         if created is None:
@@ -87,10 +102,19 @@ async def execute_command(
                 select id, command_name, request_hash, state,
                        response_status, response_body
                 from private.command_executions
-                where actor_user_id = %s and idempotency_key = %s
+                where idempotency_key = %s and (
+                    (actor_user_id = %s and %s::uuid is null)
+                    or (source_channel_event_id = %s and %s::uuid is null)
+                )
                 for update
                 """,
-                (actor.user_id, idempotency_key),
+                (
+                    idempotency_key,
+                    actor.user_id,
+                    actor.channel_event_id,
+                    actor.channel_event_id,
+                    actor.user_id,
+                ),
             )
             existing = await result.fetchone()
             if existing is None:
@@ -136,6 +160,8 @@ async def execute_command(
                 "provenance": {
                     "command_id": command_id,
                     "actor_user_id": actor.user_id,
+                    "actor_person_id": actor.person_id,
+                    "actor_organisation_contact_id": actor.organisation_contact_id,
                     "correlation_id": correlation_id,
                     "source_channel": mutation.source_channel,
                     "source_channel_event_id": mutation.source_channel_event_id,
@@ -147,10 +173,11 @@ async def execute_command(
                 """
                 insert into private.domain_events
                   (command_execution_id, event_type, aggregate_type, aggregate_id,
-                   payload, actor_user_id, correlation_id, source_channel,
+                   payload, actor_user_id, actor_person_id,
+                   actor_organisation_contact_id, correlation_id, source_channel,
                    source_channel_event_id, source_proposed_action_id,
                    aggregate_version)
-                values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 returning id
                 """,
                 (
@@ -160,6 +187,8 @@ async def execute_command(
                     domain_event.aggregate_id,
                     json.dumps(jsonable_encoder(event_payload)),
                     actor.user_id,
+                    actor.person_id,
+                    actor.organisation_contact_id,
                     correlation_id,
                     mutation.source_channel,
                     mutation.source_channel_event_id,

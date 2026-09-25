@@ -15,12 +15,14 @@ from app.api.v1.exceptions import (
     open_exception_mutation,
 )
 from app.api.v1.labour_requests import (
+    AssignmentLogisticsInput,
     CancelAssignmentInput,
     ContractorConfirmationInput,
     CreateLabourRequestInput,
     cancel_assignment_mutation,
     confirm_assignment_mutation,
     create_labour_request_mutation,
+    set_assignment_logistics_mutation,
 )
 from app.api.v1.workmarks import (
     AssignmentStampInput,
@@ -44,6 +46,7 @@ class ApprovalInput(BaseModel):
         "assignment_response",
         "labour_request",
         "assignment_confirmation",
+        "assignment_logistics",
         "assignment_cancellation",
         "work_completion",
         "payment_issue",
@@ -77,6 +80,10 @@ class CancelAssignmentActionInput(BaseModel):
     expected_version: int | None = Field(default=None, ge=1)
 
 
+class AssignmentLogisticsActionInput(AssignmentLogisticsInput):
+    assignment_id: UUID
+
+
 class WorkCompletionActionInput(BaseModel):
     assignment_id: UUID
     stamp: AssignmentStampInput
@@ -101,6 +108,7 @@ class PaymentIssueActionInput(BaseModel):
 class ConfirmProposedActionInput(BaseModel):
     labour_request: CreateLabourRequestInput | None = None
     assignment_confirmation: ConfirmAssignmentActionInput | None = None
+    assignment_logistics: AssignmentLogisticsActionInput | None = None
     assignment_cancellation: CancelAssignmentActionInput | None = None
     work_completion: WorkCompletionActionInput | None = None
     payment_issue: PaymentIssueActionInput | None = None
@@ -113,6 +121,7 @@ class ConfirmProposedActionInput(BaseModel):
                 for value in (
                     self.labour_request,
                     self.assignment_confirmation,
+                    self.assignment_logistics,
                     self.assignment_cancellation,
                     self.work_completion,
                     self.payment_issue,
@@ -187,10 +196,10 @@ def _bound_work_completion(
             "Source evidence cannot be reassigned",
             "The Assignment must match the WhatsApp sender resolution.",
         )
-    if (
-        requested.stamp.asserted_by not in {None, asserted_by}
-        or requested.stamp.asserted_role not in {None, asserted_role}
-    ):
+    if requested.stamp.asserted_by not in {
+        None,
+        asserted_by,
+    } or requested.stamp.asserted_role not in {None, asserted_role}:
         raise ProblemDetail(
             409,
             "SOURCE_BINDING_MISMATCH",
@@ -285,6 +294,45 @@ def _bound_payment_issue(
     )
 
 
+def _source_entities(payload: object) -> dict[str, object]:
+    if not isinstance(payload, dict) or not isinstance(payload.get("entityIds"), dict):
+        return {}
+    return cast(dict[str, object], payload["entityIds"])
+
+
+def _require_bound_hirer_request(
+    payload: object, requested: CreateLabourRequestInput
+) -> None:
+    entities = _source_entities(payload)
+    if not entities or (
+        str(requested.contractor_organisation_id) != entities.get("organisationId")
+        or str(requested.contractor_contact_id) != entities.get("organisationContactId")
+        or requested.individual_hirer_person_id is not None
+    ):
+        raise ProblemDetail(
+            409,
+            "SOURCE_BINDING_MISMATCH",
+            "Source evidence cannot be reassigned",
+            "The Labour Request must match the resolved WhatsApp contact "
+            "and organisation.",
+        )
+
+
+def _require_bound_assignment(
+    payload: object, assignment_id: UUID, *, hirer_only: bool = False
+) -> None:
+    entities = _source_entities(payload)
+    if str(assignment_id) != entities.get("assignmentId") or (
+        hirer_only and entities.get("assertedRole") != "hirer"
+    ):
+        raise ProblemDetail(
+            409,
+            "SOURCE_BINDING_MISMATCH",
+            "Source evidence cannot be reassigned",
+            "The Assignment must match the resolved WhatsApp sender.",
+        )
+
+
 def _headers(command_id: UUID, replayed: bool) -> dict[str, str]:
     return {
         "X-Command-Id": str(command_id),
@@ -325,10 +373,9 @@ def _payment_issue_from_approval(
         # Entity identity is resolved at intake; approval may edit facts, never
         # the assignment or claimant bound to the source message.
         for key in ("assignmentId", "assertedById", "workerId", "assertedRole"):
-            if (
-                key in input.entity_ids
-                and input.entity_ids.get(key) != payload_entities_dict.get(key)
-            ):
+            if key in input.entity_ids and input.entity_ids.get(
+                key
+            ) != payload_entities_dict.get(key):
                 raise ProblemDetail(
                     409,
                     "SOURCE_BINDING_MISMATCH",
@@ -432,6 +479,7 @@ async def confirm_labour_request_action(
                     "Invalid payload",
                     "A Labour Request payload is required.",
                 )
+            _require_bound_hirer_request(action["payload"], input.labour_request)
             mutation = await create_labour_request_mutation(
                 connection,
                 actor,
@@ -448,6 +496,11 @@ async def confirm_labour_request_action(
                     "Invalid payload",
                     "An assignment confirmation payload is required.",
                 )
+            _require_bound_assignment(
+                action["payload"],
+                input.assignment_confirmation.assignment_id,
+                hirer_only=True,
+            )
             assignment_input = ContractorConfirmationInput(
                 confirmed=input.assignment_confirmation.confirmed,
                 expected_version=input.assignment_confirmation.expected_version,
@@ -466,6 +519,36 @@ async def confirm_labour_request_action(
                 input.assignment_confirmation.assignment_id,
                 assignment_input,
             )
+        elif action["action_type"] == "assignment_logistics":
+            if input.assignment_logistics is None:
+                raise ProblemDetail(
+                    422,
+                    "INVALID_PAYLOAD",
+                    "Invalid payload",
+                    "Assignment logistics are required.",
+                )
+            _require_bound_assignment(
+                action["payload"],
+                input.assignment_logistics.assignment_id,
+                hirer_only=True,
+            )
+            await connection.execute(
+                "select set_config('app.source_channel_event_id', %s, true)",
+                (str(action["channel_event_id"]),),
+            )
+            await connection.execute(
+                "select set_config('app.source_proposed_action_id', %s, true)",
+                (str(action_id),),
+            )
+            logistics_input = AssignmentLogisticsInput.model_validate(
+                input.assignment_logistics.model_dump(exclude={"assignment_id"})
+            )
+            mutation = await set_assignment_logistics_mutation(
+                connection,
+                actor,
+                input.assignment_logistics.assignment_id,
+                logistics_input,
+            )
         elif action["action_type"] == "assignment_cancellation":
             if input.assignment_cancellation is None:
                 raise ProblemDetail(
@@ -473,6 +556,24 @@ async def confirm_labour_request_action(
                     "INVALID_PAYLOAD",
                     "Invalid payload",
                     "An assignment cancellation payload is required.",
+                )
+            _require_bound_assignment(
+                action["payload"], input.assignment_cancellation.assignment_id
+            )
+            cancellation_entities = _source_entities(action["payload"])
+            if (
+                cancellation_entities.get("workerId") is not None
+                and input.assignment_cancellation.reason_code != "worker_withdrew"
+            ) or (
+                cancellation_entities.get("assertedRole") == "hirer"
+                and input.assignment_cancellation.reason_code
+                not in {"contractor_cancelled", "job_cancelled"}
+            ):
+                raise ProblemDetail(
+                    409,
+                    "SOURCE_BINDING_MISMATCH",
+                    "Source evidence cannot be reassigned",
+                    "The cancellation reason must match the WhatsApp sender role.",
                 )
             await connection.execute(
                 "select set_config('app.source_channel_event_id', %s, true)",
@@ -521,9 +622,7 @@ async def confirm_labour_request_action(
                     "Invalid payload",
                     "A work completion payload is required.",
                 )
-            bound = _bound_work_completion(
-                action["payload"], input.work_completion
-            )
+            bound = _bound_work_completion(action["payload"], input.work_completion)
             mutation = await submit_assignment_stamp_mutation(
                 connection,
                 actor,
@@ -540,6 +639,17 @@ async def confirm_labour_request_action(
                 "INVALID_STATE",
                 "Invalid state transition",
                 "This Proposed Action type is not supported by this command.",
+            )
+        if action["action_type"] in {
+            "assignment_confirmation",
+            "assignment_logistics",
+            "assignment_cancellation",
+        }:
+            mutation = replace(
+                mutation,
+                source_channel="whatsapp",
+                source_channel_event_id=action["channel_event_id"],
+                source_proposed_action_id=action_id,
             )
         await connection.execute(
             "update public.proposed_actions set state = 'executed' where id = %s",

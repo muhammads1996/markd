@@ -32,6 +32,8 @@ export default defineConfig([
   prettier,
   globalIgnores([
     "**/.next/**",
+    "**/.pytest_cache/**",
+    "**/.venv/**",
     "**/coverage/**",
     "**/node_modules/**",
     "**/playwright-report/**",
