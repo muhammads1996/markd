@@ -5,13 +5,15 @@ import hmac
 import json
 import logging
 from typing import Any
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, PlainTextResponse
 from psycopg.types.json import Jsonb
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.api.dependencies import get_database
+from app.application.template_delivery import verify_template_facts
 from app.core.config import Settings, get_settings
 from app.integrations.database import Database
 from app.integrations.whatsapp import (
@@ -21,6 +23,7 @@ from app.integrations.whatsapp import (
     verify_webhook_signature,
     verify_webhook_token,
 )
+from app.messaging.templates import MessagePayload, parse_message_payload
 
 router = APIRouter(tags=["WhatsApp"])
 logger = logging.getLogger("uvicorn.error")
@@ -28,11 +31,19 @@ logger = logging.getLogger("uvicorn.error")
 
 class QueueDeliveryInput(BaseModel):
     recipient_phone_number: str = Field(min_length=3, max_length=16)
-    body: str = Field(min_length=1, max_length=4096)
+    body: str | None = Field(default=None, min_length=1, max_length=4096)
+    message_payload: MessagePayload | None = None
     message_kind: str = Field(min_length=1, max_length=100)
     idempotency_key: str = Field(min_length=1, max_length=255)
+    source_record_id: UUID | None = None
     source_channel_event_id: str | None = None
     source_proposed_action_id: str | None = None
+
+    @model_validator(mode="after")
+    def require_one_message_form(self) -> QueueDeliveryInput:
+        if (self.body is None) == (self.message_payload is None):
+            raise ValueError("Exactly one of body or message_payload is required")
+        return self
 
 
 class WebhookReceipt(BaseModel):
@@ -179,21 +190,77 @@ async def queue_whatsapp_delivery(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Recipient must be E.164",
         )
+    payload = (
+        input.message_payload
+        if input.message_payload is not None
+        else parse_message_payload({"type": "session_text", "body": input.body})
+    )
+    if payload.type == "approved_template" and input.source_record_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Template delivery requires a canonical source record",
+        )
+    if payload.type == "approved_template" and input.message_kind != payload.key:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Template message kind must match its canonical key",
+        )
+    if payload.type == "session_text" and input.message_kind in {
+        "assignment_update",
+        "assignment_offer_do_not_travel",
+        "assignment_accepted_waiting",
+        "assignment_travel_ready",
+        "assignment_changed",
+        "assignment_cancelled",
+        "pickup_reminder",
+        "payment_followup",
+        "exception_followup",
+    }:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="This message kind requires an approved template",
+        )
+    body = payload.body if payload.type == "session_text" else None
     try:
         async with database.service_transaction() as connection:
+            if payload.type == "approved_template":
+                await verify_template_facts(
+                    connection,
+                    payload,
+                    input.source_record_id,
+                    input.recipient_phone_number,
+                    settings.whatsapp_template_fallback_locale,
+                )
             await connection.execute(
                 """
                 insert into public.channel_deliveries (
-                  channel, recipient_phone_number, body, message_kind, idempotency_key,
+                  channel, recipient_phone_number, body, message_payload,
+                  message_kind, idempotency_key, source_table, source_record_id,
                   source_channel_event_id, source_proposed_action_id, state
-                ) values ('whatsapp', %s, %s, %s, %s, %s::uuid, %s::uuid, 'queued')
+                ) values (
+                  'whatsapp', %s, %s, %s, %s, %s, %s,
+                  %s::uuid, %s::uuid, %s::uuid, 'queued'
+                )
                 on conflict (idempotency_key) do nothing
                 """,
                 (
                     input.recipient_phone_number,
-                    input.body,
+                    body,
+                    Jsonb(payload.model_dump(mode="json")),
                     input.message_kind,
                     input.idempotency_key,
+                    (
+                        "workmarks"
+                        if payload.type == "approved_template"
+                        and payload.key == "payment_followup"
+                        else "exception_cases"
+                        if payload.type == "approved_template"
+                        and payload.key == "exception_followup"
+                        else "assignments"
+                        if payload.type == "approved_template"
+                        else None
+                    ),
+                    input.source_record_id,
                     input.source_channel_event_id,
                     input.source_proposed_action_id,
                 ),

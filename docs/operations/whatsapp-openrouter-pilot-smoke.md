@@ -36,6 +36,46 @@ and server-only provider configuration. `whatsapp-media` is a private storage
 bucket; source media can only be signed for an active operator for at most five
 minutes through `/api/operator/channel-media/<asset-id>`.
 
+## Approve and configure outbound templates
+
+Before the live outbound smoke, create and obtain Meta approval for every
+canonical template key below in English (`en`), Afrikaans (`af`), and isiXhosa
+(`xh`). Use the exact key as the MARKD catalog key; Meta template names are
+account-specific. Submit localized, reviewed copy with all required variables
+and button configuration. A first-contact offer is proactive business
+messaging: only send it to a person with the required WhatsApp opt-in, and use
+the approved template even when no 24-hour messaging session is open.
+
+| Key | Body variables, in required order |
+| --- | --- |
+| `assignment_offer_do_not_travel` | `work_date`, `site_area` |
+| `assignment_accepted_waiting` | `work_date` |
+| `assignment_travel_ready` | `reporting_at`, `reporting_place_text` |
+| `assignment_changed` | `work_date` |
+| `assignment_cancelled` | `work_date` |
+| `pickup_reminder` | `reporting_at`, `reporting_place_text` |
+| `payment_followup` | `work_date`, `amount_minor` formatted using `currency` |
+| `exception_followup` | `case_reference` |
+
+For every key/locale pair, set the approved Meta template name in the
+server-only `WHATSAPP_TEMPLATE_CATALOG` JSON in `apps/api/.env`, for example
+`{"assignment_offer_do_not_travel":{"en":"<approved-name>","af":"<approved-name>","xh":"<approved-name>"}}`.
+Repeat for all eight keys. Set `WHATSAPP_TEMPLATE_FALLBACK_LOCALE` to `en`,
+`af`, or `xh` for the approved fallback language. Never commit this private
+environment file. Confirm the selected Meta language codes match the catalog
+locales. When Meta's approved language code differs from a locale key, configure
+that entry as an object with `name` and `language_code`, for example
+`{"name":"<approved-name>","language_code":"en_US"}`. MARKD validates typed
+variables and supplies body parameters in the exact order above; keep the
+parameter positions and formatting aligned with the approved templates.
+For `assignment_offer_do_not_travel`, configure three quick-reply buttons
+whose payload IDs are exactly `MARKD_ASSIGNMENT_YES`,
+`MARKD_ASSIGNMENT_NO`, and `MARKD_ASSIGNMENT_CALL_ME` (button titles may be
+localized). These IDs map to accepted, declined, and request-a-call responses.
+Acceptance only acknowledges the offer; it must leave the Assignment waiting
+for confirmation and clearly say **DO NOT TRAVEL YET**. Only the separate
+`assignment_travel_ready` message follows canonical travel authorization.
+
 ## WhatsApp participant identity boundary
 
 An authenticated Meta webhook establishes the source of an inbound
@@ -101,13 +141,52 @@ canonical domain commands/policy as other capture channels.
    not duplicate consequential records.
 7. For a controlled network-failure check, temporarily block provider egress or
    use the configured staging provider failure mode. Confirm processing and
-   delivery leases requeue with bounded exponential retries, retain a safe
-   failure reason, recover expired leases, and become terminal after five
-   attempts.
+   session-text delivery leases requeue with bounded exponential retries,
+   retain a safe failure reason, recover expired leases, and become terminal
+   after five attempts. Approved-template failures are terminal for Ops
+   reconciliation and are not automatically retried, including uncertain
+   send outcomes.
 8. After a real test voice note is available, run
    `corepack pnpm api:test:providers -- --confirm-live --recipient <E.164-number> --voice-media-id <Meta-media-ID>`.
    The command validates the concrete adapters only and prints no message body,
    phone number, token, media URL, or raw provider payload.
+9. After Meta has approved and the catalog is configured for all 24
+   key/locale pairs, create a controlled synthetic Assignment for an opted-in
+   test participant. Trigger the first-contact offer through the normal
+   application flow, using the participant's selected locale. Confirm the
+   approved template is sent with the date then site-area parameters, and
+   verify the three interactive buttons return the exact IDs
+   `MARKD_ASSIGNMENT_YES`, `MARKD_ASSIGNMENT_NO`, and
+   `MARKD_ASSIGNMENT_CALL_ME`. Exercise all three: each inbound reply must create one
+   deduplicated `channel_events` record and one canonical worker response;
+   YES leaves the Assignment waiting and never authorizes travel. Separately
+   trigger the authorized travel-ready notification and confirm reporting
+   time then reporting place. Exercise a logistics change and cancellation and
+   confirm each sends its matching template with the correct date and an
+   explicit instruction not to travel. Run this smoke for each locale; also
+   exercise pickup reminder, payment follow-up, and exception follow-up if
+   those pilot flows are enabled.
+10. For each send, inspect `public.channel_deliveries` using the delivery ID,
+    idempotency key, and provider message ID in the private database console.
+    Confirm `message_payload` has the intended key/locale and typed variables,
+    `state` progresses from `queued` to `sent` and then to `delivered` through
+    the Meta status callback, and `failure_reason` is empty on success. Match
+    callback evidence by provider message ID. For a template rejection or
+    unknown send outcome, confirm a safe failure reason is recorded and the
+    delivery becomes terminal for Ops reconciliation; template sends are never
+    automatically retried. Session-text deliveries may requeue with bounded
+    backoff and become terminal after five attempts. Never blindly retry a
+    delivery whose send outcome is unknown: a leased delivery with
+    `send_started_at` set is marked for reconciliation. Check
+    the Meta message status using its provider message ID and timestamp, then
+    reconcile the existing delivery record/callback before any new send so a
+    recipient does not receive a duplicate. Retain only redacted delivery IDs,
+    provider IDs, locale/key, timestamps, states, and outcomes in the pilot
+    change record; keep recipient numbers and payload variables private.
+
+This runbook describes a required live proof step. It does not assert that a
+real Meta template send or participant response has already been performed.
+Record dated evidence only after the controlled live smoke completes.
 
 ## Evidence to retain
 

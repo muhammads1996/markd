@@ -21,6 +21,7 @@ from app.api.v1.labour_requests import (
 )
 from app.application.channel_actors import ChannelPrincipal, resolve_channel_principal
 from app.application.dispatcher import execute_command
+from app.application.template_delivery import verify_template_facts
 from app.core.config import Settings
 from app.core.problems import ProblemDetail
 from app.decisions.question_bundles import (
@@ -41,6 +42,16 @@ from app.integrations.language import (
 from app.integrations.storage import download_private_object, upload_private_object
 from app.integrations.typesafe_jev import TypeSafeJevProvider
 from app.integrations.whatsapp import MetaWhatsAppCloudProvider, WhatsAppProviderError
+from app.messaging.templates import (
+    ApprovedTemplatePayload,
+    Locale,
+    MessagePayload,
+    SessionTextPayload,
+    TemplateKey,
+    build_template_payload,
+    parse_message_payload,
+    resolve_meta_template,
+)
 
 WHATSAPP_MEDIA_BUCKET = "whatsapp-media"
 
@@ -99,12 +110,52 @@ async def run_delivery_jobs(
             delivery_id = str(delivery["id"])
             message: str | None
             provider_message_id: str | None
+            payload: SessionTextPayload | ApprovedTemplatePayload | None = None
+            completed = False
             try:
-                provider_message_id = await provider.send_text(
-                    str(delivery["recipient_phone_number"]), str(delivery["body"])
-                )
+                payload = parse_message_payload(delivery["message_payload"])
+                if payload.type == "approved_template":
+                    template = resolve_meta_template(
+                        payload,
+                        settings.whatsapp_template_catalog,
+                        settings.whatsapp_template_fallback_locale,
+                    )
+                    async with database.service_transaction() as connection:
+                        await connection.execute(
+                            "select public.mark_channel_delivery_send_started("
+                            "%s::uuid)",
+                            (delivery_id,),
+                        )
+                    async with database.service_transaction() as connection:
+                        source_record_id = delivery.get("source_record_id")
+                        await verify_template_facts(
+                            connection,
+                            payload,
+                            UUID(str(source_record_id))
+                            if source_record_id is not None
+                            else None,
+                            str(delivery["recipient_phone_number"]),
+                            settings.whatsapp_template_fallback_locale,
+                        )
+                        provider_message_id = await provider.send_template(
+                            str(delivery["recipient_phone_number"]), template
+                        )
+                        await connection.execute(
+                            "select public.complete_channel_delivery("
+                            "%s::uuid, true, %s, null, false)",
+                            (delivery_id, provider_message_id),
+                        )
+                    completed = True
+                else:
+                    provider_message_id = await provider.send_text(
+                        str(delivery["recipient_phone_number"]), payload.body
+                    )
             except Exception as error:
                 message, retryable = _delivery_failure(error)
+                # Once a provider request may have started, its outcome can be
+                # ambiguous. Ops reconciles instead of sending it twice.
+                if payload is not None and payload.type == "approved_template":
+                    retryable = False
                 succeeded = False
                 provider_message_id = None
                 outcome = "failed"
@@ -112,11 +163,19 @@ async def run_delivery_jobs(
                 message, retryable = None, False
                 succeeded = True
                 outcome = "sent"
-            async with database.service_transaction() as connection:
-                await connection.execute(
-                    "select public.complete_channel_delivery(%s::uuid, %s, %s, %s, %s)",
-                    (delivery_id, succeeded, provider_message_id, message, retryable),
-                )
+            if not completed:
+                async with database.service_transaction() as connection:
+                    await connection.execute(
+                        "select public.complete_channel_delivery("
+                        "%s::uuid, %s, %s, %s, %s)",
+                        (
+                            delivery_id,
+                            succeeded,
+                            provider_message_id,
+                            message,
+                            retryable,
+                        ),
+                    )
             outcomes.append({"delivery_id": delivery_id, "outcome": outcome})
         return outcomes
     finally:
@@ -124,7 +183,7 @@ async def run_delivery_jobs(
 
 
 async def run_command_outbox_jobs(
-    database: Database, batch_size: int = 10
+    database: Database, batch_size: int = 10, settings: Settings | None = None
 ) -> list[dict[str, str]]:
     async with database.service_transaction() as connection:
         result = await connection.execute(
@@ -154,9 +213,17 @@ async def run_command_outbox_jobs(
                 result = await connection.execute(
                     """
                 select event.id, event.event_type, event.aggregate_id,
-                             event.payload,
+                             event.aggregate_version, event.payload,
                              assignment.id as assignment_id,
-                             assignment.worker_response,
+                             assignment.worker_response, assignment.lifecycle,
+                             assignment.version as assignment_version,
+                             assignment.travel_authorised_at,
+                             assignment.travel_revoked_at,
+                             assignment.starts_on as work_date,
+                             assignment.reporting_at,
+                             assignment.reporting_place_text,
+                             request.site_area, request.timezone,
+                             language.code as preferred_language_code,
                              case
                                  when event.event_type =
                                      'worker.availability_set'
@@ -166,6 +233,12 @@ async def run_command_outbox_jobs(
                 from private.domain_events as event
                 left join public.assignments as assignment
                     on assignment.id = event.aggregate_id
+                left join public.labour_requests as request
+                    on request.id = assignment.labour_request_id
+                left join public.people as worker
+                    on worker.id = assignment.worker_id
+                left join public.languages as language
+                    on language.id = worker.preferred_language_id
                 left join public.person_phone_numbers as phone
                     on phone.person_id = assignment.worker_id
                  and phone.is_primary
@@ -184,20 +257,24 @@ async def run_command_outbox_jobs(
                 if event is None:
                     raise RuntimeError("domain event was not found")
                 event_type = str(event["event_type"])
-                body = (
-                    "Availability saved."
-                    if event_type == "worker.availability_set"
-                    else _assignment_delivery_body(
-                        event_type, event.get("worker_response")
-                    )
-                )
-                if body is not None:
+                if event_type == "worker.availability_set":
                     recipients = [event]
-                    if event_type == "labour_request.cancelled":
-                        recipients = await _cancelled_assignment_recipients(
-                            connection, event.get("payload")
-                        )
-                    for recipient in recipients:
+                elif event_type == "labour_request.cancelled":
+                    recipients = await _cancelled_assignment_recipients(
+                        connection, event.get("payload")
+                    )
+                else:
+                    recipients = [event]
+                for recipient in recipients:
+                    message = _outbound_message(
+                        event_type,
+                        recipient,
+                        settings.whatsapp_template_fallback_locale
+                        if settings
+                        else "en",
+                    )
+                    if message is not None:
+                        body, payload, message_kind = message
                         if recipient["phone_number"] is None:
                             raise RuntimeError(
                                 "event recipient has no active primary phone"
@@ -205,22 +282,21 @@ async def run_command_outbox_jobs(
                         idempotency_key = f"domain-event:{event['id']}"
                         if event_type == "labour_request.cancelled":
                             idempotency_key += f":{recipient['assignment_id']}"
-                        message_kind = (
-                            "availability_update"
-                            if event_type == "worker.availability_set"
-                            else "assignment_update"
-                        )
                         await connection.execute(
                             """
                             insert into public.channel_deliveries (
                               channel, recipient_phone_number, body, message_kind,
-                              idempotency_key, state
+                              message_payload, idempotency_key,
+                              source_table, source_record_id, state
                                                         ) values (
                                                             'whatsapp',
                                                             %s,
                                                             %s,
                                                             %s,
                                                             %s,
+                                                            %s,
+                                                            %s,
+                                                            %s::uuid,
                                                             'queued'
                                                         )
                             on conflict (idempotency_key) do nothing
@@ -229,7 +305,14 @@ async def run_command_outbox_jobs(
                                 recipient["phone_number"],
                                 body,
                                 message_kind,
+                                Jsonb(payload.model_dump(mode="json")),
                                 idempotency_key,
+                                "assignments"
+                                if payload.type == "approved_template"
+                                else None,
+                                recipient.get("assignment_id")
+                                if payload.type == "approved_template"
+                                else None,
                             ),
                         )
                 await connection.execute(
@@ -632,6 +715,9 @@ def _exact_assignment_response(
         "HAYI": "declined",
         "CALL ME": "call_me",
         "3": "call_me",
+        "MARKD_ASSIGNMENT_YES": "accepted",
+        "MARKD_ASSIGNMENT_NO": "declined",
+        "MARKD_ASSIGNMENT_CALL_ME": "call_me",
     }.get(normalized)
     return cast(Literal["accepted", "declined", "call_me"] | None, response)
 
@@ -689,6 +775,35 @@ async def _resolve_active_assignment(
     )
     assignments = await result.fetchall()
     return UUID(str(assignments[0]["id"])) if len(assignments) == 1 else None
+
+
+async def _resolve_replied_assignment(
+    connection: Any,
+    replied_to_message_id: str,
+    sender_phone_number: object,
+    worker_id: UUID,
+) -> UUID | None:
+    if not isinstance(sender_phone_number, str):
+        return None
+    result = await connection.execute(
+        """
+        select assignment.id
+        from public.channel_deliveries delivery
+        join public.assignments assignment
+          on assignment.id = delivery.source_record_id
+        where delivery.provider_message_id = %s
+          and delivery.source_table = 'assignments'
+          and delivery.message_kind = 'assignment_offer_do_not_travel'
+          and delivery.recipient_phone_number = %s
+          and assignment.worker_id = %s::uuid
+          and assignment.lifecycle = 'active'
+          and assignment.offered_at is not null
+          and assignment.worker_response in ('pending', 'call_me')
+        """,
+        (replied_to_message_id, sender_phone_number, worker_id),
+    )
+    rows = await result.fetchall()
+    return UUID(str(rows[0]["id"])) if len(rows) == 1 else None
 
 
 async def _resolve_closeout_entities(
@@ -783,7 +898,24 @@ async def _try_execute_worker_action(
         if response not in {"accepted", "declined", "call_me"}:
             return None, {"workerId": str(worker_id)}
         assignment_response = cast(Literal["accepted", "declined", "call_me"], response)
-        assignment_id = await _resolve_active_assignment(connection, principal)
+        raw_payload = event.get("payload")
+        is_button, replied_to_message_id = _interactive_reply_context(
+            raw_payload if isinstance(raw_payload, dict) else {},
+            provider_message_id,
+        )
+        if is_button:
+            assignment_id = (
+                await _resolve_replied_assignment(
+                    connection,
+                    replied_to_message_id,
+                    event.get("sender_phone_number"),
+                    worker_id,
+                )
+                if replied_to_message_id is not None
+                else None
+            )
+        else:
+            assignment_id = await _resolve_active_assignment(connection, principal)
         if assignment_id is None:
             return None, {"workerId": str(worker_id)}
         resolved_assignment_id = assignment_id
@@ -930,30 +1062,83 @@ async def _try_execute_worker_action(
     return "executed", {"workerId": str(worker_id)}
 
 
-def _assignment_delivery_body(
-    event_type: str, worker_response: object | None = None
-) -> str | None:
-    if event_type == "assignment.worker_responded":
-        if not isinstance(worker_response, str):
+def _outbound_message(
+    event_type: str, recipient: dict[str, Any], fallback_locale: Locale = "en"
+) -> tuple[str | None, MessagePayload, str] | None:
+    if event_type == "worker.availability_set":
+        body = "Availability saved."
+        return (
+            body,
+            SessionTextPayload(type="session_text", body=body),
+            "availability_update",
+        )
+
+    if (
+        event_type == "assignment.worker_responded"
+        and recipient.get("worker_response") != "accepted"
+    ):
+        return None
+
+    template_keys: dict[str, TemplateKey] = {
+        "assignment.offered": "assignment_offer_do_not_travel",
+        "assignment.worker_responded": "assignment_accepted_waiting",
+        "assignment.travel_authorised": "assignment_travel_ready",
+        "assignment.travel_revoked": "assignment_changed",
+        "assignment.logistics_updated": "assignment_changed",
+        "assignment.cancelled": "assignment_cancelled",
+        "labour_request.cancelled": "assignment_cancelled",
+    }
+    key = template_keys.get(event_type)
+    if key is None:
+        return None
+
+    # Delayed events must not send stale instructions after another command.
+    if event_type.startswith("assignment."):
+        event_version = recipient.get("aggregate_version")
+        current_version = recipient.get("assignment_version")
+        if event_version is not None and event_version != current_version:
             return None
-        return {
-            "accepted": "Accepted. WAITING. DO NOT TRAVEL YET.",
-            "declined": "Declined. We have recorded your response.",
-            "call_me": "Call-me request received. We will contact you. DO NOT TRAVEL.",
-        }.get(worker_response)
-    return {
-        "assignment.offered": (
-            "Work offer from MARKD. Reply YES, NO, or CALL ME. "
-            "DO NOT TRAVEL until MARKD confirms travel."
-        ),
-        "assignment.travel_authorised": "WORK CONFIRMED. GO to the reporting point.",
-        "assignment.travel_revoked": "Work details changed. DO NOT TRAVEL.",
-        "assignment.logistics_updated": (
-            "Work details changed. DO NOT TRAVEL until confirmed."
-        ),
-        "assignment.cancelled": "Work cancelled. DO NOT TRAVEL.",
-        "labour_request.cancelled": "Work cancelled. DO NOT TRAVEL.",
-    }.get(event_type)
+    if event_type == "assignment.offered" and (
+        recipient.get("lifecycle") != "active"
+        or recipient.get("worker_response") != "pending"
+    ):
+        return None
+    if event_type == "assignment.travel_authorised" and (
+        recipient.get("lifecycle") != "active"
+        or recipient.get("travel_authorised_at") is None
+        or recipient.get("travel_revoked_at") is not None
+    ):
+        return None
+    if key == "assignment_cancelled" and recipient.get("lifecycle") != "cancelled":
+        return None
+
+    language = recipient.get("preferred_language_code")
+    locale: Locale = language if language in {"en", "af", "xh"} else fallback_locale
+    if key in {
+        "assignment_offer_do_not_travel",
+        "assignment_accepted_waiting",
+        "assignment_changed",
+        "assignment_cancelled",
+    }:
+        work_date = recipient.get("work_date")
+        if not isinstance(work_date, date):
+            raise ValueError("assignment work date is required for template delivery")
+        variables: dict[str, Any] = {"work_date": work_date}
+        if key == "assignment_offer_do_not_travel":
+            variables["site_area"] = recipient.get("site_area")
+    else:
+        reporting_at = recipient.get("reporting_at")
+        if not isinstance(reporting_at, datetime):
+            raise ValueError("reporting time is required for travel-ready delivery")
+        timezone = recipient.get("timezone")
+        if not isinstance(timezone, str):
+            raise ValueError("labour request timezone is required")
+        variables = {
+            "reporting_at": reporting_at.astimezone(ZoneInfo(timezone)),
+            "reporting_place_text": recipient.get("reporting_place_text"),
+        }
+    payload = build_template_payload(key, locale, variables)
+    return None, payload, key
 
 
 async def _cancelled_assignment_recipients(
@@ -968,8 +1153,19 @@ async def _cancelled_assignment_recipients(
         return []
     result = await connection.execute(
         """
-        select assignment.id as assignment_id, phone.phone_number
+        select assignment.id as assignment_id, phone.phone_number,
+               assignment.starts_on as work_date,
+               assignment.lifecycle, assignment.worker_response,
+               assignment.version as assignment_version,
+               request.site_area, request.timezone,
+               language.code as preferred_language_code
         from public.assignments as assignment
+        join public.labour_requests as request
+          on request.id = assignment.labour_request_id
+        join public.people as worker
+          on worker.id = assignment.worker_id
+        left join public.languages as language
+          on language.id = worker.preferred_language_id
         left join public.person_phone_numbers as phone
           on phone.person_id = assignment.worker_id
          and phone.is_primary
@@ -1065,6 +1261,37 @@ def _meta_provider(settings: Settings) -> MetaWhatsAppCloudProvider:
     )
 
 
+def _interactive_reply_context(
+    payload: dict[str, Any], provider_message_id: str
+) -> tuple[bool, str | None]:
+    entries = payload.get("entry")
+    if not isinstance(entries, list):
+        return False, None
+    for entry in entries:
+        changes = entry.get("changes") if isinstance(entry, dict) else None
+        if not isinstance(changes, list):
+            continue
+        for change in changes:
+            value = change.get("value") if isinstance(change, dict) else None
+            messages = value.get("messages") if isinstance(value, dict) else None
+            if not isinstance(messages, list):
+                continue
+            for message in messages:
+                if (
+                    not isinstance(message, dict)
+                    or message.get("id") != provider_message_id
+                ):
+                    continue
+                if not isinstance(message.get("button"), dict) and not isinstance(
+                    message.get("interactive"), dict
+                ):
+                    return False, None
+                context = message.get("context")
+                replied_to = context.get("id") if isinstance(context, dict) else None
+                return True, replied_to if isinstance(replied_to, str) else None
+    return False, None
+
+
 def _extract_text(
     payload: dict[str, Any], provider_message_id: str | None
 ) -> str | None:
@@ -1090,13 +1317,19 @@ def _extract_text(
                 body = text.get("body") if isinstance(text, dict) else None
                 if isinstance(body, str):
                     return body
+                button = message.get("button")
+                button_payload = (
+                    button.get("payload") if isinstance(button, dict) else None
+                )
+                if isinstance(button_payload, str) and button_payload.strip():
+                    return button_payload
                 interactive = message.get("interactive")
                 if not isinstance(interactive, dict):
                     continue
                 for reply_type in ("button_reply", "list_reply"):
                     reply = interactive.get(reply_type)
                     if isinstance(reply, dict):
-                        reply_value = reply.get("id") or reply.get("title")
+                        reply_value = reply.get("id")
                         if isinstance(reply_value, str) and reply_value.strip():
                             return reply_value
     return None
@@ -1128,6 +1361,8 @@ def _processing_failure(error: Exception) -> tuple[str, bool]:
 
 
 def _delivery_failure(error: Exception) -> tuple[str, bool]:
+    if isinstance(error, HTTPException):
+        return "canonical template facts changed; Ops review required", False
     if isinstance(error, WhatsAppProviderError):
         return str(error), error.retryable
     return "delivery dispatch failed", True
