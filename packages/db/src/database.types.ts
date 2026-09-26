@@ -625,6 +625,9 @@ export type Database = {
           message_kind: string
           message_payload: Json
           provider_message_id: string | null
+          provider_send_type: string | null
+          provider_template_locale: string | null
+          provider_template_name: string | null
           recipient_phone_number: string
           sent_at: string | null
           send_started_at: string | null
@@ -649,6 +652,9 @@ export type Database = {
           message_kind: string
           message_payload: Json
           provider_message_id?: string | null
+          provider_send_type?: string | null
+          provider_template_locale?: string | null
+          provider_template_name?: string | null
           recipient_phone_number: string
           sent_at?: string | null
           send_started_at?: string | null
@@ -673,6 +679,9 @@ export type Database = {
           message_kind?: string
           message_payload?: Json
           provider_message_id?: string | null
+          provider_send_type?: string | null
+          provider_template_locale?: string | null
+          provider_template_name?: string | null
           recipient_phone_number?: string
           sent_at?: string | null
           send_started_at?: string | null

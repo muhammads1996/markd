@@ -20,6 +20,10 @@ from app.api.v1.labour_requests import (
     respond_to_assignment_mutation,
 )
 from app.application.channel_actors import ChannelPrincipal, resolve_channel_principal
+from app.application.conversation_window import (
+    CommunicationFallbackRequired,
+    ConversationWindowPolicy,
+)
 from app.application.dispatcher import execute_command
 from app.application.template_delivery import verify_template_facts
 from app.core.config import Settings
@@ -41,7 +45,11 @@ from app.integrations.language import (
 )
 from app.integrations.storage import download_private_object, upload_private_object
 from app.integrations.typesafe_jev import TypeSafeJevProvider
-from app.integrations.whatsapp import MetaWhatsAppCloudProvider, WhatsAppProviderError
+from app.integrations.whatsapp import (
+    MetaWhatsAppCloudProvider,
+    WhatsAppProviderError,
+    normalize_delivery_statuses,
+)
 from app.messaging.templates import (
     ApprovedTemplatePayload,
     Locale,
@@ -50,6 +58,7 @@ from app.messaging.templates import (
     TemplateKey,
     build_template_payload,
     parse_message_payload,
+    render_session_text,
     resolve_meta_template,
 )
 
@@ -104,6 +113,7 @@ async def run_delivery_jobs(
         return []
 
     provider = _meta_provider(settings)
+    window_policy = ConversationWindowPolicy()
     try:
         outcomes: list[dict[str, str]] = []
         for delivery in deliveries:
@@ -111,22 +121,20 @@ async def run_delivery_jobs(
             message: str | None
             provider_message_id: str | None
             payload: SessionTextPayload | ApprovedTemplatePayload | None = None
-            completed = False
+            send_started = False
+            template = None
+            session_body = None
             try:
                 payload = parse_message_payload(delivery["message_payload"])
-                if payload.type == "approved_template":
-                    template = resolve_meta_template(
-                        payload,
-                        settings.whatsapp_template_catalog,
-                        settings.whatsapp_template_fallback_locale,
+                recipient = str(delivery["recipient_phone_number"])
+                async with database.service_transaction() as connection:
+                    await connection.execute(
+                        "select public.mark_channel_delivery_send_started(%s::uuid)",
+                        (delivery_id,),
                     )
-                    async with database.service_transaction() as connection:
-                        await connection.execute(
-                            "select public.mark_channel_delivery_send_started("
-                            "%s::uuid)",
-                            (delivery_id,),
-                        )
-                    async with database.service_transaction() as connection:
+                send_started = True
+                async with database.service_transaction() as connection:
+                    if payload.type == "approved_template":
                         source_record_id = delivery.get("source_record_id")
                         await verify_template_facts(
                             connection,
@@ -134,27 +142,98 @@ async def run_delivery_jobs(
                             UUID(str(source_record_id))
                             if source_record_id is not None
                             else None,
-                            str(delivery["recipient_phone_number"]),
+                            recipient,
                             settings.whatsapp_template_fallback_locale,
                         )
-                        provider_message_id = await provider.send_template(
-                            str(delivery["recipient_phone_number"]), template
+                    window_open = await window_policy.is_open_for(connection, recipient)
+                    template = None
+                    session_body = None
+                    if payload.type == "approved_template":
+                        if window_open:
+                            session_body = render_session_text(payload).body
+                        else:
+                            try:
+                                template = resolve_meta_template(
+                                    payload,
+                                    settings.whatsapp_template_catalog,
+                                    settings.whatsapp_template_fallback_locale,
+                                )
+                            except ValueError as error:
+                                raise CommunicationFallbackRequired(
+                                    f"No approved Meta template for {payload.key}; "
+                                    "Ops/call follow-up required"
+                                ) from error
+                    elif window_open:
+                        session_body = payload.body
+                    else:
+                        raise CommunicationFallbackRequired(
+                            "No open WhatsApp service window or approved template; "
+                            "Ops/call follow-up required"
                         )
-                        await connection.execute(
-                            "select public.complete_channel_delivery("
-                            "%s::uuid, true, %s, null, false)",
-                            (delivery_id, provider_message_id),
-                        )
-                    completed = True
-                else:
-                    provider_message_id = await provider.send_text(
-                        str(delivery["recipient_phone_number"]), payload.body
+                    await connection.execute(
+                        """
+                        update public.channel_deliveries
+                        set provider_send_type = %s, provider_template_name = %s,
+                            provider_template_locale = %s
+                        where id = %s::uuid and state = 'leased'
+                        """,
+                        (
+                            "approved_template" if template else "session_text",
+                            template.name if template else None,
+                            template.language_code if template else None,
+                            delivery_id,
+                        ),
                     )
+                    if template is not None:
+                        provider_message_id = await provider.send_template(
+                            recipient, template
+                        )
+                    else:
+                        assert session_body is not None
+                        provider_message_id = await provider.send_text(
+                            recipient, session_body
+                        )
+                    await connection.execute(
+                        "select pg_advisory_xact_lock(hashtextextended(%s, 0))",
+                        (provider_message_id,),
+                    )
+                    await connection.execute(
+                        "select public.complete_channel_delivery("
+                        "%s::uuid, true, %s, null, false)",
+                        (delivery_id, provider_message_id),
+                    )
+                    prior_events = await connection.execute(
+                        """
+                        select provider_event_id, payload
+                        from public.channel_events
+                        where channel = 'whatsapp' and event_type = 'status'
+                          and provider_message_id = %s
+                        order by occurred_at, id limit 50
+                        """,
+                        (provider_message_id,),
+                    )
+                    for event in await prior_events.fetchall():
+                        for status in normalize_delivery_statuses(event["payload"]):
+                            if (
+                                status.provider_message_id == provider_message_id
+                                and status.provider_event_id
+                                == event["provider_event_id"]
+                            ):
+                                await connection.execute(
+                                    "select public.record_channel_delivery_status("
+                                    "%s, %s, %s, %s)",
+                                    (
+                                        provider_message_id,
+                                        status.state,
+                                        status.occurred_at,
+                                        status.failure_reason,
+                                    ),
+                                )
             except Exception as error:
                 message, retryable = _delivery_failure(error)
                 # Once a provider request may have started, its outcome can be
                 # ambiguous. Ops reconciles instead of sending it twice.
-                if payload is not None and payload.type == "approved_template":
+                if send_started:
                     retryable = False
                 succeeded = False
                 provider_message_id = None
@@ -163,8 +242,26 @@ async def run_delivery_jobs(
                 message, retryable = None, False
                 succeeded = True
                 outcome = "sent"
-            if not completed:
+            if not succeeded:
                 async with database.service_transaction() as connection:
+                    if send_started and (
+                        template is not None or session_body is not None
+                    ):
+                        await connection.execute(
+                            """
+                            update public.channel_deliveries
+                            set provider_send_type = %s,
+                                provider_template_name = %s,
+                                provider_template_locale = %s
+                            where id = %s::uuid and state = 'leased'
+                            """,
+                            (
+                                "approved_template" if template else "session_text",
+                                template.name if template else None,
+                                template.language_code if template else None,
+                                delivery_id,
+                            ),
+                        )
                     await connection.execute(
                         "select public.complete_channel_delivery("
                         "%s::uuid, %s, %s, %s, %s)",
@@ -1361,6 +1458,8 @@ def _processing_failure(error: Exception) -> tuple[str, bool]:
 
 
 def _delivery_failure(error: Exception) -> tuple[str, bool]:
+    if isinstance(error, CommunicationFallbackRequired):
+        return str(error), False
     if isinstance(error, HTTPException):
         return "canonical template facts changed; Ops review required", False
     if isinstance(error, WhatsAppProviderError):

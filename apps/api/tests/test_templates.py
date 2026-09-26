@@ -107,6 +107,26 @@ def test_template_resolution_fails_closed_and_uses_en_fallback() -> None:
         resolve_meta_template(payload, {})
 
 
+def test_xh_preference_uses_proactive_locale_fallback() -> None:
+    payload = build_template_payload(
+        "assignment_offer_do_not_travel",
+        "xh",
+        KEY_VARIABLES["assignment_offer_do_not_travel"],
+    )
+    resolved = resolve_meta_template(
+        payload,
+        {
+            "assignment_offer_do_not_travel": {
+                "en": {"name": "approved_offer_en_us", "language_code": "en_US"}
+            }
+        },
+        fallback_locale="en",
+    )
+    assert payload.locale == "xh"
+    assert resolved.name == "approved_offer_en_us"
+    assert resolved.language_code == "en_US"
+
+
 def test_template_components_have_fixed_order_and_formatting() -> None:
     offer = build_template_payload(
         "assignment_offer_do_not_travel",

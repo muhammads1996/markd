@@ -211,7 +211,7 @@ def resolve_meta_template(
         raise ValueError(f"No approved Meta template configured for {payload.key}")
     if isinstance(entry, str):
         name = entry
-        language_code = (
+        language_code: str = (
             payload.locale if payload.locale in localized else fallback_locale
         )
     else:
@@ -248,26 +248,130 @@ def resolve_meta_template(
     )
 
 
+def render_session_text(payload: ApprovedTemplatePayload) -> SessionTextPayload:
+    """Fixed participant copy from the same validated canonical facts."""
+    locale = payload.locale
+    date_value = (
+        _ordered_variable_values(payload)[0]
+        if payload.key
+        in {
+            "assignment_offer_do_not_travel",
+            "assignment_accepted_waiting",
+            "assignment_changed",
+            "assignment_cancelled",
+            "payment_followup",
+        }
+        else None
+    )
+    if isinstance(payload, AssignmentOfferPayload):
+        copy = {
+            "en": (
+                f"Work offer: {date_value}, {payload.variables.site_area}. "
+                "DO NOT TRAVEL YET. Reply YES to take the job, "
+                "NO if you cannot go, or CALL ME."
+            ),
+            "af": (
+                f"Werksaanbod: {date_value}, {payload.variables.site_area}. "
+                "MOENIE NOG REIS NIE. Antwoord JA om die werk te vat, "
+                "NEE as jy nie kan gaan nie, of BEL MY."
+            ),
+            "xh": (
+                f"Isinikezelo somsebenzi: {date_value}, "
+                f"{payload.variables.site_area}. MUSA UKUHAMBA OKWANGOKU. "
+                "Phendula EWE ukuze wamkele umsebenzi, HAYI xa "
+                "ungenakuya, okanye NDIFOWUNELE."
+            ),
+        }
+    elif isinstance(payload, AcceptedWaitingPayload):
+        copy = {
+            "en": (
+                f"You accepted the work on {date_value}. "
+                "The work is not yet confirmed. DO NOT TRAVEL YET."
+            ),
+            "af": (
+                f"Jy het die werk op {date_value} aanvaar. "
+                "Die werk is nog nie bevestig nie. MOENIE NOG REIS NIE."
+            ),
+            "xh": (
+                f"Uwamkele umsebenzi ngomhla we-{date_value}. "
+                "Umsebenzi awukaqinisekiswa. MUSA UKUHAMBA OKWANGOKU."
+            ),
+        }
+    elif isinstance(payload, (TravelReadyPayload, PickupReminderPayload)):
+        facts = (
+            f"{_format_time(payload.variables.reporting_at)}, "
+            f"{payload.variables.reporting_place_text}"
+        )
+        if payload.key == "assignment_travel_ready":
+            copy = {
+                "en": f"Work confirmed. YOU CAN TRAVEL. Report at {facts}.",
+                "af": f"Werk bevestig. JY KAN REIS. Meld aan by {facts}.",
+                "xh": f"Umsebenzi uqinisekisiwe. UNGANGENA ENDLELENI. Fika e-{facts}.",
+            }
+        else:
+            copy = {
+                "en": f"Pickup reminder: {facts}.",
+                "af": f"Optelherinnering: {facts}.",
+                "xh": f"Isikhumbuzo sokulandwa: {facts}.",
+            }
+    elif isinstance(payload, AssignmentChangedPayload):
+        copy = {
+            "en": (
+                f"Work details changed for {date_value}. "
+                "Wait for updated instructions. DO NOT TRAVEL YET."
+            ),
+            "af": (
+                f"Werkbesonderhede vir {date_value} het verander. "
+                "Wag vir nuwe instruksies. MOENIE NOG REIS NIE."
+            ),
+            "xh": (
+                f"Iinkcukacha zomsebenzi ka-{date_value} zitshintshile. "
+                "Linda imiyalelo emitsha. MUSA UKUHAMBA OKWANGOKU."
+            ),
+        }
+    elif isinstance(payload, AssignmentCancelledPayload):
+        copy = {
+            "en": f"Work on {date_value} is cancelled. DO NOT TRAVEL.",
+            "af": f"Werk op {date_value} is gekanselleer. MOENIE REIS NIE.",
+            "xh": f"Umsebenzi ka-{date_value} urhoxisiwe. MUSA UKUHAMBA.",
+        }
+    elif isinstance(payload, PaymentFollowupPayload):
+        amount = _ordered_variable_values(payload)[1]
+        message = (
+            f"Payment follow-up for work on {date_value}: {amount}. "
+            "Please contact MARKD if this is incorrect."
+        )
+        copy = {code: message for code in ("en", "af", "xh")}
+    else:
+        assert isinstance(payload, ExceptionFollowupPayload)
+        message = (
+            f"MARKD exception follow-up: {payload.variables.case_reference}. "
+            "Please contact MARKD."
+        )
+        copy = {code: message for code in ("en", "af", "xh")}
+    return SessionTextPayload(type="session_text", body=copy[locale])
+
+
 def _ordered_variable_values(payload: ApprovedTemplatePayload) -> list[str]:
-    if payload.key == "assignment_offer_do_not_travel":
+    if isinstance(payload, AssignmentOfferPayload):
         return [_format_date(payload.variables.work_date), payload.variables.site_area]
-    if payload.key in {
-        "assignment_accepted_waiting",
-        "assignment_changed",
-        "assignment_cancelled",
-    }:
+    if isinstance(
+        payload,
+        (AcceptedWaitingPayload, AssignmentChangedPayload, AssignmentCancelledPayload),
+    ):
         return [_format_date(payload.variables.work_date)]
-    if payload.key in {"assignment_travel_ready", "pickup_reminder"}:
+    if isinstance(payload, (TravelReadyPayload, PickupReminderPayload)):
         return [
             _format_time(payload.variables.reporting_at),
             payload.variables.reporting_place_text,
         ]
-    if payload.key == "payment_followup":
+    if isinstance(payload, PaymentFollowupPayload):
         whole, cents = divmod(payload.variables.amount_minor, 100)
         return [
             _format_date(payload.variables.work_date),
             f"{payload.variables.currency} {whole}.{cents:02d}",
         ]
+    assert isinstance(payload, ExceptionFollowupPayload)
     return [payload.variables.case_reference]
 
 

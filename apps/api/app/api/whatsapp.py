@@ -117,6 +117,12 @@ async def receive_whatsapp_webhook(
             for inbound in inbound_messages:
                 await _persist_inbound_event(connection, inbound)
             for delivery_status in delivery_statuses:
+                # Serialize a callback with the send completion for the same
+                # provider ID, so neither side can miss the other's commit.
+                await connection.execute(
+                    "select pg_advisory_xact_lock(hashtextextended(%s, 0))",
+                    (delivery_status.provider_message_id,),
+                )
                 await connection.execute(
                     """
                     insert into public.channel_events (

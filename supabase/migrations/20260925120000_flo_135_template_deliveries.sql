@@ -1,7 +1,21 @@
 -- FLO-135: durable provider-neutral outbound payload and conservative send lease.
 alter table public.channel_deliveries
   add column message_payload jsonb,
-  add column send_started_at timestamptz;
+  add column send_started_at timestamptz,
+  add column provider_send_type text check (provider_send_type in ('session_text', 'approved_template')),
+  add column provider_template_name text,
+  add column provider_template_locale text,
+  add constraint channel_deliveries_template_evidence_check check (
+    (provider_send_type = 'approved_template'
+      and provider_template_name is not null
+      and provider_template_locale is not null)
+    or (provider_send_type = 'session_text'
+      and provider_template_name is null
+      and provider_template_locale is null)
+    or (provider_send_type is null
+      and provider_template_name is null
+      and provider_template_locale is null)
+  );
 
 update public.channel_deliveries
 set message_payload = jsonb_build_object('type', 'session_text', 'body', body);
