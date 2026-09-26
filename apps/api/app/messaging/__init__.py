@@ -1,0 +1,1 @@
+"""Curated outbound message payloads."""

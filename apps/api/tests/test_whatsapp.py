@@ -1026,6 +1026,26 @@ class OutboxConnection:
                     "assignment_id": "88888888-8888-4888-8888-888888888888",
                     "phone_number": "+27821234567",
                     "payload": self.payload,
+                    "aggregate_version": 2,
+                    "assignment_version": 2,
+                    "lifecycle": (
+                        "cancelled"
+                        if self.event_type.endswith("cancelled")
+                        else "active"
+                    ),
+                    "worker_response": "pending",
+                    "travel_authorised_at": (
+                        datetime(2026, 9, 18, tzinfo=UTC)
+                        if self.event_type == "assignment.travel_authorised"
+                        else None
+                    ),
+                    "travel_revoked_at": None,
+                    "work_date": date(2026, 9, 19),
+                    "reporting_at": datetime(2026, 9, 19, 5, tzinfo=UTC),
+                    "reporting_place_text": "Main gate",
+                    "site_area": "Cape Town",
+                    "timezone": "Africa/Johannesburg",
+                    "preferred_language_code": "en",
                 }
             )
         if "where assignment.id = any" in query:
@@ -1034,6 +1054,9 @@ class OutboxConnection:
                     {
                         "assignment_id": assignment_id,
                         "phone_number": phone_number,
+                        "work_date": date(2026, 9, 19),
+                        "lifecycle": "cancelled",
+                        "preferred_language_code": "en",
                     }
                     for assignment_id, phone_number in (
                         (
@@ -1066,24 +1089,30 @@ async def test_command_outbox_mirrors_travel_authorisation_after_commit() -> Non
     assert outcomes == [
         {"outbox_id": "11111111-1111-4111-8111-111111111111", "outcome": "published"}
     ]
-    assert delivery == (
-        "+27821234567",
-        "WORK CONFIRMED. GO to the reporting point.",
-        "assignment_update",
-        "domain-event:22222222-2222-4222-8222-222222222222",
-    )
+    assert delivery is not None
+    assert delivery[0:3] == ("+27821234567", None, "assignment_travel_ready")
+    assert delivery[3].obj == {
+        "type": "approved_template",
+        "key": "assignment_travel_ready",
+        "locale": "en",
+        "variables": {
+            "reporting_at": "2026-09-19T07:00:00+02:00",
+            "reporting_place_text": "Main gate",
+        },
+    }
+    assert delivery[4] == "domain-event:22222222-2222-4222-8222-222222222222"
     assert any("set state = 'published'" in query for query, _ in connection.calls)
 
 
 @pytest.mark.parametrize(
-    ("event_type", "expected_body"),
+    ("event_type", "expected_key"),
     [
-        ("assignment.travel_revoked", "Work details changed. DO NOT TRAVEL."),
-        ("labour_request.cancelled", "Work cancelled. DO NOT TRAVEL."),
+        ("assignment.travel_revoked", "assignment_changed"),
+        ("labour_request.cancelled", "assignment_cancelled"),
     ],
 )
 async def test_command_outbox_notifies_workers_not_to_travel_after_revocation(
-    event_type: str, expected_body: str
+    event_type: str, expected_key: str
 ) -> None:
     connection = OutboxConnection(
         event_type,
@@ -1104,10 +1133,14 @@ async def test_command_outbox_notifies_workers_not_to_travel_after_revocation(
     ]
     assert len(deliveries) == (2 if event_type == "labour_request.cancelled" else 1)
     assert all(
-        delivery is not None and delivery[1] == expected_body for delivery in deliveries
+        delivery is not None and delivery[2] == expected_key for delivery in deliveries
+    )
+    assert all(
+        delivery is not None and delivery[3].obj["type"] == "approved_template"
+        for delivery in deliveries
     )
     if event_type == "labour_request.cancelled":
-        assert {delivery[3] for delivery in deliveries if delivery} == {
+        assert {delivery[4] for delivery in deliveries if delivery} == {
             "domain-event:22222222-2222-4222-8222-222222222222:88888888-8888-4888-8888-888888888888",
             "domain-event:22222222-2222-4222-8222-222222222222:99999999-9999-4999-8999-999999999999",
         }
@@ -1131,12 +1164,14 @@ async def test_command_outbox_queues_availability_acknowledgement_after_commit()
     assert outcomes == [
         {"outbox_id": "11111111-1111-4111-8111-111111111111", "outcome": "published"}
     ]
-    assert delivery == (
+    assert delivery is not None
+    assert delivery[0:3] == (
         "+27821234567",
         "Availability saved.",
         "availability_update",
-        "domain-event:22222222-2222-4222-8222-222222222222",
     )
+    assert delivery[3].obj == {"type": "session_text", "body": "Availability saved."}
+    assert delivery[4] == "domain-event:22222222-2222-4222-8222-222222222222"
     assert any("availability_signals" in query for query, _ in connection.calls)
 
 

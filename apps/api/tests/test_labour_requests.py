@@ -15,12 +15,14 @@ from app.api.v1.labour_requests import (
     AuthoriseAssignmentTravelInput,
     CancelAssignmentInput,
     ContractorConfirmationInput,
+    OfferAssignmentInput,
     RespondToAssignmentInput,
     _cancel_request_assignments,
     _require_assignment_actor,
     authorise_assignment_travel_mutation,
     cancel_assignment_mutation,
     confirm_assignment_mutation,
+    offer_assignment,
     record_assignment_acknowledgement_mutation,
     respond_to_assignment_mutation,
     set_assignment_logistics_mutation,
@@ -505,6 +507,30 @@ async def test_repeated_worker_response_does_not_emit_a_duplicate_event() -> Non
 
     assert result.body["status"] == "already_applied"
     assert result.event_type is None
+
+
+async def test_repeated_offer_does_not_emit_another_outbound_event() -> None:
+    database = FakeDatabase()
+    result = await offer_assignment(
+        uuid.UUID("88888888-8888-4888-8888-888888888888"),
+        OfferAssignmentInput(),
+        idempotency_key="second-offer-command",
+        actor=_operator(),
+        database=database,
+        correlation_id="test-correlation",
+    )
+
+    assert result.status_code == 200
+    assert b'"already_applied"' in result.body
+    assert database.last_connection is not None
+    assert not any(
+        "insert into private.domain_events" in query
+        for query, _ in database.last_connection.calls
+    )
+    assert not any(
+        "update public.assignments" in query
+        for query, _ in database.last_connection.calls
+    )
 
 
 async def test_extracted_response_mutation_preserves_whatsapp_audit_provenance() -> (

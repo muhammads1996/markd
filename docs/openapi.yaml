@@ -1287,6 +1287,44 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
 components:
   schemas:
+    AcceptedWaitingPayload:
+      properties:
+        type:
+          type: string
+          const: approved_template
+          title: Type
+        key:
+          type: string
+          const: assignment_accepted_waiting
+          title: Key
+        locale:
+          type: string
+          enum:
+          - en
+          - af
+          - xh
+          title: Locale
+        variables:
+          $ref: '#/components/schemas/AcceptedWaitingVariables'
+      additionalProperties: false
+      type: object
+      required:
+      - type
+      - key
+      - locale
+      - variables
+      title: AcceptedWaitingPayload
+    AcceptedWaitingVariables:
+      properties:
+        work_date:
+          type: string
+          format: date
+          title: Work Date
+      additionalProperties: false
+      type: object
+      required:
+      - work_date
+      title: AcceptedWaitingVariables
     ApprovalInput:
       properties:
         action_type:
@@ -1335,6 +1373,82 @@ components:
       required:
       - kind
       title: AssignmentAcknowledgementInput
+    AssignmentCancelledPayload:
+      properties:
+        type:
+          type: string
+          const: approved_template
+          title: Type
+        key:
+          type: string
+          const: assignment_cancelled
+          title: Key
+        locale:
+          type: string
+          enum:
+          - en
+          - af
+          - xh
+          title: Locale
+        variables:
+          $ref: '#/components/schemas/AssignmentCancelledVariables'
+      additionalProperties: false
+      type: object
+      required:
+      - type
+      - key
+      - locale
+      - variables
+      title: AssignmentCancelledPayload
+    AssignmentCancelledVariables:
+      properties:
+        work_date:
+          type: string
+          format: date
+          title: Work Date
+      additionalProperties: false
+      type: object
+      required:
+      - work_date
+      title: AssignmentCancelledVariables
+    AssignmentChangedPayload:
+      properties:
+        type:
+          type: string
+          const: approved_template
+          title: Type
+        key:
+          type: string
+          const: assignment_changed
+          title: Key
+        locale:
+          type: string
+          enum:
+          - en
+          - af
+          - xh
+          title: Locale
+        variables:
+          $ref: '#/components/schemas/AssignmentChangedVariables'
+      additionalProperties: false
+      type: object
+      required:
+      - type
+      - key
+      - locale
+      - variables
+      title: AssignmentChangedPayload
+    AssignmentChangedVariables:
+      properties:
+        work_date:
+          type: string
+          format: date
+          title: Work Date
+      additionalProperties: false
+      type: object
+      required:
+      - work_date
+      title: AssignmentChangedVariables
     AssignmentContactInput:
       properties:
         name:
@@ -1467,6 +1581,50 @@ components:
       - place_text
       - reporting_at
       title: AssignmentLogisticsInput
+    AssignmentOfferPayload:
+      properties:
+        type:
+          type: string
+          const: approved_template
+          title: Type
+        key:
+          type: string
+          const: assignment_offer_do_not_travel
+          title: Key
+        locale:
+          type: string
+          enum:
+          - en
+          - af
+          - xh
+          title: Locale
+        variables:
+          $ref: '#/components/schemas/AssignmentOfferVariables'
+      additionalProperties: false
+      type: object
+      required:
+      - type
+      - key
+      - locale
+      - variables
+      title: AssignmentOfferPayload
+    AssignmentOfferVariables:
+      properties:
+        work_date:
+          type: string
+          format: date
+          title: Work Date
+        site_area:
+          type: string
+          maxLength: 120
+          minLength: 1
+          title: Site Area
+      additionalProperties: false
+      type: object
+      required:
+      - work_date
+      - site_area
+      title: AssignmentOfferVariables
     AssignmentStampInput:
       properties:
         attendance:
@@ -1933,6 +2091,45 @@ components:
       required:
       - statement
       title: ExceptionClaimInput
+    ExceptionFollowupPayload:
+      properties:
+        type:
+          type: string
+          const: approved_template
+          title: Type
+        key:
+          type: string
+          const: exception_followup
+          title: Key
+        locale:
+          type: string
+          enum:
+          - en
+          - af
+          - xh
+          title: Locale
+        variables:
+          $ref: '#/components/schemas/ExceptionFollowupVariables'
+      additionalProperties: false
+      type: object
+      required:
+      - type
+      - key
+      - locale
+      - variables
+      title: ExceptionFollowupPayload
+    ExceptionFollowupVariables:
+      properties:
+        case_reference:
+          type: string
+          maxLength: 80
+          minLength: 1
+          title: Case Reference
+      additionalProperties: false
+      type: object
+      required:
+      - case_reference
+      title: ExceptionFollowupVariables
     HTTPValidationError:
       properties:
         detail:
@@ -2153,6 +2350,54 @@ components:
       - currency
       - basis
       title: PayInput
+    PaymentFollowupPayload:
+      properties:
+        type:
+          type: string
+          const: approved_template
+          title: Type
+        key:
+          type: string
+          const: payment_followup
+          title: Key
+        locale:
+          type: string
+          enum:
+          - en
+          - af
+          - xh
+          title: Locale
+        variables:
+          $ref: '#/components/schemas/PaymentFollowupVariables'
+      additionalProperties: false
+      type: object
+      required:
+      - type
+      - key
+      - locale
+      - variables
+      title: PaymentFollowupPayload
+    PaymentFollowupVariables:
+      properties:
+        work_date:
+          type: string
+          format: date
+          title: Work Date
+        amount_minor:
+          type: integer
+          minimum: 0.0
+          title: Amount Minor
+        currency:
+          type: string
+          pattern: ^[A-Z]{3}$
+          title: Currency
+      additionalProperties: false
+      type: object
+      required:
+      - work_date
+      - amount_minor
+      - currency
+      title: PaymentFollowupVariables
     PaymentIssueActionInput:
       properties:
         assignment_id:
@@ -2219,6 +2464,50 @@ components:
       required:
       - assignment_id
       title: PaymentIssueActionInput
+    PickupReminderPayload:
+      properties:
+        type:
+          type: string
+          const: approved_template
+          title: Type
+        key:
+          type: string
+          const: pickup_reminder
+          title: Key
+        locale:
+          type: string
+          enum:
+          - en
+          - af
+          - xh
+          title: Locale
+        variables:
+          $ref: '#/components/schemas/PickupReminderVariables'
+      additionalProperties: false
+      type: object
+      required:
+      - type
+      - key
+      - locale
+      - variables
+      title: PickupReminderPayload
+    PickupReminderVariables:
+      properties:
+        reporting_at:
+          type: string
+          format: date-time
+          title: Reporting At
+        reporting_place_text:
+          type: string
+          maxLength: 200
+          minLength: 1
+          title: Reporting Place Text
+      additionalProperties: false
+      type: object
+      required:
+      - reporting_at
+      - reporting_place_text
+      title: PickupReminderVariables
     QueueDeliveryInput:
       properties:
         recipient_phone_number:
@@ -2227,10 +2516,37 @@ components:
           minLength: 3
           title: Recipient Phone Number
         body:
-          type: string
-          maxLength: 4096
-          minLength: 1
+          anyOf:
+          - type: string
+            maxLength: 4096
+            minLength: 1
+          - type: 'null'
           title: Body
+        message_payload:
+          anyOf:
+          - $ref: '#/components/schemas/SessionTextPayload'
+          - oneOf:
+            - $ref: '#/components/schemas/AssignmentOfferPayload'
+            - $ref: '#/components/schemas/AcceptedWaitingPayload'
+            - $ref: '#/components/schemas/TravelReadyPayload'
+            - $ref: '#/components/schemas/AssignmentChangedPayload'
+            - $ref: '#/components/schemas/AssignmentCancelledPayload'
+            - $ref: '#/components/schemas/PickupReminderPayload'
+            - $ref: '#/components/schemas/PaymentFollowupPayload'
+            - $ref: '#/components/schemas/ExceptionFollowupPayload'
+            discriminator:
+              propertyName: key
+              mapping:
+                assignment_accepted_waiting: '#/components/schemas/AcceptedWaitingPayload'
+                assignment_cancelled: '#/components/schemas/AssignmentCancelledPayload'
+                assignment_changed: '#/components/schemas/AssignmentChangedPayload'
+                assignment_offer_do_not_travel: '#/components/schemas/AssignmentOfferPayload'
+                assignment_travel_ready: '#/components/schemas/TravelReadyPayload'
+                exception_followup: '#/components/schemas/ExceptionFollowupPayload'
+                payment_followup: '#/components/schemas/PaymentFollowupPayload'
+                pickup_reminder: '#/components/schemas/PickupReminderPayload'
+          - type: 'null'
+          title: Message Payload
         message_kind:
           type: string
           maxLength: 100
@@ -2241,6 +2557,12 @@ components:
           maxLength: 255
           minLength: 1
           title: Idempotency Key
+        source_record_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Source Record Id
         source_channel_event_id:
           anyOf:
           - type: string
@@ -2254,7 +2576,6 @@ components:
       type: object
       required:
       - recipient_phone_number
-      - body
       - message_kind
       - idempotency_key
       title: QueueDeliveryInput
@@ -2340,6 +2661,23 @@ components:
       required:
       - response
       title: RespondToAssignmentInput
+    SessionTextPayload:
+      properties:
+        type:
+          type: string
+          const: session_text
+          title: Type
+        body:
+          type: string
+          maxLength: 4096
+          minLength: 1
+          title: Body
+      additionalProperties: false
+      type: object
+      required:
+      - type
+      - body
+      title: SessionTextPayload
     SetWorkerAvailabilityInput:
       properties:
         status:
@@ -2829,6 +3167,50 @@ components:
       - review_required
       - availability_conflicts
       title: TomorrowSummary
+    TravelReadyPayload:
+      properties:
+        type:
+          type: string
+          const: approved_template
+          title: Type
+        key:
+          type: string
+          const: assignment_travel_ready
+          title: Key
+        locale:
+          type: string
+          enum:
+          - en
+          - af
+          - xh
+          title: Locale
+        variables:
+          $ref: '#/components/schemas/TravelReadyVariables'
+      additionalProperties: false
+      type: object
+      required:
+      - type
+      - key
+      - locale
+      - variables
+      title: TravelReadyPayload
+    TravelReadyVariables:
+      properties:
+        reporting_at:
+          type: string
+          format: date-time
+          title: Reporting At
+        reporting_place_text:
+          type: string
+          maxLength: 200
+          minLength: 1
+          title: Reporting Place Text
+      additionalProperties: false
+      type: object
+      required:
+      - reporting_at
+      - reporting_place_text
+      title: TravelReadyVariables
     UpdateLabourRequestInput:
       properties:
         work_date:

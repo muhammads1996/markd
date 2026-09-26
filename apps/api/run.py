@@ -26,7 +26,7 @@ async def run_worker(continuous: bool = False) -> None:
         while True:
             try:
                 await run_processing_jobs(database, settings)
-                await run_command_outbox_jobs(database)
+                await run_command_outbox_jobs(database, settings=settings)
                 await run_delivery_jobs(database, settings)
             except Exception:
                 logging.exception("FastAPI WhatsApp worker pass failed")

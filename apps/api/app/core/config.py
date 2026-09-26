@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     whatsapp_graph_api_version: str = "v24.0"
     whatsapp_graph_base_url: str = "https://graph.facebook.com"
     whatsapp_max_media_bytes: int = 12 * 1024 * 1024
+    whatsapp_template_fallback_locale: Literal["en", "af", "xh"] = "en"
+    whatsapp_template_catalog: dict[str, dict[str, str | dict[str, str]]] = Field(
+        default_factory=dict
+    )
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_intent_model: str = "openai/gpt-4.1-mini"

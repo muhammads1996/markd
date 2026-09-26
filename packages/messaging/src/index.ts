@@ -114,6 +114,7 @@ export function buildOutboundDeliveryRow(input: OutboundDeliveryInput) {
     channel: "whatsapp" as const,
     recipient_phone_number: input.recipientPhoneNumber,
     body: input.body,
+    message_payload: { type: "session_text" as const, body: input.body },
     message_kind: input.messageKind,
     idempotency_key: input.idempotencyKey,
     source_channel_event_id: input.sourceChannelEventId ?? null,

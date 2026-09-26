@@ -1049,6 +1049,11 @@ async def offer_assignment(
                 "Invalid state transition",
                 "Only active assignments can be offered.",
             )
+        if assignment.get("offered_at") is not None:
+            body = _command_body(
+                "assignment", assignment_id, assignment["version"], "already_applied"
+            )
+            return MutationResult(200, body, None, "assignment", assignment_id, body)
         result = await connection.execute(
             """
             update public.assignments
@@ -1059,16 +1064,20 @@ async def offer_assignment(
             (assignment_id,),
         )
         offered = await result.fetchone()
-        replayed = assignment.get("offered_at") is not None
         body = _command_body(
             "assignment",
             offered["id"],
             offered["version"],
-            "already_applied" if replayed else "applied",
-            0 if replayed else 1,
+            "applied",
+            1,
         )
         return MutationResult(
-            200, body, "assignment.offered", "assignment", offered["id"], body
+            200,
+            body,
+            "assignment.offered",
+            "assignment",
+            offered["id"],
+            body,
         )
 
     execution = await execute_command(
