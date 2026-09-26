@@ -166,6 +166,45 @@
   color: #7b211d;
   font-weight: var(--markd-font-weight-strong);
 }
+.failures {
+  display: grid;
+  gap: var(--markd-space-lg);
+  margin-top: var(--markd-space-3xl);
+  padding-top: var(--markd-space-xl);
+  border-top: 2px solid rgb(17 19 21 / 24%);
+}
+.failuresHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--markd-space-md);
+}
+.failuresHeader h2 {
+  margin: 0;
+  font-size: var(--markd-font-size-xl);
+}
+.failureList {
+  display: grid;
+  gap: var(--markd-space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.failureCard {
+  display: grid;
+  gap: var(--markd-space-sm);
+  padding: var(--markd-space-lg);
+  border: 1px solid rgb(17 19 21 / 18%);
+  border-left: 0.35rem solid var(--markd-color-danger);
+  background: var(--markd-color-surface);
+}
+.failureCard > p {
+  margin: 0;
+}
+.callInstruction {
+  font-weight: var(--markd-font-weight-strong);
+}
 @media (min-width: 46rem) {
   .shell {
     padding: var(--markd-space-3xl);

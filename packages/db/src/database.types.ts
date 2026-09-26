@@ -613,7 +613,7 @@ export type Database = {
         Row: {
           attempts: number
           available_at: string
-          body: string
+          body: string | null
           channel: string
           created_at: string
           delivered_at: string | null
@@ -623,9 +623,14 @@ export type Database = {
           last_error: string | null
           leased_until: string | null
           message_kind: string
+          message_payload: Json
           provider_message_id: string | null
+          provider_send_type: string | null
+          provider_template_locale: string | null
+          provider_template_name: string | null
           recipient_phone_number: string
           sent_at: string | null
+          send_started_at: string | null
           source_channel_event_id: string | null
           source_proposed_action_id: string | null
           source_record_id: string | null
@@ -635,7 +640,7 @@ export type Database = {
         Insert: {
           attempts?: number
           available_at?: string
-          body: string
+          body?: string | null
           channel: string
           created_at?: string
           delivered_at?: string | null
@@ -645,9 +650,14 @@ export type Database = {
           last_error?: string | null
           leased_until?: string | null
           message_kind: string
+          message_payload: Json
           provider_message_id?: string | null
+          provider_send_type?: string | null
+          provider_template_locale?: string | null
+          provider_template_name?: string | null
           recipient_phone_number: string
           sent_at?: string | null
+          send_started_at?: string | null
           source_channel_event_id?: string | null
           source_proposed_action_id?: string | null
           source_record_id?: string | null
@@ -657,7 +667,7 @@ export type Database = {
         Update: {
           attempts?: number
           available_at?: string
-          body?: string
+          body?: string | null
           channel?: string
           created_at?: string
           delivered_at?: string | null
@@ -667,9 +677,14 @@ export type Database = {
           last_error?: string | null
           leased_until?: string | null
           message_kind?: string
+          message_payload?: Json
           provider_message_id?: string | null
+          provider_send_type?: string | null
+          provider_template_locale?: string | null
+          provider_template_name?: string | null
           recipient_phone_number?: string
           sent_at?: string | null
+          send_started_at?: string | null
           source_channel_event_id?: string | null
           source_proposed_action_id?: string | null
           source_record_id?: string | null

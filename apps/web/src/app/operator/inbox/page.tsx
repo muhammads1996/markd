@@ -2,7 +2,10 @@ import { redirect } from "next/navigation";
 
 import { OperatorChrome } from "../../../components/operator/OperatorChrome";
 import { getOperatorClient } from "../../../features/work-graph/queries";
-import { listInboxItems } from "../../../features/ops-inbox/queries";
+import {
+  listFailedDeliveries,
+  listInboxItems,
+} from "../../../features/ops-inbox/queries";
 import { InboxItemCard } from "./InboxItemCard";
 import styles from "./inbox.module.css";
 
@@ -10,7 +13,10 @@ export default async function OpsInboxPage() {
   const supabase = await getOperatorClient();
   if (!supabase) redirect("/sign-in?reason=not-authorised");
 
-  const items = await listInboxItems();
+  const [items, failedDeliveries] = await Promise.all([
+    listInboxItems(),
+    listFailedDeliveries(),
+  ]);
 
   return (
     <OperatorChrome>
@@ -38,6 +44,42 @@ export default async function OpsInboxPage() {
             ))}
           </div>
         )}
+        <section
+          className={styles.failures}
+          aria-labelledby="failed-deliveries-heading"
+        >
+          <header className={styles.failuresHeader}>
+            <div>
+              <p className={styles.eyebrow}>Communication fallback</p>
+              <h2 id="failed-deliveries-heading">Failed WhatsApp deliveries</h2>
+            </div>
+            <span className={styles.count}>
+              {failedDeliveries.length} failed
+            </span>
+          </header>
+          {failedDeliveries.length === 0 ? (
+            <p className={styles.meta}>No failed deliveries need follow-up.</p>
+          ) : (
+            <ul className={styles.failureList}>
+              {failedDeliveries.map((delivery) => (
+                <li className={styles.failureCard} key={delivery.id}>
+                  <strong>{delivery.messageKey}</strong>
+                  <p className={styles.error}>{delivery.failureReason}</p>
+                  <p className={styles.meta}>
+                    Created {new Date(delivery.createdAt).toLocaleString()}
+                  </p>
+                  <p className={styles.callInstruction}>
+                    Call the participant at{" "}
+                    <a href={`tel:${delivery.recipientPhoneNumber}`}>
+                      {delivery.recipientPhoneNumber}
+                    </a>{" "}
+                    and resolve the communication follow-up.
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </main>
     </OperatorChrome>
   );

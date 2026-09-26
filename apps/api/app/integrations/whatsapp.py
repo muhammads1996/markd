@@ -335,6 +335,10 @@ def _message_text(message: dict[str, Any]) -> str | None:
     text = text_data.get("body") if text_data else None
     if isinstance(text, str):
         return text
+    button = _record(message.get("button"))
+    button_payload = button.get("payload") if button else None
+    if isinstance(button_payload, str) and button_payload.strip():
+        return button_payload
     interactive = _record(message.get("interactive"))
     if interactive is None:
         return None
@@ -342,7 +346,7 @@ def _message_text(message: dict[str, Any]) -> str | None:
         reply = _record(interactive.get(reply_type))
         if reply is None:
             continue
-        value = reply.get("id") or reply.get("title")
+        value = reply.get("id")
         if isinstance(value, str) and value.strip():
             return value
     return None

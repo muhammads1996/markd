@@ -27,6 +27,14 @@ export type InboxItem = {
   sourceMediaType: string | null;
 };
 
+export type FailedDeliveryItem = {
+  id: string;
+  messageKey: string;
+  failureReason: string;
+  createdAt: string;
+  recipientPhoneNumber: string;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -54,6 +62,32 @@ export async function listInboxItems(): Promise<InboxItem[]> {
     .order("created_at", { ascending: true });
   assertQuerySuccess(error, "loading the Ops Inbox");
   return (data ?? []).map(mapInboxRow);
+}
+
+/** Read-only operator view of failed outbound communication, regardless of
+ * message family. Phone is shown only to authenticated Ops for call fallback. */
+export async function listFailedDeliveries(): Promise<FailedDeliveryItem[]> {
+  const supabase = await getOperatorClient();
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("channel_deliveries")
+    .select(
+      "id, message_kind, failure_reason, created_at, recipient_phone_number",
+    )
+    .eq("state", "failed")
+    .order("created_at", { ascending: true });
+  assertQuerySuccess(error, "loading failed WhatsApp deliveries");
+  return (data ?? []).map((row) => {
+    return {
+      id: String(row.id),
+      messageKey: stringField(row.message_kind) ?? "message",
+      failureReason:
+        stringField(row.failure_reason) ??
+        "Delivery failed; investigate provider status.",
+      createdAt: String(row.created_at),
+      recipientPhoneNumber: String(row.recipient_phone_number),
+    };
+  });
 }
 
 function mapInboxRow(row: Record<string, unknown>): InboxItem {
