@@ -73,6 +73,7 @@ const domainTables = [
   "labour_requirements",
   "languages",
   "operator_accounts",
+  "participant_account_events",
   "participant_account_scopes",
   "participant_accounts",
   "organisation_contacts",
@@ -1027,9 +1028,11 @@ describe("local Supabase database", () => {
     await client.query("set local role postgres");
     const retryDelivery = await client.query<{ id: string }>(
       `insert into public.channel_deliveries(
-        channel, recipient_phone_number, message_kind, body, idempotency_key
+        channel, recipient_phone_number, message_kind, body,
+        message_payload, idempotency_key
       ) values (
         'whatsapp', '+27821110000', 'provider_test', 'test message',
+        '{"type":"session_text","body":"test message"}'::jsonb,
         'flo-129-retry-delivery'
       ) returning id`,
     );
@@ -1047,9 +1050,11 @@ describe("local Supabase database", () => {
 
     const successfulDelivery = await client.query<{ id: string }>(
       `insert into public.channel_deliveries(
-        channel, recipient_phone_number, message_kind, body, idempotency_key
+        channel, recipient_phone_number, message_kind, body,
+        message_payload, idempotency_key
       ) values (
         'whatsapp', '+27821110001', 'provider_test', 'test message',
+        '{"type":"session_text","body":"test message"}'::jsonb,
         'flo-129-success-delivery'
       ) returning id`,
     );
@@ -1120,9 +1125,11 @@ describe("local Supabase database", () => {
 
     const expiredDelivery = await client.query<{ id: string }>(
       `insert into public.channel_deliveries(
-        channel, recipient_phone_number, message_kind, body, idempotency_key
+        channel, recipient_phone_number, message_kind, body,
+        message_payload, idempotency_key
       ) values (
         'whatsapp', '+27821110002', 'provider_test', 'test message',
+        '{"type":"session_text","body":"test message"}'::jsonb,
         'flo-129-expired-delivery'
       ) returning id`,
     );

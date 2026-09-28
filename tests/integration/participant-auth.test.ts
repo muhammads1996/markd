@@ -40,6 +40,38 @@ afterEach(async () => {
 });
 
 describe("participant account mappings", () => {
+  it("revokes PWA access when the bound phone stops being primary", async () => {
+    const client = await connect();
+    await createAuthUser(client, participantA);
+    const person = await client.query<{ id: string }>(
+      "insert into public.people(display_name) values ('Phone change worker') returning id",
+    );
+    const personId = person.rows[0]?.id;
+    const phone = "+27820000136";
+    await client.query("update auth.users set phone = $1 where id = $2", [
+      phone,
+      participantA,
+    ]);
+    await client.query(
+      "insert into public.person_phone_numbers(person_id, phone_number, is_primary) values ($1, $2, true)",
+      [personId, phone],
+    );
+    await client.query(
+      "insert into public.participant_accounts(auth_user_id, person_id) values ($1, $2)",
+      [participantA, personId],
+    );
+    await client.query(
+      "update public.person_phone_numbers set is_primary = false where person_id = $1 and phone_number = $2",
+      [personId, phone],
+    );
+    const account = await client.query<{ status: string }>(
+      "select status::text from public.participant_accounts where auth_user_id = $1",
+      [participantA],
+    );
+    expect(account.rows[0]?.status).toBe("disabled");
+    await client.query("rollback");
+  });
+
   it("allows authenticated participants to read only their own narrow account and scopes", async () => {
     const client = await connect();
     await createAuthUser(client, participantA);

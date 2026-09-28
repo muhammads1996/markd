@@ -287,7 +287,8 @@ async def run_command_outbox_jobs(
             """
             with claimed as (
               select id from private.outbox_messages
-              where state = 'pending' and available_at <= timezone('utc', now())
+              where (state = 'pending' and available_at <= timezone('utc', now()))
+                 or (state = 'leased' and leased_until < timezone('utc', now()))
               order by available_at, created_at
               for update skip locked limit greatest(%s, 1)
             )

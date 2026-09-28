@@ -27,6 +27,7 @@ from app.api.v1.onboarding import (
 from app.api.v1.onboarding import (
     router as onboarding_router,
 )
+from app.api.v1.participant_access import router as participant_access_router
 from app.api.v1.proposed_actions import router as proposed_actions_router
 from app.api.v1.storage import router as storage_router
 from app.api.v1.tomorrow import router as tomorrow_router
@@ -89,6 +90,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(labour_requests_router, prefix="/api/v1")
     application.include_router(assignment_router, prefix="/api/v1")
     application.include_router(onboarding_router, prefix="/api/v1")
+    application.include_router(participant_access_router, prefix="/api/v1")
     application.include_router(worker_router, prefix="/api/v1")
     application.include_router(organisation_router, prefix="/api/v1")
     application.include_router(availability_router, prefix="/api/v1")

@@ -629,8 +629,8 @@ export type Database = {
           provider_template_locale: string | null
           provider_template_name: string | null
           recipient_phone_number: string
-          sent_at: string | null
           send_started_at: string | null
+          sent_at: string | null
           source_channel_event_id: string | null
           source_proposed_action_id: string | null
           source_record_id: string | null
@@ -656,8 +656,8 @@ export type Database = {
           provider_template_locale?: string | null
           provider_template_name?: string | null
           recipient_phone_number: string
-          sent_at?: string | null
           send_started_at?: string | null
+          sent_at?: string | null
           source_channel_event_id?: string | null
           source_proposed_action_id?: string | null
           source_record_id?: string | null
@@ -683,8 +683,8 @@ export type Database = {
           provider_template_locale?: string | null
           provider_template_name?: string | null
           recipient_phone_number?: string
-          sent_at?: string | null
           send_started_at?: string | null
+          sent_at?: string | null
           source_channel_event_id?: string | null
           source_proposed_action_id?: string | null
           source_record_id?: string | null
@@ -1673,6 +1673,67 @@ export type Database = {
         }
         Relationships: []
       }
+      participant_account_events: {
+        Row: {
+          actor_auth_user_id: string | null
+          auth_user_id: string
+          event_kind: string
+          id: string
+          occurred_at: string
+          organisation_contact_id: string | null
+          person_id: string
+          scope_kind:
+            | Database["public"]["Enums"]["participant_scope_kind"]
+            | null
+        }
+        Insert: {
+          actor_auth_user_id?: string | null
+          auth_user_id: string
+          event_kind: string
+          id?: string
+          occurred_at?: string
+          organisation_contact_id?: string | null
+          person_id: string
+          scope_kind?:
+            | Database["public"]["Enums"]["participant_scope_kind"]
+            | null
+        }
+        Update: {
+          actor_auth_user_id?: string | null
+          auth_user_id?: string
+          event_kind?: string
+          id?: string
+          occurred_at?: string
+          organisation_contact_id?: string | null
+          person_id?: string
+          scope_kind?:
+            | Database["public"]["Enums"]["participant_scope_kind"]
+            | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participant_account_events_auth_user_id_fkey"
+            columns: ["auth_user_id"]
+            isOneToOne: false
+            referencedRelation: "participant_accounts"
+            referencedColumns: ["auth_user_id"]
+          },
+          {
+            foreignKeyName: "participant_account_events_organisation_contact_id_fkey"
+            columns: ["organisation_contact_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "participant_account_events_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       participant_account_scopes: {
         Row: {
           auth_user_id: string
@@ -1714,6 +1775,7 @@ export type Database = {
       }
       participant_accounts: {
         Row: {
+          activation_requested_at: string | null
           auth_user_id: string
           created_at: string
           person_id: string
@@ -1721,6 +1783,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          activation_requested_at?: string | null
           auth_user_id: string
           created_at?: string
           person_id: string
@@ -1728,6 +1791,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          activation_requested_at?: string | null
           auth_user_id?: string
           created_at?: string
           person_id?: string
@@ -3978,6 +4042,7 @@ export type Database = {
       }
     }
     Functions: {
+      activate_participant_account: { Args: never; Returns: boolean }
       approve_proposed_action: {
         Args: {
           action_id: string
@@ -4040,7 +4105,7 @@ export type Database = {
         Returns: {
           attempts: number
           available_at: string
-          body: string
+          body: string | null
           channel: string
           created_at: string
           delivered_at: string | null
@@ -4050,8 +4115,13 @@ export type Database = {
           last_error: string | null
           leased_until: string | null
           message_kind: string
+          message_payload: Json
           provider_message_id: string | null
+          provider_send_type: string | null
+          provider_template_locale: string | null
+          provider_template_name: string | null
           recipient_phone_number: string
+          send_started_at: string | null
           sent_at: string | null
           source_channel_event_id: string | null
           source_proposed_action_id: string | null
@@ -4097,7 +4167,7 @@ export type Database = {
         Returns: {
           attempts: number
           available_at: string
-          body: string
+          body: string | null
           channel: string
           created_at: string
           delivered_at: string | null
@@ -4107,8 +4177,13 @@ export type Database = {
           last_error: string | null
           leased_until: string | null
           message_kind: string
+          message_payload: Json
           provider_message_id: string | null
+          provider_send_type: string | null
+          provider_template_locale: string | null
+          provider_template_name: string | null
           recipient_phone_number: string
+          send_started_at: string | null
           sent_at: string | null
           source_channel_event_id: string | null
           source_proposed_action_id: string | null
@@ -4163,6 +4238,42 @@ export type Database = {
       }
       is_active_operator: { Args: never; Returns: boolean }
       is_ops_admin: { Args: never; Returns: boolean }
+      mark_channel_delivery_send_started: {
+        Args: { delivery_id: string }
+        Returns: {
+          attempts: number
+          available_at: string
+          body: string | null
+          channel: string
+          created_at: string
+          delivered_at: string | null
+          failure_reason: string | null
+          id: string
+          idempotency_key: string
+          last_error: string | null
+          leased_until: string | null
+          message_kind: string
+          message_payload: Json
+          provider_message_id: string | null
+          provider_send_type: string | null
+          provider_template_locale: string | null
+          provider_template_name: string | null
+          recipient_phone_number: string
+          send_started_at: string | null
+          sent_at: string | null
+          source_channel_event_id: string | null
+          source_proposed_action_id: string | null
+          source_record_id: string | null
+          source_table: string | null
+          state: Database["public"]["Enums"]["channel_delivery_state"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "channel_deliveries"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       onboard_organisation: {
         Args: {
           contact_display_name: string
@@ -4186,7 +4297,7 @@ export type Database = {
         Returns: {
           attempts: number
           available_at: string
-          body: string
+          body: string | null
           channel: string
           created_at: string
           delivered_at: string | null
@@ -4196,8 +4307,13 @@ export type Database = {
           last_error: string | null
           leased_until: string | null
           message_kind: string
+          message_payload: Json
           provider_message_id: string | null
+          provider_send_type: string | null
+          provider_template_locale: string | null
+          provider_template_name: string | null
           recipient_phone_number: string
+          send_started_at: string | null
           sent_at: string | null
           source_channel_event_id: string | null
           source_proposed_action_id: string | null
@@ -4290,7 +4406,7 @@ export type Database = {
         | "not_completed"
       exception_state: "open" | "under_review" | "resolved"
       operator_role: "ops_admin" | "ops_user"
-      participant_account_status: "active" | "disabled"
+      participant_account_status: "active" | "disabled" | "pending"
       participant_scope_kind: "worker" | "contractor"
       payment_state:
         | "unknown"
@@ -4485,7 +4601,7 @@ export const Constants = {
       ],
       exception_state: ["open", "under_review", "resolved"],
       operator_role: ["ops_admin", "ops_user"],
-      participant_account_status: ["active", "disabled"],
+      participant_account_status: ["active", "disabled", "pending"],
       participant_scope_kind: ["worker", "contractor"],
       payment_state: [
         "unknown",

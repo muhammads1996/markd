@@ -54,6 +54,10 @@ enable_confirmations = false
 enable_signup = false
 enable_confirmations = false
 template = "Your code is {{ .Code }}"
+# Local-only fixed OTP values for E2E. Never copy these into hosted projects.
+[auth.sms.test_otp]
+"15555550101" = "123456"
+"15555550102" = "123456"
 
 [edge_runtime]
 enabled = true
