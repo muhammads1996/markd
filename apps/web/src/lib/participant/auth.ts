@@ -93,7 +93,7 @@ export async function requireParticipantSession(): Promise<ParticipantSession> {
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError) throw userError;
     authUserId = userData.user?.id;
-    if (!authUserId) redirect("/sign-in?returnTo=/participant");
+    if (!authUserId) redirect("/participant/sign-in");
 
     const [accountResult, scopesResult] = await Promise.all([
       supabase
@@ -112,7 +112,7 @@ export async function requireParticipantSession(): Promise<ParticipantSession> {
     scopeRows = scopesResult.data;
   } catch (error) {
     if (error && typeof error === "object" && "digest" in error) throw error;
-    redirect("/sign-in?reason=configuration&returnTo=/participant");
+    redirect("/participant/sign-in?reason=configuration");
   }
 
   const validation = validateParticipantSession(
@@ -121,7 +121,7 @@ export async function requireParticipantSession(): Promise<ParticipantSession> {
     scopeRows,
   );
   if (!validation.ok) {
-    redirect(`/sign-in?reason=not-authorised&returnTo=/participant`);
+    redirect("/participant/sign-in?reason=not-authorised");
   }
   return validation.session;
 }

@@ -1006,3 +1006,20 @@ The architecture remains valid, but current `main` should be read with the follo
 A provider interface or schema is not evidence that a live provider path has been exercised. Likewise, a later participant-PWA amendment on a completed P2 issue does not retroactively mean that participant flow is already implemented.
 
 Keep the architecture invariant: **one canonical domain state, multiple interfaces/transports**. Deferred work should extend the application command layer rather than create channel-specific business lifecycles.
+
+## Completion audit note — 28 Sep 2026
+
+The 15 Sep note above is historical. Current remote `main` is `eacfe119` (FLO-135).
+The core assignment, Workmark, exception, Tomorrow, participant command and
+WhatsApp template paths are now merged. Two product software items remain open:
+participant PWA activation/provisioning has not passed worker and contractor
+E2E or merged ([FLO-136](https://linear.app/flowtation/issue/FLO-136/provision-participant-pwa-accounts-and-activationsign-in-flow)),
+and command outbox leases can remain stuck after a worker crash on `main`
+([FLO-141](https://linear.app/flowtation/issue/FLO-141/recover-expired-fastapi-command-outbox-leases)).
+
+Live provider validation still needs documented closure evidence (FLO-129)
+and production Meta cutover remains FLO-138. Pilot metrics instrumentation
+(FLO-119) is a pilot entry gate for FLO-121, separate from participant app
+functionality. Optional PWA launch also requires hosted Supabase SMS provider
+configuration and a real OTP smoke test. Do not describe Meta templates as
+the sole remaining participant-channel dependency until these gates close.

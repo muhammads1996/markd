@@ -260,6 +260,10 @@ export async function removeParticipantUser(
       [user.id],
     );
     await client.query(
+      "delete from public.participant_account_events where auth_user_id = $1",
+      [user.id],
+    );
+    await client.query(
       "delete from public.participant_accounts where auth_user_id = $1",
       [user.id],
     );

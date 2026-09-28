@@ -754,6 +754,58 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/participant-access/provision:
+    post:
+      tags:
+      - Participant access
+      summary: Provision Participant
+      operationId: provision_participant_api_v1_participant_access_provision_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProvisionInput'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantAccessResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/participant-access/{person_id}/disable:
+    post:
+      tags:
+      - Participant access
+      summary: Disable Participant
+      operationId: disable_participant_api_v1_participant_access__person_id__disable_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: person_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Person Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/workers/{worker_id}:
     patch:
       tags:
@@ -2321,6 +2373,35 @@ components:
       - whatsapp_phone
       - record_status
       title: OrganisationUpdateInput
+    ParticipantAccessResponse:
+      properties:
+        person_id:
+          type: string
+          format: uuid
+          title: Person Id
+        status:
+          type: string
+          enum:
+          - pending
+          - active
+          - disabled
+          title: Status
+        scope_kind:
+          type: string
+          enum:
+          - worker
+          - contractor
+          title: Scope Kind
+        phone_last_four:
+          type: string
+          title: Phone Last Four
+      type: object
+      required:
+      - person_id
+      - status
+      - scope_kind
+      - phone_last_four
+      title: ParticipantAccessResponse
     PayInput:
       properties:
         amount_minor:
@@ -2508,6 +2589,23 @@ components:
       - reporting_at
       - reporting_place_text
       title: PickupReminderVariables
+    ProvisionInput:
+      properties:
+        scope_kind:
+          type: string
+          enum:
+          - worker
+          - contractor
+          title: Scope Kind
+        subject_id:
+          type: string
+          format: uuid
+          title: Subject Id
+      type: object
+      required:
+      - scope_kind
+      - subject_id
+      title: ProvisionInput
     QueueDeliveryInput:
       properties:
         recipient_phone_number:

@@ -161,11 +161,13 @@ export async function provisionTomorrowScenario(
       );
       await client.query(
         `insert into public.channel_deliveries(
-           id, channel, recipient_phone_number, message_kind, body,
+           id, channel, recipient_phone_number, message_kind, body, message_payload,
            source_table, source_record_id, idempotency_key, state, failure_reason
          ) values (
            $1, 'whatsapp', '+12125550101', 'assignment.travel_authorised',
-           'Synthetic travel-ready confirmation', 'domain_events', $2::uuid,
+           'Synthetic travel-ready confirmation',
+           '{"type":"session_text","body":"Synthetic travel-ready confirmation"}'::jsonb,
+           'domain_events', $2::uuid,
            'domain-event:' || $2::uuid::text, 'failed', 'Synthetic provider delivery failure'
          )`,
         [fixture.channelDeliveryId, fixture.domainEventId],

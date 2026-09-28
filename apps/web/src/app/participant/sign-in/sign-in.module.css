@@ -1,0 +1,21 @@
+.secondaryButton {
+  min-height: 2.75rem;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid rgb(17 19 21 / 24%);
+  border-radius: var(--markd-radius-sm);
+  background: transparent;
+  color: var(--markd-color-obsidian);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--markd-font-size-sm);
+  font-weight: var(--markd-font-weight-strong);
+}
+
+.secondaryButton:hover {
+  background: rgb(17 19 21 / 6%);
+}
+
+.secondaryButton:focus-visible {
+  outline: 3px solid var(--markd-color-obsidian);
+  outline-offset: 3px;
+}

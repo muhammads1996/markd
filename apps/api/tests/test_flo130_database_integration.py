@@ -382,6 +382,10 @@ async def _cleanup(database: Database, fixture: dict[str, UUID | str | None]) ->
             (fixture["actor_id"],),
         )
         await connection.execute(
+            "delete from public.participant_account_events where auth_user_id = %s",
+            (fixture["actor_id"],),
+        )
+        await connection.execute(
             "delete from public.participant_accounts where auth_user_id = %s",
             (fixture["actor_id"],),
         )
@@ -507,6 +511,34 @@ async def test_flo130_worker_commands_against_local_supabase(
             "source_proposed_action_id": None,
             "aggregate_version": 2,
         }
+
+        # A worker can die after claiming the command event. Its expired
+        # lease must be recoverable without creating duplicate delivery.
+        async with local_database.service_transaction() as connection:
+            await connection.execute(
+                """update private.outbox_messages
+                   set state = 'leased', leased_until = now() - interval '1 minute',
+                       available_at = now() - interval '1 day'
+                   where id = %s""",
+                (assignment_event["outbox_id"],),
+            )
+        assert {
+            "outbox_id": str(assignment_event["outbox_id"]),
+            "outcome": "published",
+        } in await run_command_outbox_jobs(local_database, batch_size=1)
+        async with local_database.service_transaction() as connection:
+            recovered = await _fetchone(
+                connection,
+                """select outbox.state, count(delivery.id)::integer as deliveries
+                   from private.outbox_messages as outbox
+                   join private.domain_events as event
+                     on event.id = outbox.domain_event_id
+                   left join public.channel_deliveries as delivery
+                     on delivery.idempotency_key = 'domain-event:' || event.id::text
+                   where outbox.id = %s group by outbox.state""",
+                (assignment_event["outbox_id"],),
+            )
+        assert recovered == {"state": "published", "deliveries": 1}
 
         accepted_event = await _insert_channel_event(
             local_database, fixture, "accepted"
@@ -648,6 +680,10 @@ async def test_whatsapp_only_worker_commands_without_auth_account(
         async with local_database.service_transaction() as connection:
             await connection.execute(
                 "delete from public.participant_account_scopes where auth_user_id = %s",
+                (fixture["actor_id"],),
+            )
+            await connection.execute(
+                "delete from public.participant_account_events where auth_user_id = %s",
                 (fixture["actor_id"],),
             )
             await connection.execute(
